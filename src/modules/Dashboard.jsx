@@ -1,6 +1,6 @@
 // ERP MAYA — DashboardModule (ES module)
 import Icon from '../components/Icon.jsx';
-import * as MAYA from '../data/mock.js';
+import { useDashboard } from '../hooks/useDashboard.js';
 // ERP MAYA — Dashboard module
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -112,16 +112,22 @@ function DonutChart({ data, size = 160 }) {
 
 function DashboardModule() {
   const { t } = useTranslation();
-  const { Q, Qs, SALES_TREND, SALES_BY_CAT, TOP_PRODUCTS, TICKETS, LOW_STOCK, EXPIRING_SOON, BRANCHES } = MAYA;
   const [range, setRange] = useState('14d');
+  const daysFor = { hoy: 1, '7d': 7, '14d': 14, '30d': 30, '90d': 90 };
+  const { data } = useDashboard(daysFor[range] || 14);
+  const { salesTrend, salesByCat, topProducts, recentTickets, lowStock, branchSales } = data;
+  const expiringSoon = [];
 
-  const today = SALES_TREND[SALES_TREND.length - 1];
-  const yesterday = SALES_TREND[SALES_TREND.length - 2];
-  const deltaToday = ((today.total - yesterday.total) / yesterday.total * 100).toFixed(1);
+  const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const Qs = Q;
 
-  const totalSales = SALES_TREND.reduce((s, d) => s + d.total, 0);
-  const totalTickets = SALES_TREND.reduce((s, d) => s + d.tickets, 0);
-  const avgTicket = totalSales / totalTickets;
+  const today = salesTrend[salesTrend.length - 1] || { total: 0, tickets: 0 };
+  const yesterday = salesTrend[salesTrend.length - 2] || { total: 0, tickets: 0 };
+  const deltaToday = yesterday.total ? ((today.total - yesterday.total) / yesterday.total * 100).toFixed(1) : '0.0';
+
+  const totalSales = salesTrend.reduce((s, d) => s + d.total, 0);
+  const totalTickets = salesTrend.reduce((s, d) => s + d.tickets, 0);
+  const avgTicket = totalTickets ? totalSales / totalTickets : 0;
 
   const colors = ['var(--accent)', '#64748b', '#0891b2', '#a16207', '#7c3aed', '#9d174d', '#475569'];
 
@@ -152,13 +158,13 @@ function DashboardModule() {
             <Icon name={deltaToday >= 0 ? 'arrowUp' : 'arrowDown'} size={11}/>
             {deltaToday}% vs ayer
           </div>
-          <div className="spark"><Sparkline data={SALES_TREND.slice(-7).map(d => d.total)} color="var(--accent)" width={84} height={32}/></div>
+          <div className="spark"><Sparkline data={salesTrend.slice(-7).map(d => d.total)} color="var(--accent)" width={84} height={32}/></div>
         </div>
         <div className="stat">
           <div className="label"><Icon name="receipt" size={11}/>{t('dashboard.kpis.transactions', 'Tickets hoy')}</div>
           <div className="val mono">{today.tickets}</div>
           <div className="delta up"><Icon name="arrowUp" size={11}/>8.4% vs ayer</div>
-          <div className="spark"><Sparkline data={SALES_TREND.slice(-7).map(d => d.tickets)} color="var(--info)" width={84} height={32}/></div>
+          <div className="spark"><Sparkline data={salesTrend.slice(-7).map(d => d.tickets)} color="var(--info)" width={84} height={32}/></div>
         </div>
         <div className="stat">
           <div className="label"><Icon name="chart" size={11}/>{t('dashboard.kpis.avgTicket', 'Ticket promedio')}</div>
@@ -167,9 +173,9 @@ function DashboardModule() {
         </div>
         <div className="stat">
           <div className="label"><Icon name="alert" size={11}/>{t('dashboard.sections.inventoryAlerts', 'Alertas activas')}</div>
-          <div className="val mono" style={{color:'var(--danger)'}}>{LOW_STOCK.length + EXPIRING_SOON.filter(p => p.daysLeft < 30).length}</div>
+          <div className="val mono" style={{color:'var(--danger)'}}>{lowStock.length + expiringSoon.filter(p => p.daysLeft < 30).length}</div>
           <div className="delta dn">
-            {LOW_STOCK.length} {t('dashboard.alerts.lowStock', 'stock bajo')} · {EXPIRING_SOON.filter(p => p.daysLeft < 30).length} {t('dashboard.alerts.expiringSoon', 'por vencer')}
+            {lowStock.length} {t('dashboard.alerts.lowStock', 'stock bajo')} · {expiringSoon.filter(p => p.daysLeft < 30).length} {t('dashboard.alerts.expiringSoon', 'por vencer')}
           </div>
         </div>
       </div>
@@ -187,7 +193,7 @@ function DashboardModule() {
             </div>
           </div>
           <div className="card-body">
-            <AreaChart data={SALES_TREND}/>
+            <AreaChart data={salesTrend}/>
           </div>
         </div>
         <div className="card">
@@ -196,9 +202,9 @@ function DashboardModule() {
             <span className="meta">MTD</span>
           </div>
           <div className="card-body" style={{display:'flex', alignItems:'center', gap:16}}>
-            <DonutChart data={SALES_BY_CAT} size={150}/>
+            <DonutChart data={salesByCat} size={150}/>
             <div style={{flex:1, display:'flex', flexDirection:'column', gap:4}}>
-              {SALES_BY_CAT.map((c, i) => (
+              {salesByCat.map((c, i) => (
                 <div key={i} className="row" style={{justifyContent:'space-between', fontSize:12}}>
                   <span className="row gap-6">
                     <span style={{width:9, height:9, borderRadius:2, background:colors[i % colors.length], display:'inline-block'}}/>
@@ -231,7 +237,7 @@ function DashboardModule() {
                 </tr>
               </thead>
               <tbody>
-                {TOP_PRODUCTS.slice(0,7).map((p, i) => (
+                {topProducts.slice(0,7).map((p, i) => (
                   <tr key={p.sku}>
                     <td className="code">{String(i+1).padStart(2,'0')}</td>
                     <td>
@@ -262,8 +268,8 @@ function DashboardModule() {
                 </tr>
               </thead>
               <tbody>
-                {BRANCHES.map(b => {
-                  const max = Math.max(...BRANCHES.map(x => x.sales));
+                {branchSales.map(b => {
+                  const max = Math.max(...branchSales.map(x => x.sales));
                   const pct = (b.sales / max) * 100;
                   return (
                     <tr key={b.id}>
@@ -296,7 +302,7 @@ function DashboardModule() {
         <div className="card">
           <div className="card-head">
             <h3>{t('dashboard.sections.inventoryAlerts', 'Alertas de inventario')}</h3>
-            <span className="pill danger">{LOW_STOCK.length + EXPIRING_SOON.filter(p => p.daysLeft < 30).length} activas</span>
+            <span className="pill danger">{lowStock.length + expiringSoon.filter(p => p.daysLeft < 30).length} activas</span>
           </div>
           <div className="card-body flush">
             <table className="tbl">
@@ -309,7 +315,7 @@ function DashboardModule() {
                 </tr>
               </thead>
               <tbody>
-                {LOW_STOCK.slice(0,4).map(p => (
+                {lowStock.slice(0,4).map(p => (
                   <tr key={p.sku}>
                     <td><span className="pill warning"><span className="dot"/>{t('dashboard.alerts.lowStock', 'Stock bajo')}</span></td>
                     <td>
@@ -323,7 +329,7 @@ function DashboardModule() {
                     <td><a href="#" style={{color:'var(--accent)', fontSize:11.5}}>Crear OC →</a></td>
                   </tr>
                 ))}
-                {EXPIRING_SOON.slice(0,3).map(p => (
+                {expiringSoon.slice(0,3).map(p => (
                   <tr key={p.sku + '_exp'}>
                     <td><span className="pill danger"><span className="dot"/>Vence pronto</span></td>
                     <td>
@@ -357,7 +363,7 @@ function DashboardModule() {
                 </tr>
               </thead>
               <tbody>
-                {TICKETS.slice(0,8).map(t => (
+                {recentTickets.slice(0,8).map(t => (
                   <tr key={t.id}>
                     <td className="code">{t.id.slice(-6)}</td>
                     <td className="code">{t.date.slice(11)}</td>

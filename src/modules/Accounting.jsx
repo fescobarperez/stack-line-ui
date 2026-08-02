@@ -2,8 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
-import * as MAYA from '../data/mock.js';
-import { useAccounts, useJournalEntries } from '../hooks/useAccounting.js';
+import { useAccounts, useJournalEntries, usePeriods } from '../hooks/useAccounting.js';
 
 const LEVEL_INDENT = { 1: 0, 2: 16, 3: 32, 4: 48, 5: 64 };
 const LEVEL_STYLE  = {
@@ -301,10 +300,10 @@ function EntryDetail({ entry, onClose, onReverse }) {
 // ── Módulo principal ──────────────────────────────────────────────────────────
 export default function Accounting({ pushToast }) {
   const { t } = useTranslation();
-  const { ACCOUNTING_PERIODS } = MAYA;
-  // Plan de cuentas y pólizas desde el backend (con fallback automático al mock).
+  // Plan de cuentas, pólizas y períodos desde el backend (con fallback al mock).
   const { items: apiAccounts } = useAccounts();
   const { items: apiEntries } = useJournalEntries();
+  const periods = usePeriods();
   const [tab, setTab]         = useState('plan');
   const [search, setSearch]   = useState('');
   const [selected, setSelected] = useState(null);
@@ -312,7 +311,6 @@ export default function Accounting({ pushToast }) {
   const [showNewEntry, setShowNewEntry]     = useState(false);
   const [accounts, setAccounts]   = useState(apiAccounts);
   const [entries, setEntries]     = useState(apiEntries);
-  const [periods]                 = useState(ACCOUNTING_PERIODS);
   // Sincroniza las listas locales cuando llegan datos del backend.
   useEffect(() => { setAccounts(apiAccounts); }, [apiAccounts]);
   useEffect(() => { setEntries(apiEntries); }, [apiEntries]);

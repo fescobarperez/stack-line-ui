@@ -1,15 +1,37 @@
 // ERP MAYA — InventoryModule (ES module)
 import Icon from '../components/Icon.jsx';
-import * as MAYA from '../data/mock.js';
 // ERP MAYA — Inventory module
 import React, { useState as useStateInv, useMemo as useMemoInv } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useProducts } from '../hooks/useCatalog.js';
+import { useProducts, useCategories } from '../hooks/useCatalog.js';
+import { useSuppliers, useBranches } from '../hooks/useMasters.js';
+import { useStockMovements } from '../hooks/useOperations.js';
+
+const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const Qs = Q;
+
 function InventoryModule({ pushToast }) {
   const { t } = useTranslation();
-  const { Q, Qs, CATEGORIES, STOCK_MOVEMENTS, LOW_STOCK, EXPIRING_SOON, SUPPLIERS } = MAYA;
-  // Productos desde el backend (con fallback automático al mock si no responde).
+  // Datos reales desde el backend (con fallback automático al mock).
   const { items: PRODUCTS } = useProducts();
+  const CATEGORIES = useCategories();
+  const { items: SUPPLIERS } = useSuppliers();
+  const { items: BRANCHES } = useBranches();
+  const { items: movementsRaw } = useStockMovements();
+  // Kardex: mapea los movimientos del backend a la forma de la vista.
+  const STOCK_MOVEMENTS = useMemoInv(() => movementsRaw.map((m) => ({
+    date: m.createdAt ? new Date(m.createdAt).toISOString().slice(0, 10) : '',
+    type: m.movementType,
+    sku: String(m.productId ?? ''),
+    name: m.productName,
+    qty: Number(m.quantity || 0),
+    ref: m.refId || '—',
+    user: m.userId ? `#${m.userId}` : '—',
+  })), [movementsRaw]);
+  // Stock bajo: derivado de los productos reales.
+  const LOW_STOCK = useMemoInv(() => PRODUCTS.filter((p) => Number(p.stock) < Number(p.min)), [PRODUCTS]);
+  // Vencimientos: el backend aún no expone lotes/vencimientos en el catálogo → vacío.
+  const EXPIRING_SOON = [];
   const [tab, setTab] = useStateInv('productos');
   const [cat, setCat] = useStateInv('todos');
   const [search, setSearch] = useStateInv('');
@@ -28,7 +50,7 @@ function InventoryModule({ pushToast }) {
     if (stockFilter === 'ok')   p = p.filter(x => x.stock >= x.min);
     if (stockFilter === 'out')  p = p.filter(x => x.stock === 0);
     return p;
-  }, [cat, search, stockFilter]);
+  }, [cat, search, stockFilter, PRODUCTS]);
 
   const totalValueCost = PRODUCTS.reduce((s, p) => s + p.cost * p.stock, 0);
   const totalValueSale = PRODUCTS.reduce((s, p) => s + p.price * p.stock, 0);
@@ -189,7 +211,7 @@ function InventoryModule({ pushToast }) {
             </select>
             <select className="input">
               <option>Todas las sucursales</option>
-              {MAYA.BRANCHES.map(b => <option key={b.id}>{b.name}</option>)}
+              {BRANCHES.map(b => <option key={b.id}>{b.name}</option>)}
             </select>
             <div className="grow"></div>
             <button className="btn sm"><Icon name="calendar" size={12}/>Mayo 2026</button>
@@ -371,7 +393,7 @@ function InventoryModule({ pushToast }) {
                 <div className="field"><label>{t('inventory.adjustment.quantity', 'Cantidad')}</label><input type="number" placeholder="0"/></div>
               </div>
               <div className="field"><label>{t('common.branch', 'Sucursal')}</label>
-                <select>{MAYA.BRANCHES.map(b => <option key={b.id}>{b.name}</option>)}</select>
+                <select>{BRANCHES.map(b => <option key={b.id}>{b.name}</option>)}</select>
               </div>
               <div className="field"><label>Justificación</label>
                 <textarea rows="3" placeholder={t('inventory.adjustment.reason', 'Detalle de la razón del ajuste…')}></textarea>
@@ -387,11 +409,11 @@ function InventoryModule({ pushToast }) {
             <div className="card-body" style={{display:'flex', flexDirection:'column', gap:10}}>
               <div style={{display:'grid', gridTemplateColumns:'1fr auto 1fr', gap:8, alignItems:'end'}}>
                 <div className="field"><label>Desde</label>
-                  <select>{MAYA.BRANCHES.map(b => <option key={b.id}>{b.name}</option>)}</select>
+                  <select>{BRANCHES.map(b => <option key={b.id}>{b.name}</option>)}</select>
                 </div>
                 <div style={{height:30, display:'grid', placeItems:'center', color:'var(--accent)'}}><Icon name="transfer" size={18}/></div>
                 <div className="field"><label>Hacia</label>
-                  <select>{MAYA.BRANCHES.map(b => <option key={b.id}>{b.name}</option>)}</select>
+                  <select>{BRANCHES.map(b => <option key={b.id}>{b.name}</option>)}</select>
                 </div>
               </div>
               <div className="field"><label>{t('common.product', 'Producto')}</label>
@@ -522,7 +544,7 @@ function InventoryModule({ pushToast }) {
                   <table className="tbl">
                     <thead><tr><th>{t('inventory.headers.branch', 'Sucursal')}</th><th className="num">{t('inventory.headers.stock', 'Stock')}</th><th className="num">{t('inventory.headers.min', 'Mín')}</th><th>{t('inventory.headers.status', 'Estado')}</th></tr></thead>
                     <tbody>
-                      {MAYA.BRANCHES.map((b, i) => {
+                      {BRANCHES.map((b, i) => {
                         const s = Math.max(0, Math.floor(selected.stock * (0.1 + 0.25 * Math.random() + i*0.05)));
                         return (
                           <tr key={b.id}>

@@ -2,9 +2,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from './Icon.jsx';
-import { PRODUCTS, CLIENTS, Q } from '../data/mock.js';
+import { getSearch } from '../api/search.js';
 
-function computeResults(query, navItems, t) {
+const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function computeResults(query, navItems, t, remote) {
   const q = query.toLowerCase().trim();
 
   const QUICK_ACTIONS = [
@@ -40,31 +42,25 @@ function computeResults(query, navItems, t) {
   );
   if (actionMatches.length) groups.push({ label: t('search.groups.actions'), items: actionMatches });
 
-  const productMatches = PRODUCTS
-    .filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q))
-    .slice(0, 5)
-    .map(p => ({
-      key: 'prod-' + p.sku,
-      title: p.name,
-      subtitle: 'SKU ' + p.sku + ' · ' + Q(p.price),
-      icon: 'box',
-      route: 'inventory',
-      tag: t('search.tags.product'),
-      alert: p.stock < p.min ? t('search.stockLow') : null,
-    }));
+  // Productos y clientes vienen del backend (búsqueda global), con fallback al mock.
+  const productMatches = (remote?.products || []).slice(0, 5).map(p => ({
+    key: 'prod-' + p.id,
+    title: p.name,
+    subtitle: 'SKU ' + p.sku + ' · ' + Q(p.price),
+    icon: 'box',
+    route: 'inventory',
+    tag: t('search.tags.product'),
+  }));
   if (productMatches.length) groups.push({ label: t('search.groups.products'), items: productMatches });
 
-  const clientMatches = CLIENTS
-    .filter(c => c.name.toLowerCase().includes(q) || c.nit.includes(q))
-    .slice(0, 5)
-    .map(c => ({
-      key: 'client-' + c.id,
-      title: c.name,
-      subtitle: 'NIT ' + c.nit,
-      icon: 'user',
-      route: 'clients',
-      tag: t('search.tags.client'),
-    }));
+  const clientMatches = (remote?.clients || []).slice(0, 5).map(c => ({
+    key: 'client-' + c.id,
+    title: c.name,
+    subtitle: 'NIT ' + c.nit,
+    icon: 'user',
+    route: 'clients',
+    tag: t('search.tags.client'),
+  }));
   if (clientMatches.length) groups.push({ label: t('search.groups.clients'), items: clientMatches });
 
   return groups;
@@ -73,12 +69,29 @@ function computeResults(query, navItems, t) {
 export function GlobalSearch({ navItems, onClose, onNavigate }) {
   const { t } = useTranslation();
   const [query, setQuery]       = useState('');
+  const [remote, setRemote]     = useState({ products: [], clients: [] });
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef  = useRef(null);
   const resultsRef = useRef(null);
   const activeRef  = useRef(null);
 
-  const results   = useMemo(() => computeResults(query, navItems, t), [query, navItems, t]);
+  // Busca productos/clientes en el backend (debounced). Si falla, cae al mock local.
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) { setRemote({ products: [], clients: [] }); return; }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await getSearch(q);
+        if (!cancelled) setRemote({ products: res.products || [], clients: res.clients || [] });
+      } catch {
+        if (!cancelled) setRemote({ products: [], clients: [] });
+      }
+    }, 200);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [query]);
+
+  const results   = useMemo(() => computeResults(query, navItems, t, remote), [query, navItems, t, remote]);
   const flatItems = useMemo(() => results.flatMap(g => g.items), [results]);
 
   // Reset active cuando cambia el query

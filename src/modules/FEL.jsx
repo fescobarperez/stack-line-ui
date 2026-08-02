@@ -1,7 +1,35 @@
 // ERP MAYA — FEL · SAT Panel
+// Data-driven: documentos FEL desde /api/fel/documents (hook useFelDocuments).
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
+import { useFelDocuments } from '../hooks/useAccounting.js';
 import { useTranslation } from 'react-i18next';
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const EST_MAP = { certified: 'autorizado', certificada: 'autorizado', anulado: 'anulado', cancelled: 'anulado', rejected: 'rechazado', rechazado: 'rechazado', pending: 'pendiente' };
+
+// Backend FelDocument.Response → forma de la UI.
+function mapDte(d) {
+  const iss = d.issuedAt ? new Date(d.issuedAt) : null;
+  const cert = d.certifiedAt ? new Date(d.certifiedAt) : null;
+  return {
+    id: d.number ? `DTE-${d.number}` : `DTE-${d.id}`,
+    tipo: d.dteType || 'FACT',
+    serie: d.series || 'A',
+    numero: d.number || String(d.id),
+    fecha: iss ? `${iss.getFullYear()}-${pad2(iss.getMonth() + 1)}-${pad2(iss.getDate())}` : '',
+    hora: iss ? `${pad2(iss.getHours())}:${pad2(iss.getMinutes())}` : '',
+    receptor: d.receptorName || 'Consumidor Final',
+    nit: d.receptorNit || 'CF',
+    afecto: Number(d.taxableAmount || 0),
+    exento: Number(d.exemptAmount || 0),
+    iva: Number(d.tax || 0),
+    total: Number(d.total || 0),
+    estado: EST_MAP[d.status] || d.status || 'autorizado',
+    uuid: d.uuid || '',
+    certTs: cert ? `${pad2(cert.getHours())}:${pad2(cert.getMinutes())}:${pad2(cert.getSeconds())}` : '',
+  };
+}
 
 const Q   = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const Qs  = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -20,29 +48,7 @@ const ESTADOS = {
   pendiente:  { label: 'Pendiente',  pill: 'warning' },
 };
 
-// ── Mock DTEs ──────────────────────────────────────────────────────────────
-const uuid = (seed) => {
-  const h = (n, l) => String(seed * n).replace('.','').slice(0,l).padStart(l,'0');
-  return `${h(1,8)}-${h(2,4)}-4${h(3,3)}-${h(4,4)}-${h(5,12)}`;
-};
-
-const DTES = [
-  { id:'DTE-0042', tipo:'FACT', serie:'A', numero:'004892', fecha:'2026-05-23', hora:'14:32', receptor:'Diego Castillo Díaz',    nit:'6789012-3', afecto:1071.43, exento:0,    iva:128.57, total:1200.00, estado:'autorizado', uuid:uuid(1),  certTs:'14:32:18' },
-  { id:'DTE-0041', tipo:'FACT', serie:'A', numero:'004889', fecha:'2026-05-22', hora:'11:15', receptor:'María García López',     nit:'1234567-8', afecto:401.79,  exento:0,    iva:48.21,  total:450.00,  estado:'autorizado', uuid:uuid(2),  certTs:'11:15:44' },
-  { id:'DTE-0040', tipo:'FACT', serie:'A', numero:'004881', fecha:'2026-05-22', hora:'09:48', receptor:'Consumidor Final',       nit:'CF',        afecto:267.86,  exento:0,    iva:32.14,  total:300.00,  estado:'autorizado', uuid:uuid(3),  certTs:'09:48:12' },
-  { id:'DTE-0039', tipo:'NCRE', serie:'A', numero:'000214', fecha:'2026-05-21', hora:'16:05', receptor:'Lucía Barrios Sandoval', nit:'9876543-2', afecto:-89.29,  exento:0,    iva:-10.71, total:-100.00, estado:'autorizado', uuid:uuid(4),  certTs:'16:05:33', refDTE:'DTE-0035' },
-  { id:'DTE-0038', tipo:'FACT', serie:'A', numero:'004876', fecha:'2026-05-21', hora:'10:20', receptor:'Carlos Méndez Ruiz',     nit:'8765432-1', afecto:562.50,  exento:0,    iva:67.50,  total:630.00,  estado:'autorizado', uuid:uuid(5),  certTs:'10:20:55' },
-  { id:'DTE-0037', tipo:'FACT', serie:'A', numero:'004870', fecha:'2026-05-20', hora:'15:44', receptor:'Javier Ramos Morales',   nit:'4567890-1', afecto:250.00,  exento:0,    iva:30.00,  total:280.00,  estado:'autorizado', uuid:uuid(6),  certTs:'15:44:01' },
-  { id:'DTE-0036', tipo:'FACT', serie:'A', numero:'004865', fecha:'2026-05-20', hora:'12:30', receptor:'Consumidor Final',       nit:'CF',        afecto:133.93,  exento:0,    iva:16.07,  total:150.00,  estado:'anulado',    uuid:uuid(7),  certTs:'12:30:22', motivoAnul:'Error en productos facturados' },
-  { id:'DTE-0035', tipo:'FACT', serie:'A', numero:'004860', fecha:'2026-05-18', hora:'09:05', receptor:'Lucía Barrios Sandoval', nit:'9876543-2', afecto:535.71,  exento:0,    iva:64.29,  total:600.00,  estado:'autorizado', uuid:uuid(8),  certTs:'09:05:47' },
-  { id:'DTE-0034', tipo:'FACT', serie:'A', numero:'004852', fecha:'2026-05-15', hora:'11:22', receptor:'Roberto Pérez Castro',   nit:'2345678-9', afecto:133.93,  exento:0,    iva:16.07,  total:150.00,  estado:'autorizado', uuid:uuid(9),  certTs:'11:22:33' },
-  { id:'DTE-0033', tipo:'FACT', serie:'A', numero:'004848', fecha:'2026-05-15', hora:'10:05', receptor:'Consumidor Final',       nit:'CF',        afecto:223.21,  exento:0,    iva:26.79,  total:250.00,  estado:'autorizado', uuid:uuid(10), certTs:'10:05:19' },
-  { id:'DTE-0032', tipo:'FACT', serie:'A', numero:'004840', fecha:'2026-05-14', hora:'14:55', receptor:'Ana Juárez de López',    nit:'3456789-0', afecto:758.93,  exento:0,    iva:91.07,  total:850.00,  estado:'autorizado', uuid:uuid(11), certTs:'14:55:02' },
-  { id:'DTE-0031', tipo:'FACT', serie:'A', numero:'004831', fecha:'2026-05-12', hora:'09:30', receptor:'Carlos Méndez Ruiz',     nit:'8765432-1', afecto:1785.71, exento:0,    iva:214.29, total:2000.00, estado:'autorizado', uuid:uuid(12), certTs:'09:30:44' },
-  { id:'DTE-0030', tipo:'FACT', serie:'A', numero:'004825', fecha:'2026-05-10', hora:'16:48', receptor:'Patricia Lima Vásquez',  nit:'5678901-2', afecto:107.14,  exento:0,    iva:12.86,  total:120.00,  estado:'autorizado', uuid:uuid(13), certTs:'16:48:55' },
-  { id:'DTE-0029', tipo:'FACT', serie:'A', numero:'004812', fecha:'2026-05-05', hora:'11:11', receptor:'Consumidor Final',       nit:'CF',        afecto:446.43,  exento:0,    iva:53.57,  total:500.00,  estado:'rechazado',  uuid:uuid(14), certTs:'11:11:09', errorMsg:'NIT receptor no válido en SAT' },
-  { id:'DTE-0028', tipo:'NDEB', serie:'A', numero:'000031', fecha:'2026-05-03', hora:'13:20', receptor:'María García López',     nit:'1234567-8', afecto:44.64,   exento:0,    iva:5.36,   total:50.00,   estado:'autorizado', uuid:uuid(15), certTs:'13:20:11' },
-];
+// (los DTE vienen del backend)
 
 const CERTIFIER = {
   nombre: 'Infile, S.A.',
@@ -79,8 +85,12 @@ export default function FEL({ pushToast }) {
   const [showAnul, setShowAnul] = useState(null);
   const [motivoAnul, setMotivoAnul] = useState('');
 
-  // KPIs mes actual
-  const mesActual = DTES.filter(d => d.fecha.startsWith('2026-05'));
+  // Documentos FEL reales del backend.
+  const { items: felRaw } = useFelDocuments();
+  const dtes = useMemo(() => felRaw.map(mapDte), [felRaw]);
+
+  // KPIs
+  const mesActual = dtes;
   const autorizados = mesActual.filter(d => d.estado === 'autorizado');
   const totalFact   = autorizados.filter(d => d.tipo === 'FACT').reduce((s, d) => s + d.total, 0);
   const totalIVA    = autorizados.reduce((s, d) => s + d.iva, 0);
@@ -88,7 +98,7 @@ export default function FEL({ pushToast }) {
 
   // Filtered DTEs
   const filtered = useMemo(() => {
-    let list = DTES;
+    let list = dtes;
     if (tipoFiltro !== 'todos')   list = list.filter(d => d.tipo === tipoFiltro);
     if (estadoFiltro !== 'todos') list = list.filter(d => d.estado === estadoFiltro);
     if (search) {
@@ -96,10 +106,10 @@ export default function FEL({ pushToast }) {
       list = list.filter(d => d.receptor.toLowerCase().includes(q) || d.nit.includes(q) || d.numero.includes(q));
     }
     return list;
-  }, [tipoFiltro, estadoFiltro, search]);
+  }, [dtes, tipoFiltro, estadoFiltro, search]);
 
   // Libro de ventas (solo autorizados y FACT/NDEB)
-  const libroVentas = DTES
+  const libroVentas = dtes
     .filter(d => d.estado === 'autorizado' && d.tipo !== 'NCRE')
     .sort((a, b) => a.numero.localeCompare(b.numero));
 
@@ -258,7 +268,7 @@ export default function FEL({ pushToast }) {
                 </tr>
               </thead>
               <tbody>
-                {DTES.filter(d => d.estado === 'anulado').map(d => (
+                {dtes.filter(d => d.estado === 'anulado').map(d => (
                   <tr key={d.id}>
                     <td className="code">{d.serie}-{d.numero}</td>
                     <td style={{fontSize:12}}>{d.fecha}</td>
@@ -268,7 +278,7 @@ export default function FEL({ pushToast }) {
                     <td><span className="pill danger" style={{fontSize:10}}>Anulado</span></td>
                   </tr>
                 ))}
-                {DTES.filter(d => d.estado === 'anulado').length === 0 && (
+                {dtes.filter(d => d.estado === 'anulado').length === 0 && (
                   <tr><td colSpan={6} style={{textAlign:'center', padding:28, color:'var(--muted)'}}>Sin anulaciones registradas</td></tr>
                 )}
               </tbody>
@@ -289,7 +299,7 @@ export default function FEL({ pushToast }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {DTES.filter(d => d.estado === 'autorizado' && d.tipo === 'FACT' && d.fecha === '2026-05-23').map(d => (
+                  {dtes.filter(d => d.estado === 'autorizado' && d.tipo === 'FACT' && d.fecha === '2026-05-23').map(d => (
                     <tr key={d.id}>
                       <td className="code">{d.serie}-{d.numero}</td>
                       <td style={{fontSize:12}}>{d.hora}</td>
@@ -413,7 +423,7 @@ export default function FEL({ pushToast }) {
 
           <div className="card" style={{padding:20}}>
             <div style={{fontWeight:600, fontSize:13, marginBottom:16}}>Log de certificaciones</div>
-            {DTES.slice(0, 8).map(d => {
+            {dtes.slice(0, 8).map(d => {
               const estado = ESTADOS[d.estado];
               return (
                 <div key={d.id} style={{display:'flex', alignItems:'center', gap:10, padding:'7px 0', borderBottom:'1px solid var(--border)', fontSize:12}}>
@@ -430,7 +440,7 @@ export default function FEL({ pushToast }) {
             })}
           </div>
 
-          {DTES.filter(d => d.estado === 'rechazado').length > 0 && (
+          {dtes.filter(d => d.estado === 'rechazado').length > 0 && (
             <div className="card" style={{padding:20, gridColumn:'1/-1', borderColor:'var(--danger)'}}>
               <div style={{fontWeight:600, fontSize:13, marginBottom:12, color:'var(--danger)'}}>
                 DTEs rechazados — requieren reintento
@@ -446,7 +456,7 @@ export default function FEL({ pushToast }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {DTES.filter(d => d.estado === 'rechazado').map(d => (
+                  {dtes.filter(d => d.estado === 'rechazado').map(d => (
                     <tr key={d.id}>
                       <td className="code">{d.serie}-{d.numero}</td>
                       <td style={{fontWeight:500, fontSize:12}}>{d.receptor}</td>

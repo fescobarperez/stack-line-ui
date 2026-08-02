@@ -1,11 +1,29 @@
-// Cliente HTTP base del ERP. Centraliza la URL del backend, el header
-// multi-empresa (X-Company-Id) y el manejo de errores.
+// Cliente HTTP base del ERP. Centraliza la URL del backend, el token de sesión
+// (JWT Bearer), el header multi-empresa y el manejo de errores.
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
-// Empresa (inquilino) activa. Por ahora se lee de localStorage con un
-// valor por defecto; cuando exista login vendrá del token de sesión.
+const TOKEN_KEY = 'maya_token';
+const LOGIN_PATH = '/api/auth/login';
+
+// Token JWT de la sesión activa. Lo guarda auth.js al hacer login.
+export function getToken() {
+  return sessionStorage.getItem(TOKEN_KEY);
+}
+
+// Empresa (inquilino) activa. El backend la deriva del token; esto solo la deja
+// disponible al front. Se llena en el login desde la respuesta del servidor.
 export function currentCompanyId() {
-  return localStorage.getItem('companyId') || '1';
+  return sessionStorage.getItem('companyId') || '';
+}
+
+// Limpia la sesión y manda al login (p.ej. cuando el token expira → 401).
+function clearSessionAndRedirect() {
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem('companyId');
+  sessionStorage.removeItem('maya_session');
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
 }
 
 export class ApiError extends Error {
@@ -17,11 +35,12 @@ export class ApiError extends Error {
 }
 
 async function request(path, { method = 'GET', body, headers } = {}) {
+  const token = getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      'X-Company-Id': currentCompanyId(),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
     body: body != null ? JSON.stringify(body) : undefined,
@@ -30,6 +49,11 @@ async function request(path, { method = 'GET', body, headers } = {}) {
   if (!res.ok) {
     let detail;
     try { detail = await res.json(); } catch { detail = null; }
+    // Token inválido/expirado en cualquier endpoint que no sea el propio login:
+    // cerramos sesión y volvemos al login.
+    if (res.status === 401 && path !== LOGIN_PATH) {
+      clearSessionAndRedirect();
+    }
     throw new ApiError(res.status, detail?.message || res.statusText);
   }
   return res.status === 204 ? null : res.json();

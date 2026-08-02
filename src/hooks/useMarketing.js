@@ -1,7 +1,6 @@
-// Hook de promociones. Trae del backend con fallback al mock.
+// Hook de promociones. 100% datos reales del backend (sin fallback a mock).
 import { useState, useEffect, useCallback } from 'react';
 import { listPromotions } from '../api/marketing.js';
-import { PROMOS as MOCK_PROMOS } from '../data/mock.js';
 
 // El backend expone `promoType`; los componentes usan `type`.
 function mapPromo(p) {
@@ -9,15 +8,16 @@ function mapPromo(p) {
 }
 
 export function usePromotions() {
-  const [state, setState] = useState({ items: MOCK_PROMOS, loading: true, error: null, source: 'mock' });
+  const [state, setState] = useState({ items: [], loading: true, error: null });
 
   const reload = useCallback(async () => {
     setState((s) => ({ ...s, loading: true }));
     try {
       const rows = await listPromotions();
-      setState({ items: rows.map(mapPromo), loading: false, error: null, source: 'api' });
+      const list = Array.isArray(rows) ? rows : (rows?.content ?? []);
+      setState({ items: list.map(mapPromo), loading: false, error: null });
     } catch (err) {
-      setState({ items: MOCK_PROMOS, loading: false, error: err, source: 'mock' });
+      setState({ items: [], loading: false, error: err });
     }
   }, []);
 

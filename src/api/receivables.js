@@ -8,3 +8,6 @@ export function listPayments({ clientId, page = 0, size = 50 } = {}) {
 }
 export const getPayment = (id) => api.get(`/api/payments/${id}`);
 export const createPayment = (data) => api.post('/api/payments', data);
+
+// Antigüedad de saldos (CxC aging)
+export const getAging = () => api.get('/api/receivables/aging');

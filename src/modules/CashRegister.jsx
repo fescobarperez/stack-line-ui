@@ -1,25 +1,61 @@
 // ERP MAYA — Módulo de Cierre de Caja
+// Data-driven: /api/cash-registers (open/close). El backend calcula ventas/efectivo/
+// tarjeta/diferencia a partir de las ventas de la caja.
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
-import * as MAYA from '../data/mock.js';
+import { useCashRegisters } from '../hooks/useOperations.js';
+import { useBranches } from '../hooks/useMasters.js';
+import { openCashRegister, closeCashRegister } from '../api/pos.js';
 import { useTranslation } from 'react-i18next';
 
-function fmt(n) { return `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
+function fmt(n) { return `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
+
+function pad(n) { return String(n).padStart(2, '0'); }
+function fmtDateTime(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Usuario de la sesión (para el userId de la caja y mostrar el cajero).
+function sessionUser() {
+  try { return JSON.parse(sessionStorage.getItem('maya_session'))?.user || null; } catch { return null; }
+}
+
+// Backend CashRegister.Response → forma de la UI.
+function mapRegister(r, user) {
+  const cashier = user && user.id === r.userId ? user.name : (r.userId ? `Usuario ${r.userId}` : '—');
+  return {
+    id: r.id,
+    branchId: r.branchId,
+    branch: r.branchName || '—',
+    cashier,
+    openedAt: fmtDateTime(r.openedAt) || '',
+    closedAt: fmtDateTime(r.closedAt),
+    openingAmount: Number(r.openingAmount || 0),
+    closingAmount: r.closingAmount != null ? Number(r.closingAmount) : null,
+    status: r.status,
+    salesTotal: Number(r.salesTotal || 0),
+    salesCash: Number(r.salesCash || 0),
+    salesCard: Number(r.salesCard || 0),
+    refunds: Number(r.refunds || 0),
+    diff: r.difference != null ? Number(r.difference) : null,
+  };
+}
 
 // ── Modal: Apertura de caja ──────────────────────────────────────────────────
 function OpenModal({ branches, onSave, onClose }) {
   const { t } = useTranslation();
   const [branchId, setBranchId]       = useState('');
-  const [cashier, setCashier]         = useState('');
   const [openingAmount, setOpening]   = useState('500.00');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!branchId || !cashier) return;
-    onSave({ branchId, cashier, openingAmount: parseFloat(openingAmount) || 0 });
+    if (!branchId) return;
+    onSave({ branchId: Number(branchId), openingAmount: parseFloat(openingAmount) || 0 });
   };
 
-  const availableBranches = branches.filter(b => b.status === 'active');
+  const availableBranches = branches.filter(b => b.status !== 'paused');
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -36,11 +72,6 @@ function OpenModal({ branches, onSave, onClose }) {
                 <option value="">{t('cash.selectBranch', 'Seleccionar sucursal…')}</option>
                 {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
-            </div>
-            <div className="field" style={{ marginBottom: 12 }}>
-              <label className="field-label">{t('cash.cashier', 'Cajero')} *</label>
-              <input className="field-input" placeholder={t('cash.cashierPlaceholder', 'Nombre del cajero')} value={cashier}
-                onChange={e => setCashier(e.target.value)} required />
             </div>
             <div className="field">
               <label className="field-label">{t('cash.openingAmount', 'Fondo inicial (Q)')}</label>
@@ -193,8 +224,10 @@ function CajaCard({ register, onClose }) {
 // ── Módulo principal ─────────────────────────────────────────────────────────
 export default function CashRegister({ pushToast }) {
   const { t } = useTranslation();
-  const { BRANCHES } = MAYA;
-  const [registers, setRegisters] = useState(MAYA.CASH_REGISTERS);
+  const { items: registersRaw, reload } = useCashRegisters();
+  const { items: BRANCHES } = useBranches();
+  const user = useMemo(() => sessionUser(), []);
+  const registers = useMemo(() => registersRaw.map((r) => mapRegister(r, user)), [registersRaw, user]);
   const [tab, setTab]             = useState('turno');
   const [showOpen, setShowOpen]   = useState(false);
   const [closing, setClosing]     = useState(null);
@@ -210,28 +243,27 @@ export default function CashRegister({ pushToast }) {
     return c.sort((a, b) => b.id - a.id);
   }, [registers, histSearch]);
 
-  const handleOpen = ({ branchId, cashier, openingAmount }) => {
+  const handleOpen = async ({ branchId, openingAmount }) => {
     const br = BRANCHES.find(b => b.id === branchId);
-    const newReg = {
-      id: Math.max(...registers.map(r => r.id)) + 1,
-      branchId, branch: br?.name || branchId, cashier,
-      openedAt: new Date().toLocaleString('es-GT', { hour12: false }).replace(',', '').slice(0, 16),
-      closedAt: null, openingAmount, closingAmount: null,
-      status: 'open', salesTotal: 0, salesCash: 0, salesCard: 0, refunds: 0,
-    };
-    setRegisters(prev => [...prev, newReg]);
-    setShowOpen(false);
-    pushToast?.(`Caja abierta en ${br?.name}`, 'success');
+    try {
+      await openCashRegister({ branchId, userId: user?.id ?? null, openingAmount });
+      await reload();
+      setShowOpen(false);
+      pushToast?.(`Caja abierta en ${br?.name || ''}`, 'success');
+    } catch (err) {
+      pushToast?.('No se pudo abrir la caja: ' + err.message, 'error');
+    }
   };
 
-  const handleClose = ({ closingAmount, diff }) => {
-    setRegisters(prev => prev.map(r => r.id === closing.id ? {
-      ...r, status: 'closed',
-      closedAt: new Date().toLocaleString('es-GT', { hour12: false }).replace(',', '').slice(0, 16),
-      closingAmount, diff,
-    } : r));
-    setClosing(null);
-    pushToast?.(t('cash.closedSuccess', 'Caja cerrada correctamente'), 'success');
+  const handleClose = async ({ closingAmount }) => {
+    try {
+      await closeCashRegister(closing.id, { closingAmount });
+      await reload();
+      setClosing(null);
+      pushToast?.(t('cash.closedSuccess', 'Caja cerrada correctamente'), 'success');
+    } catch (err) {
+      pushToast?.('No se pudo cerrar la caja: ' + err.message, 'error');
+    }
   };
 
   const totalSalesOpen = openRegisters.reduce((s, r) => s + r.salesTotal, 0);
@@ -267,7 +299,7 @@ export default function CashRegister({ pushToast }) {
         </div>
         <div className="stat">
           <div className="label"><Icon name="receipt" size={11} />{t('cash.closuresToday', 'Cortes hoy')}</div>
-          <div className="val mono">{closedRegisters.filter(r => r.closedAt?.startsWith('2026-05-23')).length}</div>
+          <div className="val mono">{closedRegisters.filter(r => r.closedAt?.startsWith(new Date().toISOString().slice(0, 10))).length}</div>
           <div className="delta muted">{t('cash.dayClosures', 'Cierres del día')}</div>
         </div>
         <div className="stat">

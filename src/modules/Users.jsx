@@ -1,8 +1,9 @@
 // ERP MAYA — Usuarios & Roles (ES module)
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
-import * as MAYA from '../data/mock.js';
-import { MODULES_PERM, ACTIONS, initPerms, permsToMatrix } from '../lib/permissions.js';
+import { MODULES_PERM, ACTIONS, initPerms, permsToMatrix, matrixToPerms } from '../lib/permissions.js';
+import { useUsers, useRoles, useBranches } from '../hooks/useMasters.js';
+import { createUser, updateUser, createRole, updateRole } from '../api/security.js';
 import { useTranslation } from 'react-i18next';
 
 const initUserForm = () => ({ name: '', email: '', role: '', branch: '', password: '' });
@@ -14,12 +15,14 @@ function userInitials(name) {
 
 export default function Users({ pushToast }) {
   const { t } = useTranslation();
-  const { USERS, ROLES, BRANCHES } = MAYA;
+  const { items: usersData, reload: reloadUsers } = useUsers();
+  const { items: rolesData, reload: reloadRoles } = useRoles();
+  const { items: branchesData } = useBranches();
 
   const [tab, setTab] = useState('usuarios');
 
   // ── Usuarios state ───────────────────────────────────────────────────────
-  const [users, setUsers] = useState(USERS);
+  const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterBranch, setFilterBranch] = useState('');
@@ -31,8 +34,15 @@ export default function Users({ pushToast }) {
   const [selected, setSelected] = useState([]);
 
   // ── Roles state ──────────────────────────────────────────────────────────
-  const [roles, setRoles] = useState(ROLES);
-  const [selectedRole, setSelectedRole] = useState(ROLES[0]);
+  const [roles, setRoles] = useState([]);
+  const [selectedRole, setSelectedRole] = useState(null);
+
+  // Sincroniza datos del servicio (con fallback a mock) al estado local editable.
+  useEffect(() => { setUsers(usersData); }, [usersData]);
+  useEffect(() => {
+    setRoles(rolesData);
+    setSelectedRole((cur) => cur || rolesData[0] || null);
+  }, [rolesData]);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
   const [roleForm, setRoleForm] = useState(initRoleForm());
@@ -74,11 +84,18 @@ export default function Users({ pushToast }) {
     setShowUserModal(true);
   };
 
-  const toggleUserStatus = (id) => {
-    setUsers(prev => prev.map(u =>
-      u.id === id ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' } : u
-    ));
-    pushToast('Estado de usuario actualizado', 'success');
+  const toggleUserStatus = async (u) => {
+    const status = u.status === 'active' ? 'inactive' : 'active';
+    try {
+      await updateUser(u.id, {
+        name: u.name, email: u.email, password: null,
+        roleId: u.roleId, branchId: u.branchId, status,
+      });
+      await reloadUsers();
+      pushToast('Estado de usuario actualizado', 'success');
+    } catch (err) {
+      pushToast('No se pudo actualizar el estado: ' + err.message, 'error');
+    }
   };
 
   const validateUserForm = () => {
@@ -87,33 +104,32 @@ export default function Users({ pushToast }) {
     if (!userForm.email.trim()) e.email = 'Requerido';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) e.email = 'Correo inválido';
     if (!userForm.role)   e.role   = 'Selecciona un rol';
-    if (!userForm.branch) e.branch = 'Selecciona una sucursal';
     if (!editingUser && !userForm.password) e.password = 'Requerida para usuarios nuevos';
     return e;
   };
 
-  const saveUser = () => {
+  const saveUser = async () => {
     const e = validateUserForm();
     if (Object.keys(e).length) { setUserErrors(e); return; }
-    if (editingUser) {
-      setUsers(prev => prev.map(u =>
-        u.id === editingUser.id ? { ...u, ...userForm } : u
-      ));
-      pushToast('Usuario actualizado', 'success');
-    } else {
-      const newUser = {
-        id: 'u' + Date.now(),
-        name: userForm.name,
-        email: userForm.email,
-        role: userForm.role,
-        branch: userForm.branch,
-        status: 'active',
-        last: 'Nunca',
-      };
-      setUsers(prev => [...prev, newUser]);
-      pushToast('Usuario creado', 'success');
+    const roleId = roles.find(r => r.name === userForm.role)?.id ?? null;
+    const branchId = branchesData.find(b => b.name === userForm.branch)?.id ?? null;
+    const payload = {
+      name: userForm.name,
+      email: userForm.email,
+      password: userForm.password || null,
+      roleId,
+      branchId,
+      status: editingUser ? editingUser.status : 'active',
+    };
+    try {
+      if (editingUser) await updateUser(editingUser.id, payload);
+      else await createUser(payload);
+      await reloadUsers();
+      pushToast(editingUser ? 'Usuario actualizado' : 'Usuario creado', 'success');
+      setShowUserModal(false);
+    } catch (err) {
+      pushToast('No se pudo guardar el usuario: ' + err.message, 'error');
     }
-    setShowUserModal(false);
   };
 
   const setUF = (field, val) => {
@@ -144,27 +160,22 @@ export default function Users({ pushToast }) {
   const togglePerm = (mod, acc) =>
     setRolePerms(p => ({ ...p, [mod]: { ...p[mod], [acc]: !p[mod][acc] } }));
 
-  const saveRole = () => {
+  const saveRole = async () => {
     if (!roleForm.name.trim()) return;
-    if (editingRole) {
-      setRoles(prev => prev.map(r =>
-        r.id === editingRole.id ? { ...r, name: roleForm.name, desc: roleForm.desc } : r
-      ));
-      if (selectedRole?.id === editingRole.id)
-        setSelectedRole(r => ({ ...r, name: roleForm.name, desc: roleForm.desc }));
-      pushToast('Rol actualizado', 'success');
-    } else {
-      const newRole = {
-        id: 'r' + Date.now(),
-        name: roleForm.name,
-        desc: roleForm.desc,
-        perms: [],
-        users: 0,
-      };
-      setRoles(prev => [...prev, newRole]);
-      pushToast('Rol creado', 'success');
+    const payload = {
+      name: roleForm.name,
+      description: roleForm.desc,
+      permissions: matrixToPerms(rolePerms),
+    };
+    try {
+      if (editingRole) await updateRole(editingRole.id, payload);
+      else await createRole(payload);
+      await reloadRoles();
+      pushToast(editingRole ? 'Rol actualizado' : 'Rol creado', 'success');
+      setShowRoleModal(false);
+    } catch (err) {
+      pushToast('No se pudo guardar el rol: ' + err.message, 'error');
     }
-    setShowRoleModal(false);
   };
 
   const matrixForRole = selectedRole ? permsToMatrix(selectedRole.perms) : initPerms();
@@ -357,7 +368,7 @@ export default function Users({ pushToast }) {
                         <button
                           className="icon-btn"
                           title={u.status === 'active' ? t('users.deactivateUser', 'Desactivar usuario') : t('users.activateUser', 'Activar usuario')}
-                          onClick={() => toggleUserStatus(u.id)}
+                          onClick={() => toggleUserStatus(u)}
                         >
                           <Icon name={u.status === 'active' ? 'x' : 'check'} />
                         </button>
@@ -559,7 +570,7 @@ export default function Users({ pushToast }) {
                   <label>{t('common.branch', 'Sucursal *')}</label>
                   <select value={userForm.branch} onChange={e => setUF('branch', e.target.value)}>
                     <option value="">{t('users.form.selectBranch', 'Seleccionar…')}</option>
-                    {BRANCHES.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
+                    {branchesData.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
                   </select>
                   {userErrors.branch && <span className="login-error">{userErrors.branch}</span>}
                 </div>

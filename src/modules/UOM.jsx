@@ -1,94 +1,16 @@
 // ERP MAYA — Unidades de Medida múltiples (UOM)
-import React, { useState } from 'react';
+// Data-driven: catálogo de unidades → /api/uom/units (CRUD real). Las conversiones
+// por producto se editan localmente (el backend solo modela conversiones genéricas).
+import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import { useUomUnits } from '../hooks/useOperations.js';
+import { useProducts } from '../hooks/useCatalog.js';
+import { createUnit, updateUnit } from '../api/wave2.js';
 
-const Q = v => `Q ${Number(v).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const Q = v => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// ── Catálogo global de UOM ────────────────────────────────────────────────
-
-const TYPE_LABEL = { count: 'Conteo', weight: 'Peso', volume: 'Volumen' };
-const TYPE_CLASS = { count: '', weight: 'warning', volume: 'info' };
-
-const INIT_UOMS = [
-  { code: 'UN',  name: 'Unidad',    symbol: 'un',  type: 'count',  base: true,  active: true  },
-  { code: 'CAJ', name: 'Caja',      symbol: 'caj', type: 'count',  base: false, active: true  },
-  { code: 'DOC', name: 'Docena',    symbol: 'doc', type: 'count',  base: false, active: true  },
-  { code: 'PAQ', name: 'Paquete',   symbol: 'paq', type: 'count',  base: false, active: true  },
-  { code: 'KG',  name: 'Kilogramo', symbol: 'kg',  type: 'weight', base: true,  active: true  },
-  { code: 'GR',  name: 'Gramo',     symbol: 'gr',  type: 'weight', base: false, active: true  },
-  { code: 'LT',  name: 'Litro',     symbol: 'lt',  type: 'volume', base: false, active: true  },
-  { code: 'ML',  name: 'Mililitro', symbol: 'ml',  type: 'volume', base: false, active: false },
-];
-
-// ── Conversiones por producto ─────────────────────────────────────────────
-// factor = cuántas unidades base = 1 de esta UOM
-
-const INIT_PRODUCTS = [
-  {
-    sku: '7501031125678', name: 'Coca-Cola 600ml',         cat: 'bebidas', baseUom: 'UN', price: 8.50,
-    convs: [
-      { uom: 'UN',  factor: 1,  isPurchase: false, isSale: true,  price: 8.50   },
-      { uom: 'CAJ', factor: 24, isPurchase: true,  isSale: false, price: 180.00 },
-    ],
-  },
-  {
-    sku: '7501031165432', name: 'Cerveza Gallo 350ml',     cat: 'bebidas', baseUom: 'UN', price: 10.50,
-    convs: [
-      { uom: 'UN',  factor: 1,  isPurchase: false, isSale: true,  price: 10.50  },
-      { uom: 'DOC', factor: 12, isPurchase: false, isSale: true,  price: 115.00 },
-      { uom: 'CAJ', factor: 24, isPurchase: true,  isSale: false, price: 215.00 },
-    ],
-  },
-  {
-    sku: '7501074234567', name: 'Leche Foremost 1L',       cat: 'lacteos', baseUom: 'UN', price: 14.50,
-    convs: [
-      { uom: 'UN',  factor: 1,  isPurchase: false, isSale: true,  price: 14.50  },
-      { uom: 'CAJ', factor: 12, isPurchase: true,  isSale: false, price: 158.00 },
-    ],
-  },
-  {
-    sku: '7501055309856', name: 'Arroz Blanco Premium 1kg', cat: 'abarrotes', baseUom: 'UN', price: 12.50,
-    convs: [
-      { uom: 'UN',  factor: 1,  isPurchase: false, isSale: true,  price: 12.50  },
-      { uom: 'PAQ', factor: 25, isPurchase: true,  isSale: true,  price: 285.00 },
-    ],
-  },
-  {
-    sku: '7501055361816', name: 'Azúcar Estándar 2kg',     cat: 'abarrotes', baseUom: 'UN', price: 18.75,
-    convs: [
-      { uom: 'UN',  factor: 1,  isPurchase: false, isSale: true,  price: 18.75  },
-      { uom: 'PAQ', factor: 10, isPurchase: true,  isSale: false, price: 175.00 },
-    ],
-  },
-  {
-    sku: '7501088100029', name: 'Pan de Manteca',          cat: 'panaderia', baseUom: 'UN', price: 2.50,
-    convs: [
-      { uom: 'UN',  factor: 1,  isPurchase: false, isSale: true,  price: 2.50   },
-      { uom: 'DOC', factor: 12, isPurchase: true,  isSale: true,  price: 26.00  },
-    ],
-  },
-  {
-    sku: '7501035010130', name: 'Cloro Magia Blanca 1L',   cat: 'limpieza', baseUom: 'UN', price: 12.50,
-    convs: [
-      { uom: 'UN',  factor: 1,  isPurchase: false, isSale: true,  price: 12.50  },
-      { uom: 'CAJ', factor: 12, isPurchase: true,  isSale: false, price: 128.00 },
-    ],
-  },
-  {
-    sku: '7501045500011', name: 'Shampoo Sedal 350ml',     cat: 'higiene', baseUom: 'UN', price: 28.00,
-    convs: [
-      { uom: 'UN',  factor: 1,  isPurchase: true,  isSale: true,  price: 28.00  },
-    ],
-  },
-  {
-    sku: '7501073400025', name: 'Galletas María Gamesa',   cat: 'snacks', baseUom: 'UN', price: 5.00,
-    convs: [
-      { uom: 'UN',  factor: 1,  isPurchase: false, isSale: true,  price: 5.00   },
-      { uom: 'CAJ', factor: 30, isPurchase: true,  isSale: false, price: 132.00 },
-    ],
-  },
-];
+// ── (catálogo y productos vienen del backend)
 
 // ── Modal: nueva UOM ──────────────────────────────────────────────────────
 
@@ -224,8 +146,10 @@ function AddConvModal({ product, uoms, onSave, onClose }) {
 export default function UOM({ pushToast }) {
   const { t } = useTranslation();
   const [tab, setTab]         = useState('catalog');
-  const [uoms, setUoms]       = useState(INIT_UOMS);
-  const [products, setProducts] = useState(INIT_PRODUCTS);
+  const { items: unitsRaw, reload: reloadUnits } = useUomUnits();
+  const { items: productsRaw } = useProducts();
+  const uoms = useMemo(() => unitsRaw.map(mapUnit), [unitsRaw]);
+  const products = useMemo(() => productsRaw.map(mapProdConv), [productsRaw]);
   const [search, setSearch]   = useState('');
   const [selected, setSelected] = useState(null);
   const [showUomModal, setShowUomModal] = useState(false);
@@ -241,14 +165,24 @@ export default function UOM({ pushToast }) {
     !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.includes(search)
   );
 
-  const toggleUomActive = code => {
-    setUoms(prev => prev.map(u => u.code === code && !u.base ? { ...u, active: !u.active } : u));
+  const toggleUomActive = async (u) => {
+    try {
+      await updateUnit(u.id, { code: u.code, name: u.name, symbol: u.symbol, uomType: u.type, isBase: u.base, active: !u.active });
+      await reloadUnits();
+    } catch (err) {
+      pushToast('No se pudo actualizar la UOM: ' + err.message, 'error');
+    }
   };
 
-  const addUom = uom => {
-    setUoms(prev => [...prev, uom]);
-    setShowUomModal(false);
-    pushToast(`UOM "${uom.name}" creada`, 'success');
+  const addUom = async (uom) => {
+    try {
+      await createUnit({ code: uom.code, name: uom.name, symbol: uom.symbol, uomType: uom.type, isBase: false, active: true });
+      await reloadUnits();
+      setShowUomModal(false);
+      pushToast(`UOM "${uom.name}" creada`, 'success');
+    } catch (err) {
+      pushToast('No se pudo crear la UOM: ' + err.message, 'error');
+    }
   };
 
   const openProduct = p => setSelected(JSON.parse(JSON.stringify(p)));
@@ -271,8 +205,8 @@ export default function UOM({ pushToast }) {
   };
 
   const saveProduct = () => {
-    setProducts(prev => prev.map(p => p.sku === selected.sku ? selected : p));
-    pushToast(`Conversiones de "${selected.name}" guardadas`, 'success');
+    // El backend aún no persiste conversiones por producto (solo conversiones genéricas UOM→UOM).
+    pushToast('Edición local — el backend aún no persiste conversiones por producto', 'info');
     setSelected(null);
   };
 
@@ -357,7 +291,7 @@ export default function UOM({ pushToast }) {
                     </td>
                     <td>
                       {!u.base && (
-                        <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => toggleUomActive(u.code)}>
+                        <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => toggleUomActive(u)}>
                           {u.active ? t('uom.deactivate', 'Desactivar') : t('uom.activate', 'Activar')}
                         </button>
                       )}

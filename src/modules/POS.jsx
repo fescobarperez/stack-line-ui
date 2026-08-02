@@ -1,13 +1,24 @@
 // ERP MAYA — POSModule (ES module)
+// Data-driven: productos/categorías reales; el cobro crea una venta real
+// (POST /api/sales) contra la caja abierta y descuenta stock en el backend.
 import Icon from '../components/Icon.jsx';
-import * as MAYA from '../data/mock.js';
 import { applyPromotions } from '../data/promotions.js';
+import { useProducts, useCategories } from '../hooks/useCatalog.js';
+import { useCashRegisters } from '../hooks/useOperations.js';
+import { createSale } from '../api/pos.js';
 import React, { useState as useStatePOS, useMemo as useMemoPOS } from 'react';
 import { useTranslation } from 'react-i18next';
 
+const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const PAY_METHOD_MAP = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia' };
+
 function POSModule({ pushToast }) {
   const { t } = useTranslation();
-  const { Q, CATEGORIES, PRODUCTS } = MAYA;
+  const { items: products, reload: reloadProducts } = useProducts();
+  const rawCats = useCategories();
+  const CATEGORIES = useMemoPOS(() => [{ id: 'todos', name: 'Todos', icon: '' }, ...rawCats], [rawCats]);
+  const { items: registers } = useCashRegisters();
+  const openRegister = useMemoPOS(() => registers.find((r) => r.status === 'open'), [registers]);
 
   // ── Lógica de venta ──────────────────────────────────────────────────────
   const [cat, setCat]               = useStatePOS('todos');
@@ -26,14 +37,14 @@ function POSModule({ pushToast }) {
   const [touchView, setTouchView]   = useStatePOS('products'); // 'products' | 'cart'
 
   const filtered = useMemoPOS(() => {
-    let p = PRODUCTS;
+    let p = products;
     if (cat !== 'todos') p = p.filter(x => x.cat === cat);
     if (query) {
       const q = query.toLowerCase();
       p = p.filter(x => x.name.toLowerCase().includes(q) || x.sku.includes(query));
     }
     return p;
-  }, [cat, query]);
+  }, [cat, query, products]);
 
   const addToCart = (p) => {
     setCart(c => {
@@ -61,26 +72,49 @@ function POSModule({ pushToast }) {
   const change      = parseFloat(cashGiven || 0) - total;
   const totalItems  = cart.reduce((s, i) => s + i.qty, 0);
 
-  const handleCharge = () => {
+  const handleCharge = async () => {
     if (!cart.length) return;
     if (pay === 'efectivo' && (cashGiven === '' || parseFloat(cashGiven) < total)) {
       pushToast && pushToast(t('pos.insufficientCash', 'Efectivo insuficiente'), 'danger');
       return;
     }
-    const ticketId = 'T-2026-' + String(4824 + Math.floor(Math.random() * 100)).padStart(5, '0');
-    setShowReceipt({
-      id: ticketId,
-      items: cartWithPromos,
-      subtotal, descManual, totalPromoDiscount, descTotal, iva, netGravable, total,
-      appliedPromos, pay, cashGiven: parseFloat(cashGiven || 0), change, client,
-      date: new Date(),
+    if (!openRegister) {
+      pushToast && pushToast('Abre una caja antes de cobrar', 'danger');
+      return;
+    }
+    // Mapea el carrito a líneas con productId real (precio base; las promos son del front).
+    const items = cart.map((i) => {
+      const product = products.find((p) => p.sku === i.sku);
+      return { productId: product?.id, quantity: i.qty, unitPrice: i.price, discount: 0 };
     });
-    setShowCharge(false);
-    setCart([]);
-    setDiscount(0);
-    setCashGiven('');
-    if (touchMode) setTouchView('products');
-    pushToast && pushToast(t('pos.saleRegistered', { id: ticketId }), 'success');
+    if (items.some((it) => !it.productId)) {
+      pushToast && pushToast('Algún producto no existe en el catálogo real', 'danger');
+      return;
+    }
+    try {
+      const sale = await createSale({
+        branchId: openRegister.branchId,
+        cashRegisterId: openRegister.id,
+        paymentMethod: PAY_METHOD_MAP[pay] || pay,
+        items,
+      });
+      setShowReceipt({
+        id: sale.docNumber || `T-${sale.id}`,
+        items: cartWithPromos,
+        subtotal, descManual, totalPromoDiscount, descTotal, iva, netGravable, total,
+        appliedPromos, pay, cashGiven: parseFloat(cashGiven || 0), change, client,
+        date: new Date(),
+      });
+      setShowCharge(false);
+      setCart([]);
+      setDiscount(0);
+      setCashGiven('');
+      if (touchMode) setTouchView('products');
+      await reloadProducts();
+      pushToast && pushToast(t('pos.saleRegistered', { id: sale.docNumber || sale.id }), 'success');
+    } catch (err) {
+      pushToast && pushToast('No se pudo registrar la venta: ' + err.message, 'danger');
+    }
   };
 
   const toggleTouchMode = () => {
@@ -126,7 +160,7 @@ function POSModule({ pushToast }) {
             >
               {c.icon && <span style={{ marginRight: 5 }}>{c.icon}</span>}
               {c.name}
-              <span className="mono" style={{ opacity: 0.6, marginLeft: 6, fontSize: 10 }}>{c.count}</span>
+              <span className="mono" style={{ opacity: 0.6, marginLeft: 6, fontSize: 10 }}>{c.count ?? ''}</span>
             </button>
           ))}
         </div>
@@ -134,7 +168,7 @@ function POSModule({ pushToast }) {
         <div className={touchMode ? 'pos-touch-grid' : 'pos-grid'}>
           {filtered.slice(0, 80).map(p => (
             <button key={p.sku} className="pos-prod" onClick={() => addToCart(p)}>
-              <div className="img">{p.initials}</div>
+              <div className="img">{p.initials || (p.name || '').slice(0, 2).toUpperCase()}</div>
               <div>
                 <div className="nm">{p.name}</div>
                 {!touchMode && <div className="sk">{p.sku.slice(-6)}</div>}
@@ -154,7 +188,9 @@ function POSModule({ pushToast }) {
         <div className="pos-cart-head">
           <div>
             <div style={{ fontSize: 13, fontWeight: 600 }}>{t('pos.currentSale', 'Venta actual')}</div>
-            <div className="mono" style={{ fontSize: 10.5, color: 'var(--muted)' }}>Caja #03 · Carlos Méndez</div>
+            <div className="mono" style={{ fontSize: 10.5, color: openRegister ? 'var(--muted)' : 'var(--danger)' }}>
+              {openRegister ? `${openRegister.branchName || 'Caja'} · #${openRegister.id}` : 'Sin caja abierta'}
+            </div>
           </div>
           <div className="row gap-6">
             <button className="icon-btn" title={t('common.delete', 'Eliminar')} onClick={() => setCart([])}><Icon name="trash" /></button>
@@ -509,7 +545,6 @@ function TouchNumpad({ value, onChange, total, Q }) {
 // ── Ticket de venta ──────────────────────────────────────────────────────────
 function Ticket({ data }) {
   const { t } = useTranslation();
-  const { Q } = MAYA;
   return (
     <div className="ticket">
       <div className="center">

@@ -1,7 +1,7 @@
 // ERP MAYA — Login screen (ES module)
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ROLES } from '../data/mock.js';
+import { login } from '../api/auth.js';
 
 const DEMO_COMPANIES = {
   'FERRETERIA-01': { name: 'Ferretería El Constructor', type: 'Ferretería', tier: 'PRO' },
@@ -58,48 +58,22 @@ export default function Login({ onLogin }) {
     setLoading(true);
     setLoginError('');
 
-    // Simula latencia de red
-    await new Promise(r => setTimeout(r, 820));
-
-    const code = form.companyCode.trim().toUpperCase();
-    const company = DEMO_COMPANIES[code];
-
-    if (!company) {
-      setErrors({ companyCode: t('login.errors.companyNotFound') });
-      setLoading(false);
-      return;
-    }
-    // Contraseña mock: cualquier contraseña válida funciona en demo
-    if (form.password.length < 6) {
-      setErrors({ password: t('login.errors.passwordWrong') });
-      setLoading(false);
-      return;
-    }
-
-    const nameParts = form.email.split('@')[0].split('.');
-    const displayName = nameParts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
-    const initials = nameParts.map(p => p[0]?.toUpperCase() || '').join('').slice(0, 2);
-
-    const roleName = 'Administrador';
-    const roleData = ROLES.find(r => r.name === roleName);
-    const perms = roleData?.perms || ['*'];
-
-    onLogin({
-      user: {
-        name: displayName || 'Usuario',
-        initials: initials || 'US',
+    try {
+      const session = await login({
+        companyCode: form.companyCode,
         email: form.email,
-        role: roleName,
-        perms,
-        branch: 'Sucursal Central',
-      },
-      company: {
-        code,
-        name: company.name,
-        type: company.type,
-        tier: company.tier,
-      },
-    });
+        password: form.password,
+      });
+      onLogin(session);
+    } catch (err) {
+      // 401 → credenciales inválidas; otro → error de conexión/servidor.
+      setLoginError(
+        err.status === 401
+          ? (err.message || t('login.errors.invalidCredentials', 'Empresa, usuario o contraseña inválidos.'))
+          : (err.message || t('login.errors.connection', 'No se pudo conectar con el servidor.'))
+      );
+      setLoading(false);
+    }
   };
 
   return (

@@ -2,18 +2,39 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from './Icon.jsx';
-import { NOTIFICATIONS as INIT_NOTIFS } from '../data/mock.js';
+import { getNotifications } from '../api/notifications.js';
 
 const TYPE_ICON  = { stock_low: 'alert', expiry: 'clock', po_pending: 'truck', transfer: 'transfer', cash: 'cash', cxc: 'card' };
 const TYPE_CLASS = { stock_low: 'danger', expiry: 'warning', po_pending: 'warning', transfer: 'info', cash: 'danger', cxc: 'warning' };
 const TYPE_LABEL = { stock_low: 'Stock', expiry: 'Vencimiento', po_pending: 'Compras', transfer: 'Traslado', cash: 'Caja', cxc: 'CxC' };
 
+const READ_KEY = 'maya_notif_read';
+const loadRead = () => { try { return JSON.parse(localStorage.getItem(READ_KEY)) || {}; } catch { return {}; } };
+
+// Notificaciones derivadas del backend (alertas en tiempo real). El estado leído/no
+// leído se guarda en localStorage (el endpoint no persiste). Fallback al mock.
 export function useNotifications() {
-  const [notifications, setNotifications] = useState(INIT_NOTIFS);
+  const [items, setItems] = useState([]);
+  const [read, setRead] = useState(loadRead);
+
+  useEffect(() => {
+    let cancelled = false;
+    getNotifications()
+      .then(rows => { if (!cancelled) setItems(Array.isArray(rows) ? rows : (rows?.content ?? [])); })
+      .catch(() => { if (!cancelled) setItems([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const notifications = items.map(n => ({ ...n, readAt: read[n.id] || n.readAt || null }));
   const unreadCount = notifications.filter(n => !n.readAt).length;
 
-  const markRead = (id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, readAt: new Date().toISOString() } : n));
-  const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, readAt: n.readAt || new Date().toISOString() })));
+  const persist = (next) => { setRead(next); try { localStorage.setItem(READ_KEY, JSON.stringify(next)); } catch { /* ignore */ } };
+  const markRead = (id) => persist({ ...read, [id]: new Date().toISOString() });
+  const markAllRead = () => {
+    const next = { ...read };
+    items.forEach(n => { if (!next[n.id]) next[n.id] = new Date().toISOString(); });
+    persist(next);
+  };
 
   return { notifications, unreadCount, markRead, markAllRead };
 }

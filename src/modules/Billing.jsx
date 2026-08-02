@@ -1,12 +1,38 @@
 // ERP MAYA — BillingModule (ES module)
+// Data-driven: /api/sales (tickets). Lectura + detalle con ítems reales.
 import Icon from '../components/Icon.jsx';
-import * as MAYA from '../data/mock.js';
-// ERP MAYA — Billing / Tickets module
+import { Ticket } from './POS.jsx';
+import { useSales } from '../hooks/useOperations.js';
+import { useBranches } from '../hooks/useMasters.js';
 import React, { useState as useStateBill, useMemo as useMemoBill } from 'react';
 import { useTranslation } from 'react-i18next';
+
+const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const Qs = Q;
+const pad = (n) => String(n).padStart(2, '0');
+
+// Backend Sale.Response → forma de ticket que usa el componente.
+function mapTicket(s) {
+  const d = s.saleDate ? new Date(s.saleDate) : null;
+  return {
+    id: s.docNumber || `T-${s.id}`,
+    date: d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}` : '',
+    cashier: '—',
+    branch: s.branchName || '—',
+    items: (s.items || []).length,
+    pay: s.paymentMethod || '—',
+    total: Number(s.total || 0),
+    status: s.status || 'paid',
+    _items: s.items || [],
+    _saleDate: s.saleDate,
+  };
+}
+
 function BillingModule({ pushToast }) {
   const { t } = useTranslation();
-  const { Q, Qs, TICKETS, BRANCHES } = MAYA;
+  const { items: salesRaw } = useSales();
+  const { items: BRANCHES } = useBranches();
+  const TICKETS = useMemoBill(() => salesRaw.map(mapTicket), [salesRaw]);
   const [search, setSearch] = useStateBill('');
   const [status, setStatus] = useStateBill('all');
   const [pay, setPay] = useStateBill('all');
@@ -174,22 +200,20 @@ function BillingModule({ pushToast }) {
             <div className="drawer-body" style={{display:'flex', gap:16}}>
               <Ticket data={{
                 id: selected.id,
-                items: [
-                  { sku:'7501031125678', name:'Coca-Cola 600ml', price:8.50, qty:2, unit:'unid' },
-                  { sku:'7501055309856', name:'Arroz Blanco Premium 1kg', price:12.50, qty:1, unit:'unid' },
-                  { sku:'7501055312987', name:'Sal Refinada 1kg', price:6.50, qty:1, unit:'unid' },
-                  { sku:'7501073400025', name:'Galletas María Gamesa', price:5.00, qty:2, unit:'unid' },
-                ],
+                items: (selected._items || []).map(it => ({
+                  sku: String(it.productId || ''), name: it.productName,
+                  price: Number(it.unitPrice || 0), qty: Number(it.quantity || 0), unit: 'u',
+                })),
                 subtotal: selected.total,
                 descTotal: 0,
                 netGravable: selected.total / 1.12,
-                iva: selected.total - selected.total/1.12,
+                iva: selected.total - selected.total / 1.12,
                 total: selected.total,
-                pay: selected.pay.toLowerCase(),
+                pay: (selected.pay || '').toLowerCase(),
                 cashGiven: selected.total,
                 change: 0,
-                client: { name:'CF', nit:'CF' },
-                date: new Date(selected.date),
+                client: { name: 'CF', nit: 'CF' },
+                date: selected._saleDate ? new Date(selected._saleDate) : new Date(),
               }}/>
               <div style={{flex:1, display:'flex', flexDirection:'column', gap:10}}>
                 <div className="card">

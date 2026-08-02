@@ -22,16 +22,38 @@ export const PERM_MAP = {
   'tkt:r':   [['Facturación',    ['ver']]],
 };
 
-export const permsToMatrix = (perms) => {
+export const permsToMatrix = (perms = []) => {
   const m = initPerms();
   if (perms.includes('*')) {
     MODULES_PERM.forEach(mod => ACTIONS.forEach(acc => { m[mod][acc] = true; }));
     return m;
   }
-  perms.forEach(p => (PERM_MAP[p] || []).forEach(([mod, accs]) =>
-    accs.forEach(acc => { if (m[mod]) m[mod][acc] = true; })
-  ));
+  perms.forEach(p => {
+    // Formato canónico persistido en el backend: "Módulo|acción".
+    if (typeof p === 'string' && p.includes('|')) {
+      const [mod, acc] = p.split('|');
+      if (m[mod] && acc in m[mod]) m[mod][acc] = true;
+      return;
+    }
+    // Compatibilidad con los códigos cortos del mock (pos, inv:r, …).
+    (PERM_MAP[p] || []).forEach(([mod, accs]) =>
+      accs.forEach(acc => { if (m[mod]) m[mod][acc] = true; })
+    );
+  });
   return m;
+};
+
+// Convierte la matriz del editor de roles a la lista canónica "Módulo|acción"
+// que persiste el backend (Role.permissions es List<String>). Si todo está
+// activado, colapsa a ['*'] (acceso total).
+export const matrixToPerms = (matrix) => {
+  const allOn = MODULES_PERM.every(mod => ACTIONS.every(acc => matrix[mod]?.[acc]));
+  if (allOn) return ['*'];
+  const out = [];
+  MODULES_PERM.forEach(mod => ACTIONS.forEach(acc => {
+    if (matrix[mod]?.[acc]) out.push(`${mod}|${acc}`);
+  }));
+  return out;
 };
 
 // Mapeo de id de módulo (NAV) → nombre en MODULES_PERM

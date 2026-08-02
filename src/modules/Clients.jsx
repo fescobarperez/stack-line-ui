@@ -1,9 +1,9 @@
 // ERP MAYA — Módulo de Clientes (CRM básico)
 import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
-import * as MAYA from '../data/mock.js';
 import { useTranslation } from 'react-i18next';
 import { useClients } from '../hooks/useMasters.js';
+import { usePayments } from '../hooks/useOperations.js';
 
 const TYPE_LABEL = { CF: 'CF', minorista: 'Minorista', mayorista: 'Mayorista', exento: 'Exento' };
 const STATUS_LABEL = { active: 'Activo', inactive: 'Inactivo', blocked: 'Bloqueado' };
@@ -293,9 +293,13 @@ function ClientDetail({ client, payments, onClose, onEdit, onPayment }) {
 // ── Módulo principal ─────────────────────────────────────────────────────────
 export default function Clients({ pushToast }) {
   const { t } = useTranslation();
-  const { CLIENT_PAYMENTS } = MAYA;
-  // Clientes desde el backend (con fallback automático al mock si no responde).
+  // Clientes y pagos desde el backend (con fallback automático al mock).
   const { items: apiClients } = useClients();
+  const { items: paymentsRaw } = usePayments();
+  const CLIENT_PAYMENTS = useMemo(
+    () => paymentsRaw.map(p => ({ ...p, date: p.paymentDate || p.date, paymentMethod: p.method || p.paymentMethod })),
+    [paymentsRaw],
+  );
   const [tab, setTab] = useState('lista');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');

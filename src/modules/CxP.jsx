@@ -1,42 +1,41 @@
 // ERP MAYA — Cuentas por Pagar (CxP)
+// Data-driven: /api/purchase-invoices + /api/supplier-payments (aging client-side).
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
-import { SUPPLIERS } from '../data/mock.js';
+import { usePurchaseInvoices, useSupplierPayments } from '../hooks/useOperations.js';
+import { useSuppliers } from '../hooks/useMasters.js';
+import { createSupplierPayment } from '../api/wave2.js';
 import { useTranslation } from 'react-i18next';
 
-const Q = v => `Q ${v.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const TODAY = new Date('2026-05-24');
+const Q = v => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const TODAY = new Date();
 
-// Facturas de proveedor pendientes de pago
-const CXP_BILLS = [
-  // Al corriente
-  { id: 'FP-2026-0142', supplierId: 'pv01', ocId: 'OC-2026-0142', date: '2026-05-20', dueDate: '2026-06-19', amount: 8420.00,  paid: 0,      status: 'open'    },
-  { id: 'FP-2026-0140', supplierId: 'pv05', ocId: 'OC-2026-0140', date: '2026-05-19', dueDate: '2026-06-03', amount: 3680.50,  paid: 0,      status: 'open'    },
-  { id: 'FP-2026-0138', supplierId: 'pv04', ocId: 'OC-2026-0138', date: '2026-05-18', dueDate: '2026-07-02', amount: 6840.00,  paid: 0,      status: 'open'    },
-  { id: 'FP-2026-0137', supplierId: 'pv06', ocId: 'OC-2026-0137', date: '2026-05-17', dueDate: '2026-06-16', amount: 5320.00,  paid: 0,      status: 'open'    },
-  { id: 'FP-2026-0136', supplierId: 'pv01', ocId: 'OC-2026-0136', date: '2026-05-16', dueDate: '2026-06-15', amount: 9840.50,  paid: 0,      status: 'open'    },
-  // Parcial, próxima a vencer
-  { id: 'FP-2026-0133', supplierId: 'pv05', ocId: 'OC-2026-0133', date: '2026-05-14', dueDate: '2026-05-29', amount: 2840.00,  paid: 1000,   status: 'partial' },
-  // Vencidas 1-30 días
-  { id: 'FP-2026-0120', supplierId: 'pv01', ocId: null,            date: '2026-04-20', dueDate: '2026-05-20', amount: 6300.00,  paid: 0,      status: 'open'    },
-  { id: 'FP-2026-0105', supplierId: 'pv04', ocId: null,            date: '2026-03-20', dueDate: '2026-05-04', amount: 7850.00,  paid: 3500,   status: 'partial' },
-  // Vencida 31-60 días
-  { id: 'FP-2026-0095', supplierId: 'pv02', ocId: null,            date: '2026-04-08', dueDate: '2026-04-23', amount: 3200.00,  paid: 0,      status: 'open'    },
-  // Vencida 61-90 días
-  { id: 'FP-2026-0060', supplierId: 'pv06', ocId: null,            date: '2026-02-20', dueDate: '2026-03-21', amount: 4100.00,  paid: 0,      status: 'open'    },
-  // Vencida +90 días
-  { id: 'FP-2026-0040', supplierId: 'pv01', ocId: null,            date: '2026-01-10', dueDate: '2026-02-09', amount: 12100.00, paid: 0,      status: 'open'    },
-  // Pagada (historial)
-  { id: 'FP-2026-0134', supplierId: 'pv03', ocId: 'OC-2026-0134', date: '2026-05-15', dueDate: '2026-05-15', amount: 14400.00, paid: 14400,  status: 'paid'    },
-];
+// Backend InvoiceResponse → forma de la UI.
+function mapInvoice(r) {
+  return {
+    id: r.docNumber || String(r.id),
+    apiId: r.id,
+    supplierId: r.supplierId,
+    supplierName: r.supplierName || '—',
+    ocId: r.purchaseOrderId ? `OC-${r.purchaseOrderId}` : null,
+    date: r.invoiceDate,
+    dueDate: r.dueDate,
+    amount: Number(r.amount || 0),
+    paid: Number(r.paidAmount || 0),
+  };
+}
 
-const INIT_PAYMENTS = [
-  { id: 1, billId: 'FP-2026-0134', supplierId: 'pv03', amount: 14400.00, date: '2026-05-15', method: 'efectivo',      reference: null,        notes: 'Pago contado — Cervecería' },
-  { id: 2, billId: 'FP-2026-0133', supplierId: 'pv05', amount: 1000.00,  date: '2026-05-16', method: 'transferencia',  reference: 'TRF-49001', notes: 'Abono parcial' },
-  { id: 3, billId: 'FP-2026-0105', supplierId: 'pv04', amount: 3500.00,  date: '2026-04-15', method: 'cheque',         reference: 'CHQ-00298', notes: 'Abono Quaker' },
-];
+// Backend PaymentResponse → forma de la UI.
+function mapPayment(r) {
+  return {
+    id: r.id, supplierId: r.supplierId, supplierName: r.supplierName || '—',
+    billId: r.purchaseInvoiceId, amount: Number(r.amount || 0), date: r.paymentDate,
+    method: r.method, reference: r.reference, notes: r.notes,
+  };
+}
 
 function daysDue(dueDateStr) {
+  if (!dueDateStr) return 0;
   return Math.floor((TODAY - new Date(dueDateStr)) / 86400000);
 }
 
@@ -63,31 +62,37 @@ export default function CxP({ pushToast }) {
   const [tab, setTab]               = useState('aging');
   const [search, setSearch]         = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [bills, setBills]           = useState(CXP_BILLS);
-  const [payments, setPayments]     = useState(INIT_PAYMENTS);
+  const { items: invoicesRaw, reload: reloadBills } = usePurchaseInvoices();
+  const { items: paymentsRaw, reload: reloadPays } = useSupplierPayments();
+  const { items: suppliersList } = useSuppliers();
   const [payModal, setPayModal]     = useState(null);
   const [selectedBill, setSelectedBill] = useState(null);
 
+  const bills = useMemo(() => invoicesRaw.map(mapInvoice), [invoicesRaw]);
+  const payments = useMemo(() => paymentsRaw.map(mapPayment), [paymentsRaw]);
   const suppliers = useMemo(() => {
     const map = {};
-    SUPPLIERS.forEach(s => { map[s.id] = s; });
+    suppliersList.forEach(s => { map[s.id] = s; });
     return map;
-  }, []);
+  }, [suppliersList]);
 
-  const enriched = useMemo(() => bills.map(b => ({
-    ...b,
-    balance:      +(b.amount - b.paid).toFixed(2),
-    daysOverdue:  daysDue(b.dueDate),
-    bucket:       agingBucket(b),
-    supplierName: suppliers[b.supplierId]?.name || 'Desconocido',
-  })), [bills, suppliers]);
+  const enriched = useMemo(() => bills.map(b => {
+    const balance = +(b.amount - b.paid).toFixed(2);
+    return {
+      ...b,
+      balance,
+      status: balance <= 0.005 ? 'paid' : (b.paid > 0 ? 'partial' : 'open'),
+      daysOverdue: daysDue(b.dueDate),
+      bucket: agingBucket(b),
+    };
+  }), [bills]);
 
   // Stats
   const totalCxP   = enriched.reduce((s, b) => s + b.balance, 0);
   const overdueAmt  = enriched.filter(b => b.daysOverdue > 0 && b.balance > 0).reduce((s, b) => s + b.balance, 0);
   const openCount   = enriched.filter(b => b.balance > 0).length;
   const criticalCount = enriched.filter(b => b.daysOverdue > 60 && b.balance > 0).length;
-  const paidMayo    = payments.filter(p => p.date?.startsWith('2026-05')).reduce((s, p) => s + p.amount, 0);
+  const paidMayo    = payments.reduce((s, p) => s + p.amount, 0);
 
   const agingSummary = useMemo(() => {
     const buckets = {};
@@ -120,25 +125,24 @@ export default function CxP({ pushToast }) {
     return Object.values(map).sort((a, b) => b.total - a.total);
   }, [enriched, suppliers]);
 
-  function handlePayment({ billId, amount, method, reference }) {
+  async function handlePayment({ amount, method, reference }) {
     const amt = parseFloat(amount);
-    setBills(prev => prev.map(b => {
-      if (b.id !== billId) return b;
-      const newPaid = Math.min(b.paid + amt, b.amount);
-      return { ...b, paid: newPaid, status: newPaid >= b.amount ? 'paid' : 'partial' };
-    }));
-    setPayments(prev => [{
-      id: Date.now(),
-      billId,
-      supplierId: payModal.supplierId,
-      amount: amt,
-      date: '2026-05-24',
-      method,
-      reference: reference || null,
-      notes: `Pago a ${billId}`,
-    }, ...prev]);
-    setPayModal(null);
-    pushToast(`Pago de ${Q(amt)} registrado — ${billId}`, 'success');
+    try {
+      await createSupplierPayment({
+        supplierId: payModal.supplierId,
+        purchaseInvoiceId: payModal.apiId,
+        amount: amt,
+        paymentDate: new Date().toISOString().slice(0, 10),
+        method,
+        reference: reference || null,
+        notes: `Pago a ${payModal.id}`,
+      });
+      await Promise.all([reloadBills(), reloadPays()]);
+      setPayModal(null);
+      pushToast(`Pago de ${Q(amt)} registrado — ${payModal.id}`, 'success');
+    } catch (err) {
+      pushToast('No se pudo registrar el pago: ' + err.message, 'error');
+    }
   }
 
   return (
@@ -168,9 +172,9 @@ export default function CxP({ pushToast }) {
           <div className="delta muted">Facturas en mora crítica</div>
         </div>
         <div className="stat">
-          <div className="label"><Icon name="cash" size={11} />Pagado en mayo</div>
+          <div className="label"><Icon name="cash" size={11} />Pagado</div>
           <div className="val mono" style={{ color: 'var(--success)' }}>{Q(paidMayo)}</div>
-          <div className="delta muted">Pagos realizados en mayo</div>
+          <div className="delta muted">Pagos a proveedores</div>
         </div>
       </div>
 
@@ -332,7 +336,7 @@ export default function CxP({ pushToast }) {
               {[...payments].sort((a, b) => b.date?.localeCompare(a.date)).map(p => (
                 <tr key={p.id}>
                   <td className="muted" style={{ fontSize: 12 }}>{p.date}</td>
-                  <td style={{ fontSize: 13 }}>{suppliers[p.supplierId]?.name || '—'}</td>
+                  <td style={{ fontSize: 13 }}>{p.supplierName || suppliers[p.supplierId]?.name || '—'}</td>
                   <td><span className="mono" style={{ fontSize: 11 }}>{p.billId}</span></td>
                   <td><span className="mono" style={{ fontSize: 11 }}>{p.reference || '—'}</span></td>
                   <td><span className="pill info" style={{ fontSize: 9, textTransform: 'capitalize' }}>{p.method}</span></td>

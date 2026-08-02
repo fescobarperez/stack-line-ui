@@ -1,10 +1,30 @@
 // ERP MAYA — Fixed Assets / Activos Fijos (Guatemala · Decreto 26-92 ISR)
+// Data-driven: activos desde /api/fixed-assets (hook useAssets). La depreciación
+// línea recta se calcula en el front sobre el costo/fecha reales.
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
+import { useAssets } from '../hooks/useOperations.js';
+import { createAsset, updateAsset } from '../api/wave3.js';
 import { useTranslation } from 'react-i18next';
 
-const Q  = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const pct = (n) => `${(n * 100).toFixed(2)}%`;
+const Q  = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const pct = (n) => `${((n || 0) * 100).toFixed(2)}%`;
+
+// Backend FixedAsset.Response → forma de la UI.
+function mapAsset(a) {
+  return {
+    id: a.assetCode || `AF-${a.id}`,
+    apiId: a.id,
+    name: a.name,
+    cat: a.category || 'computo',
+    purchase: Number(a.purchaseCost || 0),
+    acquired: a.acquiredDate || '',
+    serial: a.serial || '',
+    branch: a.branchId ? `#${a.branchId}` : '—',
+    status: (a.status === 'retired' || a.status === 'baja') ? 'baja' : (a.status || 'active'),
+    notes: a.notes || '',
+  };
+}
 
 // ── Categorías y tasas SAT (Decreto 26-92, Art. 19) ───────────────────────
 const CATEGORIES = [
@@ -24,20 +44,7 @@ const CUR_YEAR  = now.getFullYear();
 const CUR_MONTH = now.getMonth() + 1; // 1-based
 
 // ── Mock assets ────────────────────────────────────────────────────────────
-const ASSETS_INIT = [
-  { id:'AF-001', name:'Edificio Sucursal Zona 10',      cat:'edificios',    purchase: 850000, acquired:'2018-03-01', serial:'',           branch:'Zona 10',    status:'active',   notes:'Incluye bodega y área de ventas' },
-  { id:'AF-002', name:'Servidor Dell PowerEdge R750',   cat:'computo',      purchase: 48500,  acquired:'2023-06-15', serial:'SRV-2023-01', branch:'Central',    status:'active',   notes:'Servidor principal ERP' },
-  { id:'AF-003', name:'Camión Isuzu NQR 2022',          cat:'vehiculos',    purchase: 185000, acquired:'2022-01-10', serial:'CVH-012-GT', branch:'Zona 10',    status:'active',   notes:'Reparto y distribución' },
-  { id:'AF-004', name:'Estantería metálica bodega',     cat:'mobiliario',   purchase: 24800,  acquired:'2021-08-20', serial:'',           branch:'Zona 10',    status:'active',   notes:'40 módulos doble cara' },
-  { id:'AF-005', name:'Caja registradora POS ×5',       cat:'computo',      purchase: 18500,  acquired:'2024-02-01', serial:'POS-2024-A', branch:'Zona 10',    status:'active',   notes:'Incluye lectores de código' },
-  { id:'AF-006', name:'Montacargas eléctrico Toyota',   cat:'maquinaria',   purchase: 92000,  acquired:'2020-05-12', serial:'MCG-2020-01', branch:'Zona 10',   status:'active',   notes:'Capacidad 2,000 kg' },
-  { id:'AF-007', name:'Aire acondicionado Carrier ×4',  cat:'maquinaria',   purchase: 32000,  acquired:'2021-11-05', serial:'',           branch:'Zona 10',    status:'active',   notes:'Unidades de 2 toneladas' },
-  { id:'AF-008', name:'Laptops Lenovo ThinkPad ×8',     cat:'computo',      purchase: 56000,  acquired:'2022-09-01', serial:'',           branch:'Central',    status:'active',   notes:'Area administrativa' },
-  { id:'AF-009', name:'Escritorios y sillas ofic. ×12', cat:'mobiliario',   purchase: 14400,  acquired:'2019-04-15', serial:'',           branch:'Central',    status:'active',   notes:'Área de oficinas' },
-  { id:'AF-010', name:'Pick-up Toyota Hilux 2021',      cat:'vehiculos',    purchase: 245000, acquired:'2021-03-22', serial:'CVH-021-GT', branch:'Zona 10',    status:'active',   notes:'Gerencia general' },
-  { id:'AF-011', name:'Escáner industrial Zebra DS9900',cat:'herramientas', purchase: 8400,   acquired:'2023-01-10', serial:'ZBR-001',    branch:'Zona 10',    status:'active',   notes:'Lectores de código de barras' },
-  { id:'AF-012', name:'Generador eléctrico 15kVA',      cat:'maquinaria',   purchase: 38000,  acquired:'2020-08-30', serial:'GEN-2020-01', branch:'Zona 10',   status:'baja',     notes:'Dado de baja por falla mecánica' },
-];
+// (activos vienen del backend)
 
 // ── Cálculo de depreciación (línea recta) ──────────────────────────────────
 function calcDepr(asset) {
@@ -78,7 +85,8 @@ export default function FixedAssets({ pushToast }) {
     name:'', cat:'computo', purchase:'', acquired:'', serial:'', branch:'Zona 10', notes:''
   });
 
-  const assets = useMemo(() => ASSETS_INIT.map(a => ({ ...a, depr: calcDepr(a) })), []);
+  const { items: assetsRaw, reload } = useAssets();
+  const assets = useMemo(() => assetsRaw.map(mapAsset).map(a => ({ ...a, depr: calcDepr(a) })), [assetsRaw]);
 
   const filtered = assets.filter(a => {
     if (search && !a.name.toLowerCase().includes(search.toLowerCase()) &&
@@ -107,20 +115,49 @@ export default function FixedAssets({ pushToast }) {
 
   const setNew = (k, v) => setNewForm(f => ({ ...f, [k]: v }));
 
-  const handleSaveNew = () => {
+  const handleSaveNew = async () => {
     if (!newForm.name || !newForm.purchase || !newForm.acquired) {
       pushToast && pushToast('Completa nombre, valor y fecha de adquisición', 'danger');
       return;
     }
-    pushToast && pushToast(`Activo "${newForm.name}" registrado`, 'success');
-    setShowNew(false);
-    setNewForm({ name:'', cat:'computo', purchase:'', acquired:'', serial:'', branch:'Zona 10', notes:'' });
+    const cat = CAT_MAP[newForm.cat];
+    try {
+      await createAsset({
+        assetCode: newForm.serial || null,
+        name: newForm.name,
+        category: newForm.cat,
+        purchaseCost: parseFloat(newForm.purchase) || 0,
+        acquiredDate: newForm.acquired,
+        serial: newForm.serial || null,
+        branchId: null,
+        status: 'active',
+        depreciationRate: cat?.rate ?? null,
+        usefulLifeYears: cat?.years ?? null,
+        notes: newForm.notes || null,
+      });
+      await reload();
+      pushToast && pushToast(`Activo "${newForm.name}" registrado`, 'success');
+      setShowNew(false);
+      setNewForm({ name:'', cat:'computo', purchase:'', acquired:'', serial:'', branch:'Zona 10', notes:'' });
+    } catch (err) {
+      pushToast && pushToast('No se pudo registrar el activo: ' + err.message, 'danger');
+    }
   };
 
-  const handleBaja = () => {
-    pushToast && pushToast(`Activo dado de baja y registrado en contabilidad`, 'success');
-    setShowBaja(null);
-    setSelAsset(null);
+  const handleBaja = async () => {
+    try {
+      await updateAsset(showBaja.apiId, {
+        assetCode: showBaja.id, name: showBaja.name, category: showBaja.cat,
+        purchaseCost: showBaja.purchase, acquiredDate: showBaja.acquired, serial: showBaja.serial || null,
+        branchId: null, status: 'baja', notes: showBaja.notes || null,
+      });
+      await reload();
+      pushToast && pushToast('Activo dado de baja', 'success');
+      setShowBaja(null);
+      setSelAsset(null);
+    } catch (err) {
+      pushToast && pushToast('No se pudo dar de baja: ' + err.message, 'danger');
+    }
   };
 
   return (

@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './i18n/index.js';
 import App from './App.jsx';
 import Login from './modules/Login.jsx';
+import { logout } from './api/auth.js';
 import './styles/global.css';
 
 function Root() {
@@ -20,7 +21,7 @@ function Root() {
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem('maya_session');
+    logout();
     setSession(null);
   };
 

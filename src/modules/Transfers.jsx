@@ -1,8 +1,26 @@
 // ERP MAYA — Módulo de Transferencias entre Sucursales
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
-import * as MAYA from '../data/mock.js';
+import { useTransfers } from '../hooks/useOperations.js';
+import { useBranches } from '../hooks/useMasters.js';
+import { useProducts } from '../hooks/useCatalog.js';
+import { createTransfer, dispatchTransfer, receiveTransfer } from '../api/transfers.js';
 import { useTranslation } from 'react-i18next';
+
+// Backend Transfer.Response → forma de la UI. Si ya es shape de UI (fallback mock), lo deja igual.
+function mapTransfer(r) {
+  if (r.fromBranch !== undefined) return r;
+  return {
+    id: r.docNumber || String(r.id),
+    apiId: r.id,
+    date: r.transferDate,
+    fromBranch: r.fromBranchName,
+    toBranch: r.toBranchName,
+    transporter: r.transporter,
+    status: r.status,
+    items: (r.items || []).map(i => ({ name: i.productName, sku: '', qty: Number(i.quantity), qtyReceived: Number(i.qtyReceived || 0) })),
+  };
+}
 
 const STATUS_LABEL = { draft: 'Borrador', in_transit: 'En tránsito', completed: 'Completada', cancelled: 'Cancelada' };
 const STATUS_CLASS  = { draft: 'neutral', in_transit: 'warning', completed: 'success', cancelled: 'neutral' };
@@ -149,11 +167,10 @@ function NewTransferModal({ branches, products, onSave, onClose }) {
 }
 
 // ── Panel detalle ─────────────────────────────────────────────────────────────
-function TransferDetail({ transfer, onClose, onDispatch, onReceive, onCancel }) {
+function TransferDetail({ transfer, onClose, onDispatch, onReceive }) {
   const { t } = useTranslation();
   const canDispatch = transfer.status === 'draft';
   const canReceive  = transfer.status === 'in_transit';
-  const canCancel   = transfer.status === 'draft' || transfer.status === 'in_transit';
   const currentStep = FLOW.indexOf(transfer.status);
 
   return (
@@ -166,7 +183,6 @@ function TransferDetail({ transfer, onClose, onDispatch, onReceive, onCancel }) 
         <div style={{ display: 'flex', gap: 8 }}>
           {canDispatch && <button className="btn accent" onClick={() => onDispatch(transfer)}><Icon name="truck" size={12} />Despachar</button>}
           {canReceive  && <button className="btn accent" onClick={() => onReceive(transfer)}><Icon name="check" size={12} />Recibir</button>}
-          {canCancel   && <button className="btn" style={{ color: 'var(--danger)' }} onClick={() => onCancel(transfer)}>{t('common.cancel', 'Cancelar')}</button>}
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
       </div>
@@ -250,8 +266,10 @@ function TransferDetail({ transfer, onClose, onDispatch, onReceive, onCancel }) 
 // ── Módulo principal ──────────────────────────────────────────────────────────
 export default function Transfers({ pushToast }) {
   const { t } = useTranslation();
-  const { BRANCHES, PRODUCTS } = MAYA;
-  const [transfers, setTransfers]   = useState(MAYA.TRANSFERS);
+  const { items: transfersRaw, reload } = useTransfers();
+  const { items: BRANCHES } = useBranches();
+  const { items: PRODUCTS } = useProducts();
+  const transfers = useMemo(() => transfersRaw.map(mapTransfer), [transfersRaw]);
   const [selected, setSelected]     = useState(null);
   const [showNew, setShowNew]       = useState(false);
   const [statusFilter, setStatus]   = useState('all');
@@ -272,37 +290,49 @@ export default function Transfers({ pushToast }) {
   const inTransit  = transfers.filter(t => t.status === 'in_transit');
   const drafts     = transfers.filter(t => t.status === 'draft');
 
-  const handleNew = ({ fromBranch, toBranch, transporter, items }) => {
-    const id = `TR-${String(Date.now()).slice(-5)}`;
-    const newT = {
-      id, date: new Date().toISOString().slice(0, 10),
-      fromBranch, toBranch, transporter: transporter || null,
-      status: 'draft',
-      items: items.map(i => ({ ...i, qty: parseInt(i.qty), qtyReceived: 0 })),
-    };
-    setTransfers(prev => [newT, ...prev]);
-    setShowNew(false);
-    pushToast?.(`Transferencia ${id} creada`, 'success');
+  const handleNew = async ({ fromBranch, toBranch, transporter, items }) => {
+    const fromBranchId = BRANCHES.find(b => b.name === fromBranch)?.id;
+    const toBranchId = BRANCHES.find(b => b.name === toBranch)?.id;
+    const lines = items
+      .map(i => ({ productId: PRODUCTS.find(p => p.sku === i.sku)?.id, quantity: Number(i.qty) }))
+      .filter(l => l.productId && l.quantity > 0);
+    if (!fromBranchId || !toBranchId || lines.length === 0) {
+      pushToast?.('Datos incompletos para el traslado', 'error');
+      return;
+    }
+    try {
+      await createTransfer({
+        fromBranchId, toBranchId, transporter: transporter || null,
+        transferDate: new Date().toISOString().slice(0, 10), items: lines,
+      });
+      await reload();
+      setShowNew(false);
+      pushToast?.('Transferencia creada', 'success');
+    } catch (err) {
+      pushToast?.('No se pudo crear el traslado: ' + err.message, 'error');
+    }
   };
 
-  const handleDispatch = (transfer) => {
-    setTransfers(prev => prev.map(t => t.id === transfer.id ? { ...t, status: 'in_transit' } : t));
-    setSelected(prev => ({ ...prev, status: 'in_transit' }));
-    pushToast?.(`${transfer.id} despachada`, 'success');
+  const handleDispatch = async (transfer) => {
+    try {
+      await dispatchTransfer(transfer.apiId);
+      await reload();
+      setSelected(null);
+      pushToast?.(`${transfer.id} despachada`, 'success');
+    } catch (err) {
+      pushToast?.('No se pudo despachar: ' + err.message, 'error');
+    }
   };
 
-  const handleReceive = (transfer) => {
-    setTransfers(prev => prev.map(t => t.id === transfer.id
-      ? { ...t, status: 'completed', items: t.items.map(i => ({ ...i, qtyReceived: i.qty })) }
-      : t));
-    setSelected(prev => ({ ...prev, status: 'completed', items: prev.items.map(i => ({ ...i, qtyReceived: i.qty })) }));
-    pushToast?.(`${transfer.id} recibida y stock actualizado`, 'success');
-  };
-
-  const handleCancel = (transfer) => {
-    setTransfers(prev => prev.map(t => t.id === transfer.id ? { ...t, status: 'cancelled' } : t));
-    setSelected(prev => ({ ...prev, status: 'cancelled' }));
-    pushToast?.(`${transfer.id} cancelada`, '');
+  const handleReceive = async (transfer) => {
+    try {
+      await receiveTransfer(transfer.apiId);
+      await reload();
+      setSelected(null);
+      pushToast?.(`${transfer.id} recibida y stock actualizado`, 'success');
+    } catch (err) {
+      pushToast?.('No se pudo recibir: ' + err.message, 'error');
+    }
   };
 
   const selectedTransfer = selected ? transfers.find(t => t.id === selected.id) : null;
@@ -420,7 +450,6 @@ export default function Transfers({ pushToast }) {
             onClose={() => setSelected(null)}
             onDispatch={handleDispatch}
             onReceive={handleReceive}
-            onCancel={handleCancel}
           />
         </div>
       )}

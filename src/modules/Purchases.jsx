@@ -2,8 +2,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
-import * as MAYA from '../data/mock.js';
 import { usePurchaseOrders } from '../hooks/useOperations.js';
+import { useSuppliers } from '../hooks/useMasters.js';
+import { useBranches } from '../hooks/useMasters.js';
+import { useProducts } from '../hooks/useCatalog.js';
 
 const STATUS_LABEL = { pending: 'Pendiente', partial: 'Parcial', received: 'Recibida', cancelled: 'Cancelada', draft: 'Borrador' };
 const STATUS_CLASS  = { pending: 'warning', partial: 'info', received: 'success', cancelled: 'neutral', draft: 'neutral' };
@@ -327,9 +329,11 @@ function PODetail({ po, onClose, onReceive, onCancel }) {
 // ── Módulo principal ─────────────────────────────────────────────────────────
 export default function Purchases({ pushToast }) {
   const { t } = useTranslation();
-  const { SUPPLIERS, BRANCHES, PRODUCTS } = MAYA;
-  // Órdenes de compra desde el backend (con fallback automático al mock).
+  // Órdenes de compra + catálogos (proveedores/sucursales/productos) desde el backend.
   const { items: apiOrders } = usePurchaseOrders();
+  const { items: SUPPLIERS } = useSuppliers();
+  const { items: BRANCHES } = useBranches();
+  const { items: PRODUCTS } = useProducts();
   const [tab, setTab]             = useState('lista');
   const [search, setSearch]       = useState('');
   const [statusFilter, setStatus] = useState('all');
