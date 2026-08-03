@@ -110,16 +110,16 @@ export default function FinancialStatements() {
               <colgroup><col /><col style={{ width: 200 }} /></colgroup>
               <tbody>
                 <SectionHdr label={t('financials.operationalRevenue', 'INGRESOS')} />
-                {inc.income.length === 0
+                {(inc.income || []).length === 0
                   ? <Row label={t('financials.noMovements', 'Sin movimientos')} value={0} indent={1} />
-                  : inc.income.map((l) => <Row key={l.code} label={`${l.code} · ${l.name}`} value={l.amount} indent={1} />)}
+                  : (inc.income || []).map((l) => <Row key={l.code} label={`${l.code} · ${l.name}`} value={l.amount} indent={1} />)}
                 <Row label={t('financials.totalRevenue', 'Total Ingresos')} value={inc.totalIncome} bold total />
                 <Spacer />
 
                 <SectionHdr label={t('financials.operatingExpenses', 'COSTOS Y GASTOS')} />
-                {inc.expenses.length === 0
+                {(inc.expenses || []).length === 0
                   ? <Row label={t('financials.noMovements', 'Sin movimientos')} value={0} indent={1} />
-                  : inc.expenses.map((l) => <Row key={l.code} label={`${l.code} · ${l.name}`} value={l.amount} indent={1} />)}
+                  : (inc.expenses || []).map((l) => <Row key={l.code} label={`${l.code} · ${l.name}`} value={l.amount} indent={1} />)}
                 <Row label={t('financials.totalOperatingExpenses', 'Total Costos y Gastos')} value={inc.totalExpenses} bold total />
                 <Spacer />
 
@@ -136,17 +136,17 @@ export default function FinancialStatements() {
               <colgroup><col /><col style={{ width: 200 }} /></colgroup>
               <tbody>
                 <SectionHdr label={t('financials.assets', 'ACTIVO')} />
-                {bs.assets.map((l) => <Row key={l.code} label={`${l.code} · ${l.name}`} value={l.amount} indent={1} />)}
+                {(bs.assets || []).map((l) => <Row key={l.code} label={`${l.code} · ${l.name}`} value={l.amount} indent={1} />)}
                 <Row label={t('financials.totalAssets', 'TOTAL ACTIVO')} value={bs.totalAssets} grand />
                 <Spacer /><Spacer />
 
                 <SectionHdr label={t('financials.liabilities', 'PASIVO')} />
-                {bs.liabilities.map((l) => <Row key={l.code} label={`${l.code} · ${l.name}`} value={l.amount} indent={1} />)}
+                {(bs.liabilities || []).map((l) => <Row key={l.code} label={`${l.code} · ${l.name}`} value={l.amount} indent={1} />)}
                 <Row label={t('financials.totalLiabilities', 'TOTAL PASIVO')} value={bs.totalLiabilities} bold total />
                 <Spacer />
 
                 <SectionHdr label={t('financials.equity', 'CAPITAL Y RESERVAS')} />
-                {bs.equity.map((l) => <Row key={l.code} label={`${l.code} · ${l.name}`} value={l.amount} indent={1} />)}
+                {(bs.equity || []).map((l) => <Row key={l.code} label={`${l.code} · ${l.name}`} value={l.amount} indent={1} />)}
                 <Row label={t('financials.totalEquity', 'Total Capital y Reservas')} value={bs.totalEquity} bold total />
                 <Spacer />
 

@@ -2,6 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
 import { useTranslation } from 'react-i18next';
+import { useCreditNotes } from '../hooks/useReturns.js';
+import { createCreditNote, retryCreditNoteFel } from '../api/wave2.js';
 
 const Q = v => `Q ${v.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -143,7 +145,7 @@ const PAY_METHODS = ['efectivo', 'transferencia', 'cheque'];
 
 export default function Returns({ pushToast }) {
   const { t } = useTranslation();
-  const [notes, setNotes]           = useState(INIT_NOTES);
+  const { items: notes, reload: reloadNotes } = useCreditNotes();
   const [search, setSearch]         = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterFel, setFilterFel]   = useState('all');
@@ -169,18 +171,35 @@ export default function Returns({ pushToast }) {
     return true;
   }), [notes, search, filterType, filterFel]);
 
-  function handleCreate(newNote) {
-    const id = `NC-2026-${String(notes.length + 22).padStart(5, '0')}`;
-    setNotes(prev => [{ ...newNote, id, felStatus: 'pendiente', felUuid: null, date: '2026-05-24' }, ...prev]);
-    setCreateModal(false);
-    pushToast(`Nota de crédito ${id} enviada a FEL`, 'success');
+  async function handleCreate(newNote) {
+    try {
+      await createCreditNote({
+        noteType: newNote.type,
+        ticketRef: newNote.ticketId,
+        clientName: newNote.clientName,
+        clientNit: newNote.clientNit,
+        cashier: newNote.cashier,
+        branchName: newNote.branch,
+        reason: newNote.reason,
+        refundMethod: 'efectivo',
+        items: newNote.items.map(i => ({ itemName: i.name, quantity: i.qty, unitPrice: i.unitPrice })),
+      });
+      setCreateModal(false);
+      pushToast('Nota de crédito emitida y autorizada por FEL', 'success');
+      reloadNotes();
+    } catch (err) {
+      pushToast('No se pudo emitir la nota de crédito: ' + err.message, 'error');
+    }
   }
 
-  function retryFel(noteId) {
-    setNotes(prev => prev.map(n =>
-      n.id === noteId ? { ...n, felStatus: 'autorizada', felUuid: 'retry-' + Date.now() } : n
-    ));
-    pushToast(t('returns.retrySent', 'NC re-enviada — autorizada por SAT'), 'success');
+  async function retryFel(note) {
+    try {
+      await retryCreditNoteFel(note.backendId, { felStatus: 'autorizada' });
+      pushToast(t('returns.retrySent', 'NC re-enviada — autorizada por SAT'), 'success');
+      reloadNotes();
+    } catch (err) {
+      pushToast('No se pudo reintentar el envío FEL: ' + err.message, 'error');
+    }
   }
 
   return (
@@ -295,7 +314,7 @@ export default function Returns({ pushToast }) {
                 <td onClick={e => e.stopPropagation()}>
                   {n.felStatus === 'rechazada' && (
                     <button className="btn" style={{ fontSize: 11, padding: '3px 8px', color: 'var(--warning)', borderColor: 'var(--warning)' }}
-                      onClick={() => retryFel(n.id)}>
+                      onClick={() => retryFel(n)}>
                       {t('returns.retry', 'Reintentar')}
                     </button>
                   )}
@@ -381,7 +400,7 @@ export default function Returns({ pushToast }) {
               {selected.felStatus === 'rechazada' && (
                 <div style={{ marginTop: 16 }}>
                   <button className="btn" style={{ width: '100%', justifyContent: 'center', color: 'var(--warning)', borderColor: 'var(--warning)' }}
-                    onClick={() => { retryFel(selected.id); setSelected(null); }}>
+                    onClick={() => { retryFel(selected); setSelected(null); }}>
                     <Icon name="return" size={13} /> {t('returns.retryFel', 'Reintentar envío FEL')}
                   </button>
                 </div>

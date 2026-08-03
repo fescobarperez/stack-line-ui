@@ -9,8 +9,11 @@ export const deleteEmployee = (id) => api.del(`/api/employees/${id}`);
 export const listPayrollPeriods = () => api.get('/api/payroll-periods');
 export const getPayrollPeriod = (id) => api.get(`/api/payroll-periods/${id}`);
 export const createPayrollPeriod = (data) => api.post('/api/payroll-periods', data);
+export const generatePayroll = (data) => api.post('/api/payroll-periods/generate', data);
 export const processPayroll = (id) => api.post(`/api/payroll-periods/${id}/process`);
 export const closePayroll = (id) => api.post(`/api/payroll-periods/${id}/close`);
+export const payrollIgssReport = (id) => api.get(`/api/payroll-periods/${id}/igss`);
+export const payrollIsrReport = (id) => api.get(`/api/payroll-periods/${id}/isr`);
 
 // ── Activos fijos ─────────────────────────────────────────────────────
 export const listAssets = () => api.get('/api/fixed-assets');
@@ -20,6 +23,7 @@ export const updateAsset = (id, data) => api.put(`/api/fixed-assets/${id}`, data
 export const deleteAsset = (id) => api.del(`/api/fixed-assets/${id}`);
 export const assetDepreciationHistory = (id) => api.get(`/api/fixed-assets/${id}/depreciation`);
 export const depreciateAsset = (id) => api.post(`/api/fixed-assets/${id}/depreciate`);
+export const disposeAsset = (id, data) => api.post(`/api/fixed-assets/${id}/dispose`, data);
 
 // ── Lealtad ───────────────────────────────────────────────────────────
 export const listLoyaltyAccounts = () => api.get('/api/loyalty/accounts');

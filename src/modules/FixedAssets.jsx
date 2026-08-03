@@ -1,10 +1,19 @@
 // ERP MAYA — Fixed Assets / Activos Fijos (Guatemala · Decreto 26-92 ISR)
 // Data-driven: activos desde /api/fixed-assets (hook useAssets). La depreciación
 // línea recta se calcula en el front sobre el costo/fecha reales.
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
 import { useAssets } from '../hooks/useOperations.js';
-import { createAsset, updateAsset } from '../api/wave3.js';
+import { useAccounts } from '../hooks/useAccounting.js';
+import { createAsset, updateAsset, disposeAsset } from '../api/wave3.js';
+import { getSetting, putSetting } from '../api/wave2.js';
+
+// Claves de configuración de las cuentas de la partida de baja (company_settings).
+const DISPOSAL_KEYS = {
+  asset: 'asset_disposal.asset_account',
+  depr:  'asset_disposal.depreciation_account',
+  loss:  'asset_disposal.loss_account',
+};
 import { useTranslation } from 'react-i18next';
 
 const Q  = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -78,6 +87,9 @@ export default function FixedAssets({ pushToast }) {
   const [selAsset,    setSelAsset]    = useState(null);
   const [showNew,     setShowNew]     = useState(false);
   const [showBaja,    setShowBaja]    = useState(null);
+  const [bajaReason,  setBajaReason]  = useState('Obsolescencia');
+  const [bajaBusy,    setBajaBusy]    = useState(false);
+  const [showConfig,  setShowConfig]  = useState(false);
   const [search,      setSearch]      = useState('');
   const [catFilter,   setCatFilter]   = useState('todos');
   const [statusFilter,setStatusFilter]= useState('active');
@@ -86,6 +98,7 @@ export default function FixedAssets({ pushToast }) {
   });
 
   const { items: assetsRaw, reload } = useAssets();
+  const { items: accounts } = useAccounts();
   const assets = useMemo(() => assetsRaw.map(mapAsset).map(a => ({ ...a, depr: calcDepr(a) })), [assetsRaw]);
 
   const filtered = assets.filter(a => {
@@ -145,19 +158,21 @@ export default function FixedAssets({ pushToast }) {
   };
 
   const handleBaja = async () => {
+    setBajaBusy(true);
     try {
-      await updateAsset(showBaja.apiId, {
-        assetCode: showBaja.id, name: showBaja.name, category: showBaja.cat,
-        purchaseCost: showBaja.purchase, acquiredDate: showBaja.acquired, serial: showBaja.serial || null,
-        branchId: null, status: 'baja', notes: showBaja.notes || null,
+      const res = await disposeAsset(showBaja.apiId, {
+        disposalDate: new Date().toISOString().slice(0, 10),
+        notes: `Baja: ${bajaReason}`,
       });
       await reload();
-      pushToast && pushToast('Activo dado de baja', 'success');
+      pushToast && pushToast(
+        `Activo dado de baja · partida contable #${res.disposalJournalEntryId} generada`,
+        'success');
       setShowBaja(null);
       setSelAsset(null);
     } catch (err) {
       pushToast && pushToast('No se pudo dar de baja: ' + err.message, 'danger');
-    }
+    } finally { setBajaBusy(false); }
   };
 
   return (
@@ -171,7 +186,9 @@ export default function FixedAssets({ pushToast }) {
           </div>
         </div>
         <div className="page-head-actions">
-          <button className="btn"><Icon name="download" size={12}/>{t('common.export', 'Exportar')}</button>
+          <button className="btn" onClick={() => setShowConfig(true)}>
+            <Icon name="settings" size={12}/>{t('fixedassets.accountConfig', 'Configuración contable')}
+          </button>
           <button className="btn accent" onClick={() => setShowNew(true)}>
             <Icon name="plus" size={12}/>{t('fixedassets.newAsset', 'Nuevo activo')}
           </button>
@@ -641,7 +658,7 @@ export default function FixedAssets({ pushToast }) {
             <div className="drawer-foot">
               <button className="btn ghost" onClick={() => setSelAsset(null)}>{t('common.close', 'Cerrar')}</button>
               {selAsset.status === 'active' && (
-                <button className="btn danger" onClick={() => { setShowBaja(selAsset); setSelAsset(null); }}>
+                <button className="btn danger" onClick={() => { setBajaReason('Obsolescencia'); setShowBaja(selAsset); setSelAsset(null); }}>
                   <Icon name="trash" size={12}/>{t('fixedassets.retire', 'Dar de baja')}
                 </button>
               )}
@@ -765,7 +782,7 @@ export default function FixedAssets({ pushToast }) {
               </div>
               <div className="field" style={{marginTop:16}}>
                 <label className="field-label">{t('fixedassets.retirementReason', 'Motivo de la baja')}</label>
-                <select className="field-input">
+                <select className="field-input" value={bajaReason} onChange={e => setBajaReason(e.target.value)}>
                   <option>{t('fixedassets.reasons.obsolescence', 'Obsolescencia')}</option>
                   <option>{t('fixedassets.reasons.irreparableFault', 'Falla irreparable')}</option>
                   <option>{t('fixedassets.reasons.sale', 'Venta del activo')}</option>
@@ -774,16 +791,122 @@ export default function FixedAssets({ pushToast }) {
                   <option>{t('fixedassets.reasons.other', 'Otro')}</option>
                 </select>
               </div>
+
+              {/* Partida contable de disposición (automática) */}
+              <div style={{marginTop:16, padding:'10px 14px', background:'var(--surface-2)', borderRadius:'var(--r-md)', fontSize:11.5}}>
+                <div style={{fontWeight:600, marginBottom:6}}>
+                  <Icon name="receipt" size={12} style={{marginRight:6, verticalAlign:'-1px'}}/>
+                  {t('fixedassets.autoEntry', 'Se generará la partida contable automáticamente')}
+                </div>
+                <div className="row" style={{justifyContent:'space-between', color:'var(--muted)'}}>
+                  <span>Dr {t('fixedassets.accDeprShort', 'Dep. acumulada')}</span><span className="mono">{Q(showBaja.depr.deprAcum)}</span>
+                </div>
+                {showBaja.depr.valorLibros > 0 && (
+                  <div className="row" style={{justifyContent:'space-between', color:'var(--muted)'}}>
+                    <span>Dr {t('fixedassets.lossShort', 'Pérdida en baja')}</span><span className="mono">{Q(showBaja.depr.valorLibros)}</span>
+                  </div>
+                )}
+                <div className="row" style={{justifyContent:'space-between', color:'var(--muted)'}}>
+                  <span>Cr {t('fixedassets.assetCostShort', 'Activo fijo (costo)')}</span><span className="mono">{Q(showBaja.purchase)}</span>
+                </div>
+                <div style={{marginTop:8, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
+                  <span style={{fontSize:10.5, color:'var(--muted)'}}>
+                    {t('fixedassets.usesConfigAccounts', 'Usa las cuentas definidas en Configuración contable.')}
+                  </span>
+                  <button className="btn sm ghost" onClick={() => { setShowBaja(null); setShowConfig(true); }}>
+                    <Icon name="settings" size={11}/>{t('fixedassets.configure', 'Configurar')}
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="modal-foot">
               <button className="btn ghost" onClick={() => setShowBaja(null)}>{t('common.cancel', 'Cancelar')}</button>
-              <button className="btn danger" onClick={handleBaja}>
+              <button className="btn danger" disabled={bajaBusy} onClick={handleBaja}>
                 <Icon name="trash" size={12}/>{t('fixedassets.confirmRetirement', 'Confirmar baja')}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ── MODAL: Configuración contable de la baja ── */}
+      {showConfig && (
+        <DisposalConfigModal accounts={accounts} pushToast={pushToast} onClose={() => setShowConfig(false)} />
+      )}
+    </div>
+  );
+}
+
+// ── Configuración contable de la baja de activos ─────────────────────────────
+// Guarda en company_settings las 3 cuentas que usará la partida automática.
+function DisposalConfigModal({ accounts, pushToast, onClose }) {
+  const { t } = useTranslation();
+  const [sel, setSel] = useState({ asset: '', depr: '', loss: '' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const load = async (key) => getSetting(key).then(r => r?.settingValue || '').catch(() => '');
+    Promise.all([load(DISPOSAL_KEYS.asset), load(DISPOSAL_KEYS.depr), load(DISPOSAL_KEYS.loss)])
+      .then(([asset, depr, loss]) => setSel({ asset, depr, loss }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const valid = sel.asset && sel.depr && sel.loss;
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await Promise.all([
+        putSetting(DISPOSAL_KEYS.asset, { settingValue: String(sel.asset), category: 'accounting' }),
+        putSetting(DISPOSAL_KEYS.depr,  { settingValue: String(sel.depr),  category: 'accounting' }),
+        putSetting(DISPOSAL_KEYS.loss,  { settingValue: String(sel.loss),  category: 'accounting' }),
+      ]);
+      pushToast && pushToast('Configuración contable guardada', 'success');
+      onClose();
+    } catch (err) {
+      pushToast && pushToast('No se pudo guardar: ' + err.message, 'danger');
+    } finally { setSaving(false); }
+  };
+
+  const AccountSelect = ({ label, value, onChange }) => (
+    <div className="field" style={{ marginBottom: 12 }}>
+      <label className="field-label">{label}</label>
+      <select className="field-input" value={value} onChange={e => onChange(e.target.value)}>
+        <option value="">{t('common.selectDots', 'Seleccionar…')}</option>
+        {accounts.map(ac => <option key={ac.id} value={ac.id}>{ac.code} · {ac.name}</option>)}
+      </select>
+    </div>
+  );
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ width: 480 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>{t('fixedassets.accountConfig', 'Configuración contable — baja de activos')}</h3>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
+        </div>
+        <div className="modal-body">
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>
+            {t('fixedassets.configIntro', 'Estas cuentas se usan para generar automáticamente la partida contable al dar de baja un activo.')}
+          </div>
+          {loading ? (
+            <div className="empty" style={{ padding: 20 }}>{t('common.loading', 'Cargando…')}</div>
+          ) : (
+            <>
+              <AccountSelect label={t('fixedassets.assetAccount', 'Activo fijo — costo (crédito)')} value={sel.asset} onChange={v => setSel(s => ({ ...s, asset: v }))} />
+              <AccountSelect label={t('fixedassets.accDepr', 'Depreciación acumulada (débito)')} value={sel.depr} onChange={v => setSel(s => ({ ...s, depr: v }))} />
+              <AccountSelect label={t('fixedassets.lossAccount', 'Pérdida en baja de activos (débito)')} value={sel.loss} onChange={v => setSel(s => ({ ...s, loss: v }))} />
+            </>
+          )}
+        </div>
+        <div className="modal-foot">
+          <button className="btn ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
+          <button className="btn accent" disabled={!valid || saving} onClick={save}>
+            <Icon name="check" size={13} /> {t('common.save', 'Guardar')}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -2,6 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import { usePromotions } from '../hooks/useMarketing.js';
+import { createPromotion, updatePromotion } from '../api/marketing.js';
 
 const Q   = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const Qs  = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 0,  maximumFractionDigits: 0  })}`;
@@ -25,90 +27,10 @@ const CLIENT_TYPES = ['Todos', 'Consumidor final', 'Minorista', 'Mayorista', 'Ex
 const BRANCHES_OPT = ['Todas', 'Zona 10', 'Zona 1', 'Zona 15', 'Mixco', 'Escuintla'];
 const CATEGORIES   = ['Abarrotes', 'Bebidas', 'Lácteos', 'Limpieza', 'Higiene', 'Snacks', 'Panadería', 'Congelados'];
 
-// ── Mock promotions ────────────────────────────────────────────────────────
+// Datos reales del backend vía usePromotions. Helpers de fecha para el wizard.
 const TODAY = new Date();
 const fmtDate = (d) => d.toISOString().slice(0,10);
 const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate()+n); return r; };
-
-const PROMOS = [
-  {
-    id: 'PRO-001', name: 'Descuento abarrotes fin de semana',
-    type: 'pct_desc', value: 10, status: 'active',
-    category: 'Abarrotes', product: null,
-    clientType: 'Todos', branches: 'Todas',
-    dias: [5,6], horaInicio: '', horaFin: '',
-    minCompra: 0, nxm_n: null, nxm_m: null,
-    dateStart: fmtDate(addDays(TODAY,-15)), dateEnd: fmtDate(addDays(TODAY,15)),
-    uses: 284, savings: 1820.50, tickets: 284,
-    desc: '10% de descuento en toda la categoría Abarrotes los fines de semana.',
-  },
-  {
-    id: 'PRO-002', name: '2×1 en bebidas carbonatadas',
-    type: 'nxm', value: null, status: 'active',
-    category: 'Bebidas', product: 'Coca-Cola 600ml',
-    clientType: 'Todos', branches: 'Zona 10',
-    dias: [0,1,2,3,4,5,6], horaInicio: '14:00', horaFin: '18:00',
-    minCompra: 0, nxm_n: 2, nxm_m: 1,
-    dateStart: fmtDate(addDays(TODAY,-5)), dateEnd: fmtDate(addDays(TODAY,10)),
-    uses: 96, savings: 960.00, tickets: 96,
-    desc: 'Lleva 2 Coca-Cola 600ml y paga solo 1. Válido 2pm–6pm.',
-  },
-  {
-    id: 'PRO-003', name: 'Q50 de descuento en compras mayores a Q500',
-    type: 'min_compra', value: 50, status: 'active',
-    category: null, product: null,
-    clientType: 'Mayorista', branches: 'Todas',
-    dias: [0,1,2,3,4,5,6], horaInicio: '', horaFin: '',
-    minCompra: 500, nxm_n: null, nxm_m: null,
-    dateStart: fmtDate(addDays(TODAY,-30)), dateEnd: fmtDate(addDays(TODAY,30)),
-    uses: 42, savings: 2100.00, tickets: 42,
-    desc: 'Clientes mayoristas que superen Q500 en un ticket reciben Q50 de descuento automático.',
-  },
-  {
-    id: 'PRO-004', name: 'Precio especial detergente Ariel',
-    type: 'precio_esp', value: 32.00, status: 'active',
-    category: 'Limpieza', product: 'Detergente Ariel 1kg',
-    clientType: 'Todos', branches: 'Todas',
-    dias: [0,1,2,3,4,5,6], horaInicio: '', horaFin: '',
-    minCompra: 0, nxm_n: null, nxm_m: null,
-    dateStart: fmtDate(addDays(TODAY,-3)), dateEnd: fmtDate(addDays(TODAY,4)),
-    uses: 118, savings: 767.00, tickets: 118,
-    desc: 'Precio especial Q32.00 en Detergente Ariel 1kg (precio regular Q38.50).',
-  },
-  {
-    id: 'PRO-005', name: 'Combo desayuno — pan + leche + café',
-    type: 'combo', value: 15, status: 'scheduled',
-    category: null, product: 'Pan + Leche + Café',
-    clientType: 'Todos', branches: 'Zona 10',
-    dias: [0,1,2,3,4,5,6], horaInicio: '06:00', horaFin: '10:00',
-    minCompra: 0, nxm_n: null, nxm_m: null,
-    dateStart: fmtDate(addDays(TODAY,3)), dateEnd: fmtDate(addDays(TODAY,33)),
-    uses: 0, savings: 0, tickets: 0,
-    desc: '15% de descuento al comprar juntos Pan, Leche Foremost y Café Soluble.',
-  },
-  {
-    id: 'PRO-006', name: '5% descuento clientes minoristas',
-    type: 'pct_desc', value: 5, status: 'paused',
-    category: null, product: null,
-    clientType: 'Minorista', branches: 'Todas',
-    dias: [0,1,2,3,4,5,6], horaInicio: '', horaFin: '',
-    minCompra: 0, nxm_n: null, nxm_m: null,
-    dateStart: fmtDate(addDays(TODAY,-60)), dateEnd: fmtDate(addDays(TODAY,30)),
-    uses: 320, savings: 4800.00, tickets: 320,
-    desc: 'Descuento general del 5% para clientes tipo Minorista en todas las sucursales.',
-  },
-  {
-    id: 'PRO-007', name: 'Promo lácteos vencimiento próximo — 20%',
-    type: 'pct_desc', value: 20, status: 'expired',
-    category: 'Lácteos', product: null,
-    clientType: 'Todos', branches: 'Todas',
-    dias: [0,1,2,3,4,5,6], horaInicio: '', horaFin: '',
-    minCompra: 0, nxm_n: null, nxm_m: null,
-    dateStart: fmtDate(addDays(TODAY,-20)), dateEnd: fmtDate(addDays(TODAY,-1)),
-    uses: 67, savings: 890.00, tickets: 67,
-    desc: '20% de descuento en lácteos próximos a vencer. Aplicado automáticamente por el sistema.',
-  },
-];
 
 const STATUS_CFG = {
   active:    { label:'Activa',     pill:'success',  dot:true },
@@ -149,6 +71,7 @@ const NEW_DEFAULTS = {
 // ══════════════════════════════════════════════════════════════════════════════
 export default function Promotions({ pushToast }) {
   const { t } = useTranslation();
+  const { items: PROMOS, reload } = usePromotions();
   const [tab,      setTab]      = useState('activas');
   const [selPromo, setSelPromo] = useState(null);
   const [showNew,  setShowNew]  = useState(false);
@@ -184,18 +107,47 @@ export default function Promotions({ pushToast }) {
     p.id.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSave = () => {
+  // Empaqueta el formulario del wizard al shape del backend.
+  const toPayload = (f) => ({
+    name: f.name.trim(),
+    promoType: f.type,
+    status: f.status,
+    value: f.value !== '' ? Number(f.value) : null,
+    category: f.category || null,
+    product: f.product || null,
+    clientType: f.clientType,
+    branches: f.branches,
+    days: (f.dias || []).join(','),
+    horaInicio: f.horaInicio || null,
+    horaFin: f.horaFin || null,
+    minCompra: f.minCompra !== '' ? Number(f.minCompra) : null,
+    nxmN: f.nxm_n !== '' && f.nxm_n != null ? Number(f.nxm_n) : null,
+    nxmM: f.nxm_m !== '' && f.nxm_m != null ? Number(f.nxm_m) : null,
+    dateStart: f.dateStart || null,
+    dateEnd: f.dateEnd || null,
+    description: f.desc || null,
+  });
+
+  const handleSave = async () => {
     if (!form.name.trim()) { pushToast && pushToast('Ingresa el nombre de la promoción', 'danger'); return; }
-    pushToast && pushToast(`Promoción "${form.name}" creada`, 'success');
-    setShowNew(false);
-    setForm(NEW_DEFAULTS);
-    setStep(1);
+    try {
+      await createPromotion(toPayload(form));
+      pushToast && pushToast(`Promoción "${form.name}" creada`, 'success');
+      setShowNew(false);
+      setForm(NEW_DEFAULTS);
+      setStep(1);
+      reload();
+    } catch (err) { pushToast && pushToast('No se pudo crear la promoción: ' + err.message, 'error'); }
   };
 
-  const handleToggle = (promo) => {
-    const next = promo.status === 'active' ? 'pausada' : 'activa';
-    pushToast && pushToast(`Promoción ${next}`, 'success');
-    setSelPromo(null);
+  const handleToggle = async (promo) => {
+    const nextStatus = promo.status === 'active' ? 'paused' : 'active';
+    try {
+      await updatePromotion(promo.backendId, { ...toPayload(promo), status: nextStatus });
+      pushToast && pushToast(`Promoción ${nextStatus === 'active' ? 'activada' : 'pausada'}`, 'success');
+      setSelPromo(null);
+      reload();
+    } catch (err) { pushToast && pushToast('No se pudo actualizar la promoción: ' + err.message, 'error'); }
   };
 
   return (

@@ -2,6 +2,9 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import { useVariants } from '../hooks/useVariants.js';
+import { useProducts } from '../hooks/useCatalog.js';
+import { createVariant, updateVariant } from '../api/wave2.js';
 
 const Q = v => `Q ${v.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -87,7 +90,8 @@ function groupStatus(g) {
 
 export default function Variants({ pushToast }) {
   const { t } = useTranslation();
-  const [groups, setGroups]         = useState(INIT_GROUPS);
+  const { groups, categories, reload } = useVariants();
+  const { items: products } = useProducts();
   const [search, setSearch]         = useState('');
   const [filterCat, setFilterCat]   = useState('all');
   const [filterAttr, setFilterAttr] = useState('all');
@@ -123,32 +127,48 @@ export default function Variants({ pushToast }) {
     return true;
   }), [enriched, search, filterCat, filterAttr]);
 
+  // "Nuevo grupo" = elegir un producto del catálogo y abrir el alta de variante.
   function handleAddGroup(group) {
-    setGroups(prev => [...prev, { ...group, id: 'vg' + (prev.length + 1).toString().padStart(2, '0'), variants: [] }]);
     setGroupModal(false);
-    pushToast(`Grupo "${group.name}" creado`, 'success');
+    setVariantModal({ productId: group.productId, name: group.name, attrType: group.attrType });
   }
 
-  function handleAddVariant(groupId, variant) {
-    setGroups(prev => prev.map(g =>
-      g.id === groupId ? { ...g, variants: [...g.variants, { ...variant, active: true }] } : g
-    ));
-    // Sync selected drawer
-    setSelected(prev => prev?.id === groupId
-      ? { ...prev, variants: [...prev.variants, { ...variant, active: true }] }
-      : prev
-    );
-    setVariantModal(null);
-    pushToast('Variante agregada', 'success');
+  async function handleAddVariant(group, variant) {
+    try {
+      await createVariant({
+        productId: group.productId,
+        attributeType: group.attrType,
+        attributeValue: variant.label,
+        sku: variant.sku,
+        price: variant.price,
+        cost: variant.cost,
+        stock: variant.stock,
+        minStock: variant.min,
+        active: true,
+      });
+      setVariantModal(null);
+      setSelected(null);
+      pushToast('Variante agregada', 'success');
+      reload();
+    } catch (err) { pushToast('No se pudo agregar la variante: ' + err.message, 'error'); }
   }
 
-  function toggleVariant(groupId, sku) {
-    setGroups(prev => prev.map(g =>
-      g.id !== groupId ? g : {
-        ...g,
-        variants: g.variants.map(v => v.sku === sku ? { ...v, active: !v.active } : v),
-      }
-    ));
+  async function toggleVariant(group, variant) {
+    try {
+      await updateVariant(variant.id, {
+        productId: group.productId,
+        attributeType: group.attrType,
+        attributeValue: variant.label,
+        sku: variant.sku,
+        price: variant.price,
+        cost: variant.cost,
+        stock: variant.stock,
+        minStock: variant.min,
+        active: !variant.active,
+      });
+      reload();
+      setSelected(null);
+    } catch (err) { pushToast('No se pudo actualizar la variante: ' + err.message, 'error'); }
   }
 
   const statusBg  = { ok: 'var(--success)', low: 'var(--warning)', out: 'var(--danger)' };
@@ -208,7 +228,7 @@ export default function Variants({ pushToast }) {
         </div>
         <select className="input" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
           <option value="all">{t('variants.allCategories', 'Todas las categorías')}</option>
-          {CATS.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+          {categories.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
         </select>
         <select className="input" value={filterAttr} onChange={e => setFilterAttr(e.target.value)}>
           <option value="all">{t('variants.allAttributes', 'Todos los atributos')}</option>
@@ -343,7 +363,7 @@ export default function Variants({ pushToast }) {
                           <button
                             className={`chip ${v.active ? 'active' : ''}`}
                             style={{ fontSize: 9, padding: '2px 6px' }}
-                            onClick={() => { toggleVariant(selected.id, v.sku); }}
+                            onClick={() => { toggleVariant(selected, v); }}
                           >
                             {v.active ? t('variants.active', 'Activa') : t('variants.inactive', 'Inactiva')}
                           </button>
@@ -360,7 +380,7 @@ export default function Variants({ pushToast }) {
 
       {/* Modal nuevo grupo */}
       {groupModal && (
-        <GroupModal onClose={() => setGroupModal(false)} onSave={handleAddGroup} />
+        <GroupModal products={products} onClose={() => setGroupModal(false)} onSave={handleAddGroup} />
       )}
 
       {/* Modal nueva variante */}
@@ -368,64 +388,61 @@ export default function Variants({ pushToast }) {
         <VariantModal
           group={variantModal}
           onClose={() => setVariantModal(null)}
-          onSave={v => handleAddVariant(variantModal.id, v)}
+          onSave={v => handleAddVariant(variantModal, v)}
         />
       )}
     </div>
   );
 }
 
-// ── Modal: crear grupo de variantes ──────────────────────────────────────────
-function GroupModal({ onClose, onSave }) {
+// ── Modal: elegir producto + atributo para agregarle variantes ────────────────
+function GroupModal({ products = [], onClose, onSave }) {
   const { t } = useTranslation();
-  const [name,     setName]     = useState('');
-  const [brand,    setBrand]    = useState('');
-  const [cat,      setCat]      = useState('bebidas');
-  const [attrType, setAttrType] = useState('tamaño');
+  const [productId, setProductId] = useState('');
+  const [attrType,  setAttrType]  = useState('tamaño');
+  const [search,    setSearch]    = useState('');
 
-  const valid = name.trim() && brand.trim();
+  const filtered = products.filter(p => !search || (p.name || '').toLowerCase().includes(search.toLowerCase()));
+  const valid = productId;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
-          <h3>{t('variants.newGroupTitle', 'Nuevo grupo de variantes')}</h3>
+          <h3>{t('variants.newGroupTitle', 'Variantes de un producto')}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="close" /></button>
         </div>
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="field">
-            <label className="field-label">{t('variants.productName', 'Nombre del producto')}</label>
-            <input className="field-input" placeholder={t('variants.productNamePlaceholder', 'Ej. Coca-Cola')} value={name} onChange={e => setName(e.target.value)} />
+            <label className="field-label">{t('variants.searchProduct', 'Buscar producto')}</label>
+            <input className="field-input" placeholder={t('variants.productNamePlaceholder', 'Ej. Coca-Cola')} value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <div className="field">
-            <label className="field-label">{t('variants.brandSupplier', 'Marca / Proveedor')}</label>
-            <input className="field-input" placeholder={t('variants.brandPlaceholder', 'Ej. Coca-Cola Company')} value={brand} onChange={e => setBrand(e.target.value)} />
+            <label className="field-label">{t('common.product', 'Producto del catálogo')}</label>
+            <select className="field-input" value={productId} onChange={e => setProductId(e.target.value)}>
+              <option value="">{t('common.selectDots', 'Seleccionar…')}</option>
+              {filtered.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
           </div>
-          <div className="form-grid">
-            <div className="field">
-              <label className="field-label">{t('common.category', 'Categoría')}</label>
-              <select className="field-input" value={cat} onChange={e => setCat(e.target.value)}>
-                {['abarrotes','bebidas','lacteos','limpieza','higiene','snacks','congelados','papeleria','mascotas'].map(c => (
-                  <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label className="field-label">{t('variants.attributeType', 'Tipo de atributo')}</label>
-              <select className="field-input" value={attrType} onChange={e => setAttrType(e.target.value)}>
-                <option value="tamaño">{t('variants.attrSize', 'Tamaño')}</option>
-                <option value="peso">{t('variants.attrWeight', 'Peso')}</option>
-                <option value="sabor">{t('variants.attrFlavor', 'Sabor')}</option>
-                <option value="color">{t('variants.attrColor', 'Color')}</option>
-                <option value="otro">{t('variants.attrOther', 'Otro')}</option>
-              </select>
-            </div>
+          <div className="field">
+            <label className="field-label">{t('variants.attributeType', 'Tipo de atributo')}</label>
+            <select className="field-input" value={attrType} onChange={e => setAttrType(e.target.value)}>
+              <option value="tamaño">{t('variants.attrSize', 'Tamaño')}</option>
+              <option value="peso">{t('variants.attrWeight', 'Peso')}</option>
+              <option value="sabor">{t('variants.attrFlavor', 'Sabor')}</option>
+              <option value="color">{t('variants.attrColor', 'Color')}</option>
+              <option value="otro">{t('variants.attrOther', 'Otro')}</option>
+            </select>
           </div>
         </div>
         <div className="modal-foot">
           <button className="btn ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-          <button className="btn accent" disabled={!valid} onClick={() => onSave({ name, brand, cat, attrType })}>
-            <Icon name="check" size={13} /> {t('variants.createGroup', 'Crear grupo')}
+          <button className="btn accent" disabled={!valid}
+            onClick={() => {
+              const p = products.find(pp => String(pp.id) === String(productId));
+              onSave({ productId: Number(productId), name: p?.name || '', attrType });
+            }}>
+            <Icon name="check" size={13} /> {t('variants.addVariant', 'Agregar variante')}
           </button>
         </div>
       </div>

@@ -2,6 +2,9 @@
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
 import { useTranslation } from 'react-i18next';
+import { useStockCounts, mapSession } from '../hooks/useStockCount.js';
+import { useBranches } from '../hooks/useMasters.js';
+import { createStockCount, saveStockCountCounts, closeStockCount, getStockCount } from '../api/wave2.js';
 
 const Q = v => `Q ${v.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -85,7 +88,8 @@ function sessionDiscrepancies(lines) {
 
 export default function StockCount({ pushToast }) {
   const { t } = useTranslation();
-  const [sessions, setSessions]   = useState(INIT_SESSIONS);
+  const { items: sessions, reload: reloadSessions } = useStockCounts();
+  const { items: branches } = useBranches();
   const [tab, setTab]             = useState('active');
   const [selected, setSelected]   = useState(null);
   const [newModal, setNewModal]   = useState(false);
@@ -107,14 +111,9 @@ export default function StockCount({ pushToast }) {
     });
   }, [selected, lineFilter]);
 
+  // Edición local del conteo abierto (se persiste al finalizar / aplicar ajustes).
   function updateCount(sessionId, sku, value) {
     const qty = value === '' ? null : parseInt(value);
-    setSessions(prev => prev.map(s =>
-      s.id !== sessionId ? s : {
-        ...s,
-        lines: s.lines.map(l => l.sku === sku ? { ...l, countedQty: qty } : l),
-      }
-    ));
     setSelected(prev => prev?.id === sessionId ? {
       ...prev,
       lines: prev.lines.map(l => l.sku === sku ? { ...l, countedQty: qty } : l),
@@ -122,41 +121,49 @@ export default function StockCount({ pushToast }) {
   }
 
   function updateNote(sessionId, sku, note) {
-    setSessions(prev => prev.map(s =>
-      s.id !== sessionId ? s : {
-        ...s,
-        lines: s.lines.map(l => l.sku === sku ? { ...l, notes: note } : l),
-      }
-    ));
     setSelected(prev => prev?.id === sessionId ? {
       ...prev,
       lines: prev.lines.map(l => l.sku === sku ? { ...l, notes: note } : l),
     } : prev);
   }
 
-  function finalizeCount(sessionId) {
-    setSessions(prev => prev.map(s => s.id !== sessionId ? s : { ...s, status: 'review' }));
-    setSelected(prev => prev?.id === sessionId ? { ...prev, status: 'review' } : prev);
-    pushToast('Conteo enviado a revisión', 'success');
+  const countLines = (sess) => sess.lines.map(l => ({ itemId: l.itemId, countedQty: l.countedQty, lineNotes: l.notes }));
+
+  async function finalizeCount(sess) {
+    try {
+      const full = await saveStockCountCounts(sess.backendId, { lines: countLines(sess), status: 'review' });
+      setSelected(mapSession(full));
+      reloadSessions();
+      pushToast('Conteo enviado a revisión', 'success');
+    } catch (err) { pushToast('No se pudo finalizar el conteo: ' + err.message, 'error'); }
   }
 
-  function applyAdjustments(sessionId) {
-    const disc = sessionDiscrepancies(selected?.lines || []);
-    setSessions(prev => prev.map(s => s.id !== sessionId ? s : {
-      ...s,
-      status: 'completed',
-      discrepancies: disc.length,
-      adjustedQty: disc.reduce((sum, l) => sum + Math.abs(l.countedQty - l.systemQty), 0),
-    }));
-    setSelected(null);
-    pushToast(`${disc.length} ajustes de inventario aplicados`, 'success');
+  async function applyAdjustments(sess) {
+    try {
+      await saveStockCountCounts(sess.backendId, { lines: countLines(sess) });
+      const closed = await closeStockCount(sess.backendId);
+      const disc = closed.discrepancies ?? sessionDiscrepancies(sess.lines).length;
+      setSelected(null);
+      reloadSessions();
+      pushToast(`${disc} ajustes de inventario aplicados`, 'success');
+    } catch (err) { pushToast('No se pudo aplicar los ajustes: ' + err.message, 'error'); }
   }
 
-  function handleCreate(session) {
-    const id = `CNT-2026-${String(sessions.length + 4).padStart(3, '0')}`;
-    setSessions(prev => [{ ...session, id, status: 'in_progress', lines: [] }, ...prev]);
-    setNewModal(false);
-    pushToast(`Sesión ${id} creada`, 'success');
+  async function handleCreate(session) {
+    try {
+      await createStockCount({
+        branchId: session.branchId,
+        responsible: session.responsible,
+        category: session.category,
+        categoryLabel: session.categoryLabel,
+        notes: session.notes,
+        countDate: session.date,
+        items: [],
+      });
+      setNewModal(false);
+      pushToast('Sesión creada — se tomó foto del stock de la sucursal', 'success');
+      reloadSessions();
+    } catch (err) { pushToast('No se pudo crear la sesión: ' + err.message, 'error'); }
   }
 
   const activeSessions    = sessions.filter(s => ['in_progress', 'review', 'scheduled'].includes(s.status));
@@ -467,7 +474,7 @@ export default function StockCount({ pushToast }) {
                     <button
                       className="btn accent"
                       disabled={sessionProgress(selected).pct < 100}
-                      onClick={() => finalizeCount(selected.id)}
+                      onClick={() => finalizeCount(selected)}
                     >
                       <Icon name="check" size={13} /> Finalizar conteo
                     </button>
@@ -476,7 +483,7 @@ export default function StockCount({ pushToast }) {
                 {selected.status === 'review' && (
                   <>
                     <button className="btn ghost" onClick={() => setSelected(null)}>{t('common.cancel', 'Cancelar')}</button>
-                    <button className="btn accent" onClick={() => applyAdjustments(selected.id)}>
+                    <button className="btn accent" onClick={() => applyAdjustments(selected)}>
                       <Icon name="check" size={13} /> Aplicar ajustes al inventario
                     </button>
                   </>
@@ -489,22 +496,22 @@ export default function StockCount({ pushToast }) {
 
       {/* Modal nueva sesión */}
       {newModal && (
-        <NewSessionModal onClose={() => setNewModal(false)} onSave={handleCreate} />
+        <NewSessionModal branches={branches} onClose={() => setNewModal(false)} onSave={handleCreate} />
       )}
     </div>
   );
 }
 
 // ── Modal: nueva sesión de conteo ─────────────────────────────────────────────
-function NewSessionModal({ onClose, onSave }) {
+function NewSessionModal({ branches = [], onClose, onSave }) {
   const { t } = useTranslation();
-  const [date,        setDate]        = useState('2026-05-24');
-  const [branch,      setBranch]      = useState('Zona 10');
+  const [date,        setDate]        = useState(new Date().toISOString().slice(0, 10));
+  const [branchId,    setBranchId]    = useState('');
   const [category,    setCategory]    = useState('all');
   const [responsible, setResponsible] = useState('');
   const [notes,       setNotes]       = useState('');
 
-  const valid = date && branch && responsible;
+  const valid = date && branchId && responsible;
   const CAT_LABEL = { all: 'Todas las categorías', abarrotes: 'Abarrotes', bebidas: 'Bebidas', lacteos: 'Lácteos', limpieza: 'Limpieza', higiene: 'Higiene', snacks: 'Snacks' };
 
   return (
@@ -522,9 +529,10 @@ function NewSessionModal({ onClose, onSave }) {
             </div>
             <div className="field">
               <label className="field-label">{t('common.branch', 'Sucursal')}</label>
-              <select className="field-input" value={branch} onChange={e => setBranch(e.target.value)}>
-                {['Zona 10', 'Centro', 'Mixco', 'Antigua', 'Escuintla'].map(b => (
-                  <option key={b} value={b}>{b}</option>
+              <select className="field-input" value={branchId} onChange={e => setBranchId(e.target.value)}>
+                <option value="">{t('common.selectDots', 'Seleccionar…')}</option>
+                {branches.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
               </select>
             </div>
@@ -551,7 +559,7 @@ function NewSessionModal({ onClose, onSave }) {
         <div className="modal-foot">
           <button className="btn ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
           <button className="btn accent" disabled={!valid}
-            onClick={() => onSave({ date, branch, category, categoryLabel: CAT_LABEL[category], responsible, notes })}>
+            onClick={() => onSave({ date, branchId: Number(branchId), category, categoryLabel: CAT_LABEL[category], responsible, notes })}>
             <Icon name="check" size={13} /> Iniciar sesión
           </button>
         </div>

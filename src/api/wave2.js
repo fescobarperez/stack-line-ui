@@ -16,16 +16,20 @@ export const createSupplierPayment = (data) => api.post('/api/supplier-payments'
 export const listCreditNotes = (opts) => api.get(`/api/credit-notes?${paged(opts)}`);
 export const getCreditNote = (id) => api.get(`/api/credit-notes/${id}`);
 export const createCreditNote = (data) => api.post('/api/credit-notes', data);
+export const retryCreditNoteFel = (id, data) => api.put(`/api/credit-notes/${id}/fel`, data || {});
 
-// ── Cotizaciones ──────────────────────────────────────────────────────
-export const listQuotes = (opts) => api.get(`/api/quotes?${paged(opts)}`);
+// ── Cotizaciones (a cliente) y RFQ (a proveedor) vía partyType ────────
+export const listQuotes = ({ partyType, ...opts } = {}) =>
+  api.get(`/api/quotes?${paged(opts)}${partyType ? `&partyType=${partyType}` : ''}`);
 export const getQuote = (id) => api.get(`/api/quotes/${id}`);
 export const createQuote = (data) => api.post('/api/quotes', data);
+export const updateQuoteStatus = (id, data) => api.put(`/api/quotes/${id}/status`, data);
 
 // ── Toma física ───────────────────────────────────────────────────────
 export const listStockCounts = (opts) => api.get(`/api/stock-counts?${paged(opts)}`);
 export const getStockCount = (id) => api.get(`/api/stock-counts/${id}`);
 export const createStockCount = (data) => api.post('/api/stock-counts', data);
+export const saveStockCountCounts = (id, data) => api.put(`/api/stock-counts/${id}/counts`, data);
 export const closeStockCount = (id) => api.post(`/api/stock-counts/${id}/close`);
 
 // ── Unidades de medida ────────────────────────────────────────────────

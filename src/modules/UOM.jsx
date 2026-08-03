@@ -10,6 +10,25 @@ import { createUnit, updateUnit } from '../api/wave2.js';
 
 const Q = v => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// Tipos de unidad. El backend guarda `uom_type` como texto libre; estos son los
+// valores que ofrece el alta (modal) y con los que se etiqueta/colorea la tabla.
+const TYPE_LABEL = {
+  count:  'Conteo',
+  weight: 'Peso',
+  volume: 'Volumen',
+  length: 'Longitud',
+  area:   'Área',
+  pack:   'Empaque',
+};
+const TYPE_CLASS = {
+  count:  'neutral',
+  weight: 'info',
+  volume: 'accent',
+  length: 'warning',
+  area:   'success',
+  pack:   'accent',
+};
+
 // ── (catálogo y productos vienen del backend)
 
 // ── Modal: nueva UOM ──────────────────────────────────────────────────────
@@ -141,6 +160,34 @@ function AddConvModal({ product, uoms, onSave, onClose }) {
   );
 }
 
+// ── Mapeo backend → shape del componente ───────────────────────────────────
+
+// Unidad de medida. Backend UnitResponse: { id, code, name, symbol, uomType,
+// isBase, active } → shape que consume la tabla/modales.
+function mapUnit(u) {
+  return {
+    id: u.id,
+    code: u.code,
+    name: u.name,
+    symbol: u.symbol,
+    type: u.uomType,
+    base: !!u.isBase,
+    active: u.active !== false,
+  };
+}
+
+// Producto → conversiones de unidad. El backend (ProductResponse) no expone
+// conversiones por producto: solo la unidad base (`unit`) y el precio. Por eso
+// cada producto queda con una sola conversión: su unidad base (de venta).
+function mapProdConv(p) {
+  return {
+    sku: p.sku,
+    name: p.name,
+    baseUom: p.unit,
+    convs: [{ uom: p.unit, factor: 1, price: Number(p.price || 0), isPurchase: false, isSale: true }],
+  };
+}
+
 // ── Componente principal ───────────────────────────────────────────────────
 
 export default function UOM({ pushToast }) {
@@ -150,7 +197,8 @@ export default function UOM({ pushToast }) {
   const { items: productsRaw } = useProducts();
   const uoms = useMemo(() => unitsRaw.map(mapUnit), [unitsRaw]);
   const products = useMemo(() => productsRaw.map(mapProdConv), [productsRaw]);
-  const [search, setSearch]   = useState('');
+  const [search, setSearch]   = useState('');       // filtro tab Conversiones (productos)
+  const [unitSearch, setUnitSearch] = useState(''); // filtro tab Catálogo (unidades)
   const [selected, setSelected] = useState(null);
   const [showUomModal, setShowUomModal] = useState(false);
   const [showConvModal, setShowConvModal] = useState(false);
@@ -163,6 +211,14 @@ export default function UOM({ pushToast }) {
 
   const filtered = products.filter(p =>
     !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.includes(search)
+  );
+
+  const q = unitSearch.toLowerCase();
+  const filteredUoms = uoms.filter(u =>
+    !unitSearch
+    || u.code.toLowerCase().includes(q)
+    || u.name.toLowerCase().includes(q)
+    || (u.symbol || '').toLowerCase().includes(q)
   );
 
   const toggleUomActive = async (u) => {
@@ -262,8 +318,17 @@ export default function UOM({ pushToast }) {
 
       {/* ── Tab: Catálogo ─────────────────────────────────────────────── */}
       {tab === 'catalog' && (
-        <div className="card" style={{ borderTopLeftRadius: 0 }}>
-          <div className="table-wrap" style={{ border: 'none', margin: 0, borderRadius: 0 }}>
+        <>
+          <div className="filterbar" style={{ marginTop: 16 }}>
+            <div style={{ position: 'relative', width: 240 }}>
+              <Icon name="search" size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+              <input className="input" style={{ width: '100%', paddingLeft: 26 }}
+                placeholder={t('uom.searchUnitPlaceholder', 'Buscar unidad, código o símbolo…')}
+                value={unitSearch} onChange={e => setUnitSearch(e.target.value)} />
+            </div>
+          </div>
+          <div className="card">
+          <div className="table-wrap" style={{ border: 'none', margin: 0 }}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -277,12 +342,12 @@ export default function UOM({ pushToast }) {
                 </tr>
               </thead>
               <tbody>
-                {uoms.map(u => (
+                {filteredUoms.map(u => (
                   <tr key={u.code}>
                     <td><span className="mono" style={{ fontWeight: 700, fontSize: 12.5 }}>{u.code}</span></td>
                     <td style={{ fontWeight: 500 }}>{u.name}</td>
                     <td><span className="mono muted">{u.symbol}</span></td>
-                    <td><span className={`pill ${TYPE_CLASS[u.type]}`}>{TYPE_LABEL[u.type]}</span></td>
+                    <td><span className={`pill ${TYPE_CLASS[u.type] || 'neutral'}`}>{TYPE_LABEL[u.type] || u.type || '—'}</span></td>
                     <td>{u.base ? <span className="pill success">{t('uom.baseLabel', 'Base')}</span> : <span className="muted">—</span>}</td>
                     <td>
                       <span className={`pill ${u.active ? 'success' : ''}`}>
@@ -301,20 +366,23 @@ export default function UOM({ pushToast }) {
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {/* ── Tab: Conversiones ─────────────────────────────────────────── */}
       {tab === 'products' && (
-        <div className="card" style={{ borderTopLeftRadius: 0 }}>
-          <div className="filterbar" style={{ padding: '10px 16px' }}>
-            <div className="field-wrap search-wrap">
-              <Icon name="search" className="field-icon" size={13} />
-              <input className="field-input" placeholder={t('uom.searchPlaceholder', 'Buscar producto o SKU…')}
+        <>
+          <div className="filterbar" style={{ marginTop: 16 }}>
+            <div style={{ position: 'relative', width: 240 }}>
+              <Icon name="search" size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+              <input className="input" style={{ width: '100%', paddingLeft: 26 }}
+                placeholder={t('uom.searchPlaceholder', 'Buscar producto o SKU…')}
                 value={search} onChange={e => setSearch(e.target.value)} />
             </div>
           </div>
-          <div className="table-wrap" style={{ border: 'none', margin: 0, borderRadius: 0 }}>
+          <div className="card">
+          <div className="table-wrap" style={{ border: 'none', margin: 0 }}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -362,7 +430,8 @@ export default function UOM({ pushToast }) {
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {/* ── Drawer: conversiones del producto ─────────────────────────── */}

@@ -2,6 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
 import { useTranslation } from 'react-i18next';
+import { useEmployees, usePayrollPeriods } from '../hooks/usePayroll.js';
+import { generatePayroll, closePayroll, payrollIgssReport, payrollIsrReport, createEmployee } from '../api/wave3.js';
 
 const Q = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -65,6 +67,25 @@ function calcPayroll(emp) {
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
+// Abre una ventana nueva con SOLO el contenido indicado y dispara la impresión
+// (evita imprimir toda la app como un screenshot).
+function printHTML(title, innerHTML) {
+  const w = window.open('', '_blank', 'width=980,height=680');
+  if (!w) { alert('Permite las ventanas emergentes para imprimir.'); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+    <style>
+      *{box-sizing:border-box;} body{font-family:system-ui,-apple-system,Arial,sans-serif;color:#111;padding:26px;font-size:12px;margin:0;}
+      h1{font-size:16px;margin:0 0 2px;} .sub{color:#666;font-size:11px;margin-bottom:18px;}
+      table{width:100%;border-collapse:collapse;} caption{caption-side:top;text-align:left;}
+      th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;font-size:11px;}
+      th{background:#f2f2f2;font-size:10px;text-transform:uppercase;letter-spacing:.04em;}
+      td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:ui-monospace,monospace;}
+      tfoot td{font-weight:700;background:#fafafa;}
+      @media print{body{padding:0;}}
+    </style></head><body>${innerHTML}<script>window.onload=function(){window.print();}</script></body></html>`);
+  w.document.close();
+}
+
 const PAYROLL_HISTORY = [
   { id:'PL-2026-04', month:3,  year:2026, period:'Abril 2026',     status:'cerrada', total:45820.50, employees:7 },
   { id:'PL-2026-03', month:2,  year:2026, period:'Marzo 2026',     status:'cerrada', total:45820.50, employees:7 },
@@ -75,11 +96,16 @@ const PAYROLL_HISTORY = [
 // ══════════════════════════════════════════════════════════════════════════════
 export default function Payroll({ pushToast }) {
   const { t } = useTranslation();
+  const { items: EMPLOYEES, reload: reloadEmployees } = useEmployees();
+  const { items: PAYROLL_HISTORY, reload: reloadHistory } = usePayrollPeriods();
   const [tab, setTab] = useState('planilla');
   const [selEmp, setSelEmp] = useState(null);
   const [showEmpModal, setShowEmpModal] = useState(false);
   const [showRecibo, setShowRecibo] = useState(null);
   const [showGenModal, setShowGenModal] = useState(false);
+  const [genPeriod, setGenPeriod] = useState(null);   // período generado (procesado)
+  const [genBusy, setGenBusy] = useState(false);
+  const [report, setReport] = useState(null);         // { type:'igss'|'isr', data }
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('todos');
 
@@ -92,7 +118,7 @@ export default function Payroll({ pushToast }) {
 
   const rows = useMemo(() =>
     activeEmps.map(e => ({ ...e, calc: calcPayroll(e) })),
-    []
+    [EMPLOYEES] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const summary = useMemo(() => ({
@@ -112,9 +138,130 @@ export default function Payroll({ pushToast }) {
     return true;
   });
 
-  const handleCerrarPlanilla = () => {
-    pushToast && pushToast(`Planilla ${periodLabel} cerrada y enviada a contabilidad`, 'success');
-    setShowGenModal(false);
+  const periodCode = `PL-${curYear}-${String(curMonth + 1).padStart(2, '0')}`;
+
+  // Genera y procesa la planilla del mes (idempotente en backend). Deja el
+  // período disponible para consultar IGSS/SAT o cerrarlo.
+  const handleGenerar = async () => {
+    setGenBusy(true);
+    try {
+      const period = await generatePayroll({ periodCode, name: periodLabel, month: curMonth + 1, year: curYear });
+      setGenPeriod(period);
+      pushToast && pushToast(`Planilla ${periodLabel} generada — ${period.employeeCount} empleados procesados`, 'success');
+      reloadHistory();
+    } catch (err) {
+      pushToast && pushToast('No se pudo generar la planilla: ' + err.message, 'error');
+    } finally { setGenBusy(false); }
+  };
+
+  const handleCerrarPlanilla = async () => {
+    if (!genPeriod) { pushToast && pushToast('Primero genera la planilla', 'danger'); return; }
+    setGenBusy(true);
+    try {
+      await closePayroll(genPeriod.id);
+      pushToast && pushToast(`Planilla ${periodLabel} cerrada y enviada a contabilidad`, 'success');
+      setShowGenModal(false);
+      setGenPeriod(null);
+      reloadHistory();
+    } catch (err) {
+      pushToast && pushToast('No se pudo cerrar la planilla: ' + err.message, 'error');
+    } finally { setGenBusy(false); }
+  };
+
+  // Reportes IGSS / SAT-ISR de un período ya procesado.
+  const openReport = async (periodId, type) => {
+    try {
+      const data = type === 'igss' ? await payrollIgssReport(periodId) : await payrollIsrReport(periodId);
+      setReport({ type, data });
+    } catch (err) {
+      pushToast && pushToast('No se pudo obtener el reporte: ' + err.message, 'error');
+    }
+  };
+
+  const handleCreateEmployee = async (emp) => {
+    try {
+      await createEmployee({
+        employeeCode: emp.code, name: emp.name, department: emp.dept, position: emp.pos,
+        salary: Number(emp.salary || 0), status: 'active', hiredDate: emp.hired || null,
+        dpi: emp.dpi, nit: emp.nit, bankName: emp.banco, bankAccount: emp.cuenta,
+      });
+      pushToast && pushToast(`Empleado ${emp.name} creado`, 'success');
+      setShowEmpModal(false);
+      reloadEmployees();
+    } catch (err) {
+      pushToast && pushToast('No se pudo crear el empleado: ' + err.message, 'error');
+    }
+  };
+
+  // Imprime SOLO la tabla de la planilla del período actual.
+  const printPlanilla = () => {
+    const head = ['Empleado', 'Puesto', 'Salario base', 'Bon. incentivo', 'IGSS emp.', 'ISR mensual',
+      'Total deducc.', 'Neto a pagar', 'IGSS patronal', 'Costo empresa'];
+    const body = rows.map(r => `<tr>
+      <td>${r.name}<br><span style="color:#888;font-size:9px">${r.id}</span></td>
+      <td>${r.pos}</td>
+      <td class="num">${Q(r.calc.base)}</td>
+      <td class="num">${Q(r.calc.bon)}</td>
+      <td class="num">-${Q(r.calc.igssE)}</td>
+      <td class="num">-${Q(r.calc.isrM)}</td>
+      <td class="num">-${Q(r.calc.deducc)}</td>
+      <td class="num">${Q(r.calc.neto)}</td>
+      <td class="num">${Q(r.calc.igssP)}</td>
+      <td class="num">${Q(r.calc.totalEmp)}</td></tr>`).join('');
+    const foot = `<tr>
+      <td colspan="2">Totales (${activeEmps.length} empleados)</td>
+      <td class="num">${Q(summary.totalBase)}</td>
+      <td class="num">${Q(summary.totalBon)}</td>
+      <td class="num">-${Q(summary.totalIgssE)}</td>
+      <td class="num">-${Q(summary.totalIsr)}</td>
+      <td class="num">-${Q(summary.totalIgssE + summary.totalIsr)}</td>
+      <td class="num">${Q(summary.totalNeto)}</td>
+      <td class="num">${Q(summary.totalIgssP)}</td>
+      <td class="num">${Q(summary.totalEmpresa)}</td></tr>`;
+    printHTML(`Planilla ${periodLabel}`, `
+      <h1>Planilla de sueldos — ${periodLabel}</h1>
+      <div class="sub">Cálculos según Decreto 295 (IGSS) y Ley del ISR de Guatemala</div>
+      <table><thead><tr>${head.map((h, i) => `<th class="${i >= 2 ? 'num' : ''}">${h}</th>`).join('')}</tr></thead>
+      <tbody>${body}</tbody><tfoot>${foot}</tfoot></table>`);
+  };
+
+  // Exporta la planilla actual (preview) a CSV abrible en Excel.
+  const exportPlanillaCsv = () => {
+    const headers = ['Codigo', 'Empleado', 'Puesto', 'Departamento', 'Salario base', 'Bonificacion',
+      'IGSS empleado', 'ISR mensual', 'Total deducciones', 'Neto a pagar', 'IGSS patronal', 'Costo empresa'];
+    const lines = rows.map(r => [
+      r.id, r.name, r.pos, r.dept,
+      r.calc.base.toFixed(2), r.calc.bon.toFixed(2), r.calc.igssE.toFixed(2), r.calc.isrM.toFixed(2),
+      r.calc.deducc.toFixed(2), r.calc.neto.toFixed(2), r.calc.igssP.toFixed(2), r.calc.totalEmp.toFixed(2),
+    ]);
+    const csv = [headers, ...lines]
+      .map(row => row.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `planilla-${periodCode}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    pushToast && pushToast('Planilla exportada a CSV', 'success');
+  };
+
+  // Desde "Planilla actual" (preview): asegura que el período del mes exista
+  // y esté procesado en el backend, y luego abre el reporte IGSS o SAT.
+  const openReportForCurrent = async (type) => {
+    setGenBusy(true);
+    try {
+      let period = genPeriod;
+      if (!period) {
+        period = await generatePayroll({ periodCode, name: periodLabel, month: curMonth + 1, year: curYear });
+        setGenPeriod(period);
+        reloadHistory();
+      }
+      await openReport(period.id, type);
+    } catch (err) {
+      pushToast && pushToast('No se pudo generar el reporte: ' + err.message, 'error');
+    } finally { setGenBusy(false); }
   };
 
   return (
@@ -131,7 +278,7 @@ export default function Payroll({ pushToast }) {
           <button className="btn" onClick={() => setShowEmpModal(true)}>
             <Icon name="plus" size={12} />{t('payroll.newEmployee', 'Nuevo empleado')}
           </button>
-          <button className="btn accent" onClick={() => setShowGenModal(true)}>
+          <button className="btn accent" onClick={() => { setGenPeriod(null); setShowGenModal(true); }}>
             <Icon name="receipt" size={12} />{t('payroll.generatePayroll', 'Generar planilla')}
           </button>
         </div>
@@ -185,8 +332,12 @@ export default function Payroll({ pushToast }) {
                 <div className="meta">{t('payroll.calculationsNote', 'Todos los cálculos según Decreto 295 (IGSS) y Ley ISR Guatemala')}</div>
               </div>
               <div className="row gap-6">
-                <button className="btn sm"><Icon name="download" size={12}/>Excel</button>
-                <button className="btn sm"><Icon name="print" size={12}/>{t('common.print', 'Imprimir')}</button>
+                <button className="btn sm" disabled={rows.length === 0} onClick={exportPlanillaCsv}>
+                  <Icon name="download" size={12}/>Excel
+                </button>
+                <button className="btn sm" disabled={rows.length === 0} onClick={printPlanilla}>
+                  <Icon name="print" size={12}/>{t('common.print', 'Imprimir')}
+                </button>
               </div>
             </div>
             <div className="tbl-wrap">
@@ -270,7 +421,8 @@ export default function Payroll({ pushToast }) {
                     <span className="mono" style={{color:'var(--accent)'}}>{Q(summary.totalIgssE + summary.totalIgssP)}</span>
                   </div>
                 </div>
-                <button className="btn accent" style={{marginTop:12, width:'100%'}}>
+                <button className="btn accent" style={{marginTop:12, width:'100%'}}
+                  disabled={genBusy || activeEmps.length === 0} onClick={() => openReportForCurrent('igss')}>
                   <Icon name="receipt" size={12}/>{t('payroll.generateIgssPayroll', 'Generar planilla IGSS')}
                 </button>
               </div>
@@ -292,7 +444,8 @@ export default function Payroll({ pushToast }) {
                     <span className="mono" style={{color:'var(--accent)'}}>{Q(summary.totalIsr)}</span>
                   </div>
                 </div>
-                <button className="btn accent" style={{marginTop:12, width:'100%'}}>
+                <button className="btn accent" style={{marginTop:12, width:'100%'}}
+                  disabled={genBusy || activeEmps.length === 0} onClick={() => openReportForCurrent('isr')}>
                   <Icon name="receipt" size={12}/>{t('payroll.generateSatForm', 'Generar formulario SAT')}
                 </button>
               </div>
@@ -396,8 +549,12 @@ export default function Payroll({ pushToast }) {
                   <td><span className="pill success"><span className="dot"/>{t('payroll.closed', 'Cerrada')}</span></td>
                   <td>
                     <div className="row gap-6">
-                      <button className="btn sm ghost"><Icon name="eye" size={11}/>{t('common.view', 'Ver')}</button>
-                      <button className="btn sm ghost"><Icon name="download" size={11}/>Excel</button>
+                      <button className="btn sm ghost" onClick={() => openReport(p.backendId, 'igss')}>
+                        <Icon name="shield" size={11}/>IGSS
+                      </button>
+                      <button className="btn sm ghost" onClick={() => openReport(p.backendId, 'isr')}>
+                        <Icon name="receipt" size={11}/>SAT
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -630,14 +787,33 @@ export default function Payroll({ pushToast }) {
                 </div>
               </div>
             </div>
-            <div className="modal-foot">
-              <button className="btn ghost" onClick={() => setShowGenModal(false)}>{t('common.cancel', 'Cancelar')}</button>
-              <button className="btn" onClick={() => { pushToast && pushToast('Planilla exportada a Excel', ''); setShowGenModal(false); }}>
-                <Icon name="download" size={12}/>{t('payroll.exportExcel', 'Exportar Excel')}
-              </button>
-              <button className="btn accent" onClick={handleCerrarPlanilla}>
-                <Icon name="check" size={12}/>{t('payroll.closePayroll', 'Cerrar planilla')}
-              </button>
+            {genPeriod && (
+              <div style={{ padding: '0 16px 8px' }}>
+                <div className="alert" style={{ background: 'var(--success-soft)', color: 'var(--success)', borderColor: 'var(--success)' }}>
+                  <Icon name="check" size={13} />
+                  {t('payroll.generatedNote', 'Planilla generada y procesada. Ya puedes consultar la planilla de IGSS y el formulario de ISR (SAT), o cerrarla.')}
+                </div>
+              </div>
+            )}
+            <div className="modal-foot" style={{ flexWrap: 'wrap', gap: 8 }}>
+              <button className="btn ghost" onClick={() => { setShowGenModal(false); setGenPeriod(null); }}>{t('common.cancel', 'Cancelar')}</button>
+              {!genPeriod ? (
+                <button className="btn accent" disabled={genBusy} onClick={handleGenerar}>
+                  <Icon name="receipt" size={12}/>{t('payroll.generateProcess', 'Generar y procesar')}
+                </button>
+              ) : (
+                <>
+                  <button className="btn" onClick={() => openReport(genPeriod.id, 'igss')}>
+                    <Icon name="shield" size={12}/>{t('payroll.igssPayroll', 'Planilla IGSS')}
+                  </button>
+                  <button className="btn" onClick={() => openReport(genPeriod.id, 'isr')}>
+                    <Icon name="receipt" size={12}/>{t('payroll.satForm', 'Formulario SAT (ISR)')}
+                  </button>
+                  <button className="btn accent" disabled={genBusy} onClick={handleCerrarPlanilla}>
+                    <Icon name="check" size={12}/>{t('payroll.closePayroll', 'Cerrar planilla')}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -656,6 +832,220 @@ export default function Payroll({ pushToast }) {
           </div>
         </div>
       )}
+
+      {/* ── MODAL: Reporte IGSS / SAT (ISR) ── */}
+      {report && (
+        <ReportModal report={report} Q={Q} onClose={() => setReport(null)} />
+      )}
+
+      {/* ── MODAL: Nuevo empleado ── */}
+      {showEmpModal && (
+        <NewEmployeeModal onClose={() => setShowEmpModal(false)} onSave={handleCreateEmployee} />
+      )}
+    </div>
+  );
+}
+
+// ── Nuevo empleado ────────────────────────────────────────────────────────────
+function NewEmployeeModal({ onClose, onSave }) {
+  const { t } = useTranslation();
+  const [code, setCode]     = useState('');
+  const [name, setName]     = useState('');
+  const [dept, setDept]     = useState(DEPARTAMENTOS[0]);
+  const [pos, setPos]       = useState(PUESTOS_BY_DEPT[DEPARTAMENTOS[0]][0]);
+  const [salary, setSalary] = useState('');
+  const [hired, setHired]   = useState(new Date().toISOString().slice(0, 10));
+  const [dpi, setDpi]       = useState('');
+  const [nit, setNit]       = useState('');
+  const [banco, setBanco]   = useState('');
+  const [cuenta, setCuenta] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const puestos = PUESTOS_BY_DEPT[dept] || [];
+  const valid = code.trim() && name.trim() && Number(salary) > 0;
+
+  const submit = async () => {
+    setSaving(true);
+    await onSave({ code: code.trim(), name: name.trim(), dept, pos, salary, hired, dpi, nit, banco, cuenta });
+    setSaving(false);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ width: 560, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>{t('payroll.newEmployee', 'Nuevo empleado')}</h3>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
+        </div>
+        <div className="modal-body" style={{ overflow: 'auto', flex: 1 }}>
+          <div className="form-grid">
+            <div className="field">
+              <label className="field-label">{t('payroll.employeeCode', 'Código *')}</label>
+              <input className="field-input mono" placeholder="EMP-009" value={code} onChange={e => setCode(e.target.value)} />
+            </div>
+            <div className="field">
+              <label className="field-label">{t('payroll.headers.baseSalary', 'Salario base (Q) *')}</label>
+              <input className="field-input mono" type="number" min="0" step="0.01" placeholder="4500.00" value={salary} onChange={e => setSalary(e.target.value)} />
+            </div>
+            <div className="field span-2">
+              <label className="field-label">{t('common.name', 'Nombre completo *')}</label>
+              <input className="field-input" placeholder="Nombre y apellidos" value={name} onChange={e => setName(e.target.value)} />
+            </div>
+            <div className="field">
+              <label className="field-label">{t('payroll.headers.department', 'Departamento')}</label>
+              <select className="field-input" value={dept} onChange={e => { setDept(e.target.value); setPos((PUESTOS_BY_DEPT[e.target.value] || [''])[0]); }}>
+                {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label className="field-label">{t('payroll.headers.position', 'Puesto')}</label>
+              <select className="field-input" value={pos} onChange={e => setPos(e.target.value)}>
+                {puestos.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label className="field-label">{t('payroll.hiredDate', 'Fecha de ingreso')}</label>
+              <input className="field-input" type="date" value={hired} onChange={e => setHired(e.target.value)} />
+            </div>
+            <div className="field">
+              <label className="field-label">DPI</label>
+              <input className="field-input mono" placeholder="0000000000000" value={dpi} onChange={e => setDpi(e.target.value)} />
+            </div>
+            <div className="field">
+              <label className="field-label">NIT</label>
+              <input className="field-input mono" placeholder="0000000-0" value={nit} onChange={e => setNit(e.target.value)} />
+            </div>
+            <div className="field">
+              <label className="field-label">{t('payroll.bank', 'Banco')}</label>
+              <input className="field-input" placeholder="Industrial" value={banco} onChange={e => setBanco(e.target.value)} />
+            </div>
+            <div className="field span-2">
+              <label className="field-label">{t('payroll.bankAccount', 'Cuenta bancaria')}</label>
+              <input className="field-input mono" placeholder="0000-000000" value={cuenta} onChange={e => setCuenta(e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="modal-foot">
+          <button className="btn ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
+          <button className="btn accent" disabled={!valid || saving} onClick={submit}>
+            <Icon name="check" size={13} /> {t('payroll.createEmployee', 'Crear empleado')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Reporte de IGSS / SAT-ISR ────────────────────────────────────────────────
+function ReportModal({ report, Q, onClose }) {
+  const { data, type } = report;
+  const isIgss = type === 'igss';
+  const title = isIgss ? 'Planilla de IGSS' : 'Formulario SAT — Retención ISR';
+  const subtitle = isIgss
+    ? 'Cuota laboral (4.83%) y patronal (10.67%) · Decreto 295'
+    : 'Retención de ISR en relación de dependencia · régimen general';
+
+  // Imprime SOLO la tabla del reporte.
+  const onPrint = () => {
+    const rowsHtml = (data.lines || []).map(l => isIgss
+      ? `<tr><td>${l.name || ''}</td><td>${l.dpi || '—'}</td><td>${l.nit || '—'}</td>
+         <td class="num">${Q(l.baseSalary)}</td><td class="num">${Q(l.igssLaboral)}</td><td class="num">${Q(l.igssPatronal)}</td></tr>`
+      : `<tr><td>${l.name || ''}</td><td>${l.nit || '—'}</td>
+         <td class="num">${Q(l.annualSalary)}</td><td class="num">${Q(l.taxableIncome)}</td>
+         <td class="num">${Q(l.isrAnnual)}</td><td class="num">${Q(l.isrMonthly)}</td></tr>`).join('');
+    const head = isIgss
+      ? '<th>Empleado</th><th>DPI</th><th>NIT</th><th class="num">Salario base</th><th class="num">IGSS laboral</th><th class="num">IGSS patronal</th>'
+      : '<th>Empleado</th><th>NIT</th><th class="num">Salario anual</th><th class="num">Renta gravable</th><th class="num">ISR anual</th><th class="num">ISR mensual</th>';
+    const foot = isIgss
+      ? `<tr><td colspan="3">Totales (${data.employeeCount || 0})</td><td class="num">${Q(data.totalBase)}</td><td class="num">${Q(data.totalLaboral)}</td><td class="num">${Q(data.totalPatronal)}</td></tr>`
+      : `<tr><td colspan="4">Totales (${data.employeeCount || 0})</td><td class="num">${Q(data.totalIsrAnnual)}</td><td class="num">${Q(data.totalIsrMonthly)}</td></tr>`;
+    printHTML(`${title} ${data.periodName || ''}`, `
+      <h1>${title} — ${data.periodName || ''}</h1><div class="sub">${subtitle}</div>
+      <table><thead><tr>${head}</tr></thead><tbody>${rowsHtml}</tbody><tfoot>${foot}</tfoot></table>
+      ${isIgss ? `<p style="margin-top:14px"><strong>Total a enterar al IGSS:</strong> ${Q(data.totalIgss)}</p>` : ''}`);
+  };
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ width: 720, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <div>
+            <h3>{title} — {data.periodName || ''}</h3>
+            <div className="meta" style={{ fontSize: 11, color: 'var(--muted)' }}>{subtitle}</div>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
+        </div>
+        <div className="modal-body" style={{ overflow: 'auto', flex: 1 }}>
+          <table className="tbl" style={{ fontSize: 11.5 }}>
+            <thead>
+              {isIgss ? (
+                <tr>
+                  <th>Empleado</th><th>DPI</th><th>NIT</th>
+                  <th className="num">Salario base</th>
+                  <th className="num">IGSS laboral</th>
+                  <th className="num">IGSS patronal</th>
+                </tr>
+              ) : (
+                <tr>
+                  <th>Empleado</th><th>NIT</th>
+                  <th className="num">Salario anual</th>
+                  <th className="num">Renta gravable</th>
+                  <th className="num">ISR anual</th>
+                  <th className="num">ISR mensual</th>
+                </tr>
+              )}
+            </thead>
+            <tbody>
+              {(data.lines || []).map((l, i) => isIgss ? (
+                <tr key={i}>
+                  <td>{l.name}</td>
+                  <td className="code muted">{l.dpi || '—'}</td>
+                  <td className="code muted">{l.nit || '—'}</td>
+                  <td className="num">{Q(l.baseSalary)}</td>
+                  <td className="num" style={{ color: 'var(--danger)' }}>{Q(l.igssLaboral)}</td>
+                  <td className="num" style={{ color: 'var(--muted)' }}>{Q(l.igssPatronal)}</td>
+                </tr>
+              ) : (
+                <tr key={i}>
+                  <td>{l.name}</td>
+                  <td className="code muted">{l.nit || '—'}</td>
+                  <td className="num">{Q(l.annualSalary)}</td>
+                  <td className="num">{Q(l.taxableIncome)}</td>
+                  <td className="num">{Q(l.isrAnnual)}</td>
+                  <td className="num" style={{ color: 'var(--danger)', fontWeight: 600 }}>{Q(l.isrMonthly)}</td>
+                </tr>
+              ))}
+              {(data.lines || []).length === 0 && (
+                <tr><td colSpan={6} className="empty">Sin empleados en el período. Genera/procesa la planilla primero.</td></tr>
+              )}
+            </tbody>
+            <tfoot>
+              {isIgss ? (
+                <tr style={{ fontWeight: 700, borderTop: '2px solid var(--border)' }}>
+                  <td colSpan={3}>Totales ({data.employeeCount || 0} empleados)</td>
+                  <td className="num">{Q(data.totalBase)}</td>
+                  <td className="num" style={{ color: 'var(--danger)' }}>{Q(data.totalLaboral)}</td>
+                  <td className="num" style={{ color: 'var(--muted)' }}>{Q(data.totalPatronal)}</td>
+                </tr>
+              ) : (
+                <tr style={{ fontWeight: 700, borderTop: '2px solid var(--border)' }}>
+                  <td colSpan={4}>Totales ({data.employeeCount || 0} empleados)</td>
+                  <td className="num">{Q(data.totalIsrAnnual)}</td>
+                  <td className="num" style={{ color: 'var(--danger)' }}>{Q(data.totalIsrMonthly)}</td>
+                </tr>
+              )}
+            </tfoot>
+          </table>
+          {isIgss && (
+            <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', fontSize: 12 }}>
+              Total a enterar al IGSS (laboral + patronal): <strong className="mono">{Q(data.totalIgss)}</strong>
+            </div>
+          )}
+        </div>
+        <div className="modal-foot">
+          <button className="btn ghost" onClick={onClose}>Cerrar</button>
+          <button className="btn" onClick={onPrint}><Icon name="print" size={12} /> Imprimir</button>
+        </div>
+      </div>
     </div>
   );
 }

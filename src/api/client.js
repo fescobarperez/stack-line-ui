@@ -1,6 +1,7 @@
-// Cliente HTTP base del ERP. Centraliza la URL del backend, el token de sesión
-// (JWT Bearer), el header multi-empresa y el manejo de errores.
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+// Cliente HTTP base del ERP. Centraliza el token de sesión (JWT Bearer), el
+// header multi-empresa y el manejo de errores. La URL del backend se resuelve
+// por ruta a través del registro de microservicios (services.js).
+import { resolveBaseUrl } from './services.js';
 
 const TOKEN_KEY = 'maya_token';
 const LOGIN_PATH = '/api/auth/login';
@@ -36,7 +37,7 @@ export class ApiError extends Error {
 
 async function request(path, { method = 'GET', body, headers } = {}) {
   const token = getToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',

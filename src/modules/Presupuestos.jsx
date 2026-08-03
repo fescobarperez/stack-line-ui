@@ -2,6 +2,17 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import { useBudget } from '../hooks/useBudget.js';
+import { createBudget, addBudgetLine } from '../api/wave3.js';
+
+// Departamentos disponibles al crear una línea (define ingreso/gasto y agrupación).
+const DEPT_OPTIONS = [
+  { nombre: 'Ingresos', esIngreso: true },
+  { nombre: 'Costo de Ventas', esIngreso: false },
+  { nombre: 'Gastos Administrativos', esIngreso: false },
+  { nombre: 'Gastos de Operación', esIngreso: false },
+  { nombre: 'Marketing y Ventas', esIngreso: false },
+];
 
 const Q   = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const Qs  = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -104,32 +115,59 @@ function dptStats(d) {
 // ── Componente principal ───────────────────────────────────────────────────
 export default function Presupuestos({ pushToast }) {
   const { t } = useTranslation();
+  const { depts: DPTOS, periods: PERIODOS, budgetId, year: budgetYear, reload } = useBudget();
   const [tab, setTab]           = useState('resumen');
   const [deptFiltro, setDeptFiltro] = useState('ingresos');
   const [vista, setVista]       = useState('ppto');
   const [showModal, setShowModal] = useState(false);
   const [drawer, setDrawer]     = useState(null);
+  const [mDept, setMDept]       = useState('Ingresos');
+  const [mCode, setMCode]       = useState('');
+  const [mName, setMName]       = useState('');
+  const [mAmount, setMAmount]   = useState('');
 
-  const stats = useMemo(() => Object.fromEntries(DPTOS.map(d => [d.id, dptStats(d)])), []);
+  async function handleAddLine() {
+    const opt = DEPT_OPTIONS.find(d => d.nombre === mDept) || DEPT_OPTIONS[0];
+    try {
+      let bid = budgetId;
+      if (!bid) {
+        const yr = budgetYear || new Date().getFullYear();
+        const created = await createBudget({ year: yr, name: `Presupuesto ${yr}`, status: 'vigente', lines: [] });
+        bid = created.id;
+      }
+      await addBudgetLine(bid, {
+        accountCode: mCode, name: mName, department: opt.nombre,
+        isIncome: opt.esIngreso, periodMonth: null,
+        budgetedAmount: Number(mAmount || 0), actualAmount: 0,
+      });
+      pushToast?.('Línea agregada', 'success');
+      setShowModal(false); setMCode(''); setMName(''); setMAmount('');
+      reload();
+    } catch (err) { pushToast?.('No se pudo agregar la línea: ' + err.message, 'error'); }
+  }
 
-  const ingSt         = stats['ingresos'];
-  const gastPptoYTD   = DPTOS.filter(d => !d.esIngreso).reduce((s, d) => s + stats[d.id].pptoYTD, 0);
-  const gastRealYTD   = DPTOS.filter(d => !d.esIngreso).reduce((s, d) => s + stats[d.id].realYTD, 0);
+  const stats = useMemo(() => Object.fromEntries(DPTOS.map(d => [d.id, dptStats(d)])), [DPTOS]);
+
+  const ingDpt        = DPTOS.find(d => d.esIngreso);
+  const ingSt         = (ingDpt && stats[ingDpt.id]) || { pptoYTD: 0, realYTD: 0, pptoAnual: 0, varMonto: 0, pctEjec: 0 };
+  const gastPptoYTD   = DPTOS.filter(d => !d.esIngreso).reduce((s, d) => s + (stats[d.id]?.pptoYTD || 0), 0);
+  const gastRealYTD   = DPTOS.filter(d => !d.esIngreso).reduce((s, d) => s + (stats[d.id]?.realYTD || 0), 0);
   const utilPptoYTD   = ingSt.pptoYTD - gastPptoYTD;
   const utilRealYTD   = ingSt.realYTD - gastRealYTD;
   const pctEjecGlob   = ingSt.pptoYTD > 0 ? (ingSt.realYTD / ingSt.pptoYTD) * 100 : 0;
 
   const monthly = useMemo(() => MESES.map((mes, m) => {
-    const ingPpto  = DPTOS.find(d => d.id === 'ingresos').lineas.reduce((s, l) => s + l.ppto[m], 0);
-    const ingReal  = m <= MES_ACT ? DPTOS.find(d => d.id === 'ingresos').lineas.reduce((s, l) => s + l.real[m], 0) : null;
+    const ing = DPTOS.filter(d => d.esIngreso);
+    const ingPpto  = ing.reduce((s, d) => s + d.lineas.reduce((ss, l) => ss + l.ppto[m], 0), 0);
+    const ingReal  = m <= MES_ACT ? ing.reduce((s, d) => s + d.lineas.reduce((ss, l) => ss + l.real[m], 0), 0) : null;
     const gastPpto = DPTOS.filter(d => !d.esIngreso).reduce((s, d) => s + d.lineas.reduce((ss, l) => ss + l.ppto[m], 0), 0);
     const gastReal = m <= MES_ACT ? DPTOS.filter(d => !d.esIngreso).reduce((s, d) => s + d.lineas.reduce((ss, l) => ss + l.real[m], 0), 0) : null;
     return { mes, m, ingPpto, ingReal, gastPpto, gastReal,
       utilPpto: ingPpto - gastPpto,
       utilReal: ingReal != null && gastReal != null ? ingReal - gastReal : null };
-  }), []);
+  }), [DPTOS]);
 
-  const dptSelec = DPTOS.find(d => d.id === deptFiltro) ?? DPTOS[0];
+  const dptSelec = DPTOS.find(d => d.id === deptFiltro) ?? DPTOS[0] ?? { id: '', nombre: '', esIngreso: false, lineas: [] };
 
   return (
     <div className="page">
@@ -608,26 +646,28 @@ export default function Presupuestos({ pushToast }) {
             <div className="modal-body">
               <div className="field">
                 <label>{t('presupuestos.department', 'Departamento')}</label>
-                <select>{DPTOS.map(d => <option key={d.id} value={d.id}>{d.nombre}</option>)}</select>
+                <select value={mDept} onChange={e => setMDept(e.target.value)}>
+                  {DEPT_OPTIONS.map(d => <option key={d.nombre} value={d.nombre}>{d.nombre}</option>)}
+                </select>
               </div>
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
                 <div className="field">
                   <label>{t('presupuestos.accountCode', 'Código de cuenta')}</label>
-                  <input type="text" placeholder="Ej. 6-030" className="mono"/>
+                  <input type="text" placeholder="Ej. 6-030" className="mono" value={mCode} onChange={e => setMCode(e.target.value)}/>
                 </div>
                 <div className="field">
                   <label>{t('common.name', 'Nombre')}</label>
-                  <input type="text" placeholder={t('common.description', 'Descripción')}/>
+                  <input type="text" placeholder={t('common.description', 'Descripción')} value={mName} onChange={e => setMName(e.target.value)}/>
                 </div>
               </div>
               <div className="field">
                 <label>{t('presupuestos.monthlyAmount', 'Monto mensual (Q) — igual para los 12 meses')}</label>
-                <input type="number" placeholder="0.00" style={{fontFamily:'var(--font-mono)'}}/>
+                <input type="number" placeholder="0.00" style={{fontFamily:'var(--font-mono)'}} value={mAmount} onChange={e => setMAmount(e.target.value)}/>
               </div>
             </div>
             <div className="modal-foot">
               <button className="btn" onClick={() => setShowModal(false)}>{t('common.cancel', 'Cancelar')}</button>
-              <button className="btn accent" onClick={() => { pushToast?.('Línea agregada', 'success'); setShowModal(false); }}>
+              <button className="btn accent" disabled={!mName || !mAmount} onClick={handleAddLine}>
                 <Icon name="check" size={13}/>{t('common.save', 'Guardar')}
               </button>
             </div>

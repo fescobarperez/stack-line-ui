@@ -2,6 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import { useClientQuotes, useSupplierRfqs, mapQuote, mapRfq } from '../hooks/useQuotes.js';
+import { getQuote, createQuote as apiCreateQuote, updateQuoteStatus } from '../api/wave2.js';
 
 const Q       = v  => `Q ${Number(v).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtDate = d  => new Date(d + 'T00:00').toLocaleDateString('es-GT', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -512,7 +514,7 @@ export default function Quotes({ pushToast }) {
   const [quoteType, setQuoteType] = useState('cliente');
 
   // — cotizaciones a clientes —
-  const [quotes,       setQuotes]       = useState(INIT_QUOTES);
+  const { items: quotes, reload: reloadQuotes } = useClientQuotes();
   const [selected,     setSelected]     = useState(null);
   const [drawerTab,    setDrawerTab]    = useState('detail');
   const [showCreate,   setShowCreate]   = useState(false);
@@ -520,7 +522,7 @@ export default function Quotes({ pushToast }) {
   const [search,       setSearch]       = useState('');
 
   // — RFQ a proveedores —
-  const [rfqs,          setRfqs]          = useState(INIT_RFQ);
+  const { items: rfqs, reload: reloadRfqs } = useSupplierRfqs();
   const [selectedRfq,   setSelectedRfq]   = useState(null);
   const [rfqDrawerTab,  setRfqDrawerTab]  = useState('detail');
   const [showCreateRfq, setShowCreateRfq] = useState(false);
@@ -551,16 +553,36 @@ export default function Quotes({ pushToast }) {
     return true;
   }), [quotes, statusFilter, search]);
 
-  const updateStatus = (id, newStatus, entry) => {
-    setQuotes(prev => prev.map(q => q.id === id
-      ? { ...q, status: newStatus, history: [...q.history, { ts: `${today} ${new Date().toTimeString().slice(0, 5)}`, user: 'Carlos Méndez', action: entry }] }
-      : q));
-    setSelected(prev => prev ? { ...prev, status: newStatus } : null);
+  const updateStatus = async (id, newStatus, entry) => {
+    const q = quotes.find(x => x.id === id);
+    if (!q) return;
+    try {
+      const full = await updateQuoteStatus(q.backendId, { status: newStatus, note: entry, actor: '' });
+      setSelected(mapQuote(full));
+      reloadQuotes();
+    } catch (err) { pushToast('No se pudo actualizar el estado: ' + err.message, 'error'); }
   };
 
-  const createQuote = q => { setQuotes(prev => [q, ...prev]); setShowCreate(false); pushToast(`${q.id} creada como borrador`, 'success'); };
-  const openDrawer  = q => { setSelected(q); setDrawerTab('detail'); };
-  const selQuote    = selected ? quotes.find(q => q.id === selected.id) : null;
+  const submitQuote = async (draft) => {
+    try {
+      await apiCreateQuote({
+        partyType: 'client',
+        clientName: draft.client.name, clientNit: draft.client.nit,
+        clientEmail: draft.client.email, clientContact: draft.client.contact,
+        quoteDate: draft.date, validUntil: draft.validUntil,
+        createdBy: draft.createdBy, notes: draft.notes,
+        items: draft.items.map(i => ({ itemName: i.name, uom: i.uom, quantity: i.qty, unitPrice: i.unitPrice, discount: i.discount })),
+      });
+      setShowCreate(false);
+      pushToast('Cotización creada como borrador', 'success');
+      reloadQuotes();
+    } catch (err) { pushToast('No se pudo crear la cotización: ' + err.message, 'error'); }
+  };
+  const openDrawer  = async (q) => {
+    setSelected(q); setDrawerTab('detail');
+    try { setSelected(mapQuote(await getQuote(q.backendId))); } catch { /* deja el de la lista */ }
+  };
+  const selQuote    = selected;
 
   // — KPIs proveedores —
   const rfqInProcess = rfqs.filter(r => ['solicitada', 'recibida'].includes(r.status));
@@ -576,16 +598,36 @@ export default function Quotes({ pushToast }) {
     return true;
   }), [rfqs, rfqFilter, rfqSearch]);
 
-  const updateRfqStatus = (id, newStatus, entry) => {
-    setRfqs(prev => prev.map(r => r.id === id
-      ? { ...r, status: newStatus, history: [...r.history, { ts: `${today} ${new Date().toTimeString().slice(0, 5)}`, user: 'Carlos Méndez', action: entry }] }
-      : r));
-    setSelectedRfq(prev => prev ? { ...prev, status: newStatus } : null);
+  const updateRfqStatus = async (id, newStatus, entry) => {
+    const r = rfqs.find(x => x.id === id);
+    if (!r) return;
+    try {
+      const full = await updateQuoteStatus(r.backendId, { status: newStatus, note: entry, actor: '' });
+      setSelectedRfq(mapRfq(full));
+      reloadRfqs();
+    } catch (err) { pushToast('No se pudo actualizar el estado: ' + err.message, 'error'); }
   };
 
-  const createRfq    = r => { setRfqs(prev => [r, ...prev]); setShowCreateRfq(false); pushToast(`${r.id} creada — esperando respuesta del proveedor`, 'success'); };
-  const openRfqDrawer = r => { setSelectedRfq(r); setRfqDrawerTab('detail'); };
-  const selRfq        = selectedRfq ? rfqs.find(r => r.id === selectedRfq.id) : null;
+  const submitRfq = async (draft) => {
+    try {
+      await apiCreateQuote({
+        partyType: 'supplier',
+        supplierName: draft.supplier.name, supplierNit: draft.supplier.nit,
+        supplierEmail: draft.supplier.email, supplierContact: draft.supplier.contact,
+        quoteDate: draft.date, deadline: draft.deadline || null,
+        createdBy: draft.createdBy, notes: draft.notes,
+        items: draft.items.map(i => ({ itemName: i.name, uom: i.uom, quantity: i.qty, unitPrice: i.unitPrice || 0, discount: i.discount || 0 })),
+      });
+      setShowCreateRfq(false);
+      pushToast('Solicitud creada — esperando respuesta del proveedor', 'success');
+      reloadRfqs();
+    } catch (err) { pushToast('No se pudo crear la solicitud: ' + err.message, 'error'); }
+  };
+  const openRfqDrawer = async (r) => {
+    setSelectedRfq(r); setRfqDrawerTab('detail');
+    try { setSelectedRfq(mapRfq(await getQuote(r.backendId))); } catch { /* deja el de la lista */ }
+  };
+  const selRfq        = selectedRfq;
 
   return (
     <div className="page">
@@ -1106,8 +1148,8 @@ export default function Quotes({ pushToast }) {
         </div>
       )}
 
-      {showCreate    && <CreateModal    onSave={createQuote} onClose={() => setShowCreate(false)}    />}
-      {showCreateRfq && <CreateRFQModal onSave={createRfq}   onClose={() => setShowCreateRfq(false)} />}
+      {showCreate    && <CreateModal    onSave={submitQuote} onClose={() => setShowCreate(false)}    />}
+      {showCreateRfq && <CreateRFQModal onSave={submitRfq}   onClose={() => setShowCreateRfq(false)} />}
     </div>
   );
 }

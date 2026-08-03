@@ -309,7 +309,7 @@ function POSModule({ pushToast }) {
           <div className="row" style={{ opacity: 0.4, pointerEvents: 'none' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {t('pos.manualDiscount', 'Descuento manual')}
-              <select value={discountType} style={{ border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 4, fontSize: 11, color: 'var(--text)' }}>
+              <select value={discountType} onChange={() => {}} style={{ border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 4, fontSize: 11, color: 'var(--text)' }}>
                 <option value="%">%</option>
                 <option value="Q">Q</option>
               </select>

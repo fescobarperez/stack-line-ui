@@ -29,6 +29,16 @@ function AreaChart({ data, height = 220, accent = "var(--accent)" }) {
   const pad = { l: 40, r: 12, t: 12, b: 28 };
   const innerW = w - pad.l - pad.r;
   const innerH = h - pad.t - pad.b;
+  // Sin datos (cargando o backend sin respuesta): evita el crash por pts vacío.
+  if (!data || data.length < 2) {
+    return (
+      <svg viewBox={`0 0 ${w} ${h}`} style={{width:'100%', height, display:'block'}}>
+        <text x={w/2} y={h/2} textAnchor="middle" fontFamily="var(--font-mono)" fontSize="12" fill="var(--muted)">
+          Sin datos
+        </text>
+      </svg>
+    );
+  }
   const vals = data.map(d => d.total);
   const max = Math.max(...vals) * 1.1;
   const min = 0;

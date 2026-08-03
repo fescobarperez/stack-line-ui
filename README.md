@@ -152,6 +152,68 @@ Base URL: `/api` (proxied desde Vite en dev; servido directo en prod).
 
 ---
 
+## Enrutamiento a microservicios (registro en el front)
+
+El front resuelve la URL del backend **por prefijo de ruta**, en un único punto:
+`src/api/services.js`. Todas las llamadas pasan por `client.js`, que antepone la
+URL base que corresponda vía `resolveBaseUrl(path)`. Como todos los endpoints ya
+usan `/api/*`, hoy **todo va al servicio `core`** sin tocar los módulos.
+
+**Piezas:**
+
+| Archivo | Rol |
+|---|---|
+| `src/api/services.js` | `SERVICES` (URL por servicio) + `ROUTES` (prefijo → servicio) + `resolveBaseUrl()` |
+| `src/api/client.js`   | Cliente `fetch`; usa `resolveBaseUrl(path)` para armar la URL final |
+| `vite.config.js`      | Proxy de **dev** como espejo del registro (targets configurables por env) |
+
+**Grupos ya definidos.** Los ~46 prefijos están agrupados en **7 servicios
+lógicos**. Hoy todos apuntan al mismo backend local (`:8080`); cada uno tiene su
+propia env var para repuntarlo cuando se separe, sin tocar el resto.
+
+| Servicio | Dominio | Prefijos (ejemplos) |
+|---|---|---|
+| `core`    | Catálogo + inventario | `/api/products` `/api/categories` `/api/product-variants` `/api/uom` `/api/stock` `/api/inventory` `/api/stock-counts` `/api/transfers` |
+| `ventas`  | POS + comercial | `/api/pos` `/api/sales` `/api/cash-registers` `/api/quotes` `/api/promotions` `/api/loyalty` `/api/credit-notes` `/api/clients` |
+| `compras` | Compras + proveedores | `/api/purchase-orders` `/api/purchase-invoices` `/api/supplier-payments` `/api/suppliers` |
+| `conta`   | Contabilidad + tesorería + activos | `/api/accounts` `/api/journal-entries` `/api/accounting-periods` `/api/budgets` `/api/cost-centers` `/api/bank-accounts` `/api/receivables` `/api/payments` `/api/fixed-assets` |
+| `fel`     | Facturación electrónica | `/api/fel` |
+| `rrhh`    | Empleados + planilla | `/api/employees` `/api/payroll-periods` |
+| `admin`   | Seguridad + organización + plataforma | `/api/auth` `/api/users` `/api/roles` `/api/company` `/api/branches` `/api/settings` `/api/dashboard` `/api/notifications` `/api/search` `/api/reports` `/api/audit-log` |
+
+**Variables de entorno** (ver `.env.example`) — una por servicio:
+
+| Var | Default | Descripción |
+|---|---|---|
+| `VITE_SVC_<GRUPO>`        | `''` (mismo origen) | URL base del servicio en **runtime**. Vacío → proxy de Vite (dev) / gateway (prod). Ej. prod: `https://ventas.tudominio.com` |
+| `VITE_DEV_<GRUPO>_TARGET` | `http://localhost:8080` | Target del proxy de Vite para ese servicio en **dev** |
+
+> `<GRUPO>` ∈ `CORE`, `VENTAS`, `COMPRAS`, `CONTA`, `FEL`, `RRHH`, `ADMIN`.
+
+### Separar un microservicio (ej. FEL)
+
+Como las rutas ya están cableadas, separar un servicio es solo **configuración**:
+
+1. **`.env`** → dar URL de runtime y (para dev) su target de proxy:
+   ```bash
+   VITE_SVC_FEL=https://fel.tudominio.com   # prod / runtime
+   VITE_DEV_FEL_TARGET=http://localhost:4010 # dev
+   ```
+
+No hay que tocar `services.js`, `vite.config.js` ni ningún módulo: la regla
+`'/api/fel' → fel` ya existe en ambos lados.
+
+> ⚠️ **Dominios sin prefijo común.** Algunos servicios abarcan varios prefijos
+> (contabilidad = `/api/accounts` + `/api/journal-entries` + `/api/budgets` + …),
+> por eso se enrutan por *lista* de prefijos y no por uno solo. Si más adelante
+> quieres simplificar, agrupá esos endpoints bajo un prefijo común en el backend
+> (p.ej. `/api/accounting/...`) y colapsá las reglas.
+>
+> El orden importa en `ROUTES` (services.js) y en `ROUTE_MAP` (vite.config.js):
+> **los prefijos más específicos van primero** (gana la primera coincidencia).
+
+---
+
 ## Conectar el frontend al backend
 
 Cada módulo importa hoy desde `src/data/mock.js`. Para conectarlos al backend:
@@ -194,10 +256,11 @@ Variables de entorno (ver `.env.example`):
 
 | Var | Default | Descripción |
 |---|---|---|
-| `PORT`          | 4000 | Puerto del backend |
-| `DB_PATH`       | `./server/data/erp_maya.db` | Ruta del archivo SQLite |
-| `CORS_ORIGIN`   | `http://localhost:5173` | Origen permitido para CORS |
-| `VITE_API_BASE` | `/api` | Base URL del cliente (frontend) |
+| `PORT`                 | 4000 | Puerto del backend |
+| `DB_PATH`              | `./server/data/erp_maya.db` | Ruta del archivo SQLite |
+| `CORS_ORIGIN`          | `http://localhost:5173` | Origen permitido para CORS |
+| `VITE_SVC_CORE`        | `''` (mismo origen) | URL base del backend `core` del front — ver [Enrutamiento a microservicios](#enrutamiento-a-microservicios-registro-en-el-front) |
+| `VITE_DEV_CORE_TARGET` | `http://localhost:8080` | Target del proxy de Vite para `/api` en dev |
 
 ---
 

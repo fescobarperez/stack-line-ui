@@ -2,6 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
 import { useTranslation } from 'react-i18next';
+import { useLoyalty } from '../hooks/useLoyalty.js';
+import { addLoyaltyMovement } from '../api/wave3.js';
 
 const Q  = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const Qs = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -23,36 +25,6 @@ const TIERS = [
 
 const tierOf = (pts) => TIERS.findLast(t => pts >= t.min) ?? TIERS[0];
 
-// ── Mock data ──────────────────────────────────────────────────────────────
-const MEMBERS = [
-  { id:'M-001', nombre:'María García López',    nit:'1234567-8', tel:'+502 5555-1234', email:'maria@gmail.com',      points:2840, totalSpent:32400, joinDate:'2024-03-15', lastPurchase:'2026-05-20', earned:3200, redeemed:360 },
-  { id:'M-002', nombre:'Carlos Méndez Ruiz',    nit:'8765432-1', tel:'+502 4444-5678', email:'cmendes@hotmail.com',  points:5620, totalSpent:68000, joinDate:'2023-11-02', lastPurchase:'2026-05-22', earned:6800, redeemed:1180 },
-  { id:'M-003', nombre:'Ana Juárez de López',   nit:'3456789-0', tel:'+502 3333-9012', email:'anajuarez@gmail.com',  points:890,  totalSpent:9800,  joinDate:'2025-01-20', lastPurchase:'2026-05-18', earned:980,  redeemed:90 },
-  { id:'M-004', nombre:'Roberto Pérez Castro',  nit:'2345678-9', tel:'+502 7777-3456', email:'rperez@empresa.gt',    points:320,  totalSpent:3500,  joinDate:'2025-06-10', lastPurchase:'2026-04-30', earned:350,  redeemed:30 },
-  { id:'M-005', nombre:'Lucía Barrios Sandoval', nit:'9876543-2', tel:'+502 6666-7890', email:'lbarrios@gmail.com',   points:4150, totalSpent:47200, joinDate:'2024-07-08', lastPurchase:'2026-05-21', earned:4720, redeemed:570 },
-  { id:'M-006', nombre:'Javier Ramos Morales',  nit:'4567890-1', tel:'+502 2222-4567', email:'jramos@yahoo.com',     points:1240, totalSpent:14600, joinDate:'2024-12-01', lastPurchase:'2026-05-15', earned:1460, redeemed:220 },
-  { id:'M-007', nombre:'Patricia Lima Vásquez', nit:'5678901-2', tel:'+502 8888-2345', email:'plima@gmail.com',       points:75,   totalSpent:820,   joinDate:'2026-04-02', lastPurchase:'2026-05-10', earned:82,   redeemed:7 },
-  { id:'M-008', nombre:'Diego Castillo Díaz',   nit:'6789012-3', tel:'+502 1111-6789', email:'dcastillo@gmail.com',  points:7890, totalSpent:95000, joinDate:'2023-05-18', lastPurchase:'2026-05-23', earned:9500, redeemed:1610 },
-];
-
-const TXNS = [
-  { id:'TX-0042', memberId:'M-008', nombre:'Diego Castillo Díaz',    type:'earned',   points:120, ref:'T-2026-04892', date:'2026-05-23', monto:1200.00 },
-  { id:'TX-0041', memberId:'M-001', nombre:'María García López',     type:'earned',   points:45,  ref:'T-2026-04889', date:'2026-05-22', monto:450.00 },
-  { id:'TX-0040', memberId:'M-002', nombre:'Carlos Méndez Ruiz',     type:'redeemed', points:-80, ref:'T-2026-04881', date:'2026-05-22', monto:-8.00 },
-  { id:'TX-0039', memberId:'M-005', nombre:'Lucía Barrios Sandoval', type:'earned',   points:63,  ref:'T-2026-04876', date:'2026-05-21', monto:630.00 },
-  { id:'TX-0038', memberId:'M-006', nombre:'Javier Ramos Morales',   type:'earned',   points:28,  ref:'T-2026-04870', date:'2026-05-20', monto:280.00 },
-  { id:'TX-0037', memberId:'M-001', nombre:'María García López',     type:'redeemed', points:-50, ref:'T-2026-04865', date:'2026-05-20', monto:-5.00 },
-  { id:'TX-0036', memberId:'M-003', nombre:'Ana Juárez de López',    type:'earned',   points:19,  ref:'T-2026-04860', date:'2026-05-18', monto:190.00 },
-  { id:'TX-0035', memberId:'M-008', nombre:'Diego Castillo Díaz',    type:'bonus',    points:60,  ref:'PRO-FDS',      date:'2026-05-18', monto:0 },
-  { id:'TX-0034', memberId:'M-004', nombre:'Roberto Pérez Castro',   type:'earned',   points:15,  ref:'T-2026-04852', date:'2026-05-15', monto:150.00 },
-  { id:'TX-0033', memberId:'M-006', nombre:'Javier Ramos Morales',   type:'redeemed', points:-40, ref:'T-2026-04848', date:'2026-05-15', monto:-4.00 },
-  { id:'TX-0032', memberId:'M-005', nombre:'Lucía Barrios Sandoval', type:'earned',   points:85,  ref:'T-2026-04840', date:'2026-05-14', monto:850.00 },
-  { id:'TX-0031', memberId:'M-002', nombre:'Carlos Méndez Ruiz',     type:'earned',   points:200, ref:'T-2026-04831', date:'2026-05-12', monto:2000.00 },
-  { id:'TX-0030', memberId:'M-007', nombre:'Patricia Lima Vásquez',  type:'earned',   points:12,  ref:'T-2026-04825', date:'2026-05-10', monto:120.00 },
-  { id:'TX-0029', memberId:'M-003', nombre:'Ana Juárez de López',    type:'ajuste',   points:20,  ref:'ADJ-2026-05',  date:'2026-05-08', monto:0 },
-  { id:'TX-0028', memberId:'M-008', nombre:'Diego Castillo Díaz',    type:'redeemed', points:-200,ref:'T-2026-04812', date:'2026-05-05', monto:-20.00 },
-];
-
 const TYPE_META = {
   earned:   { label:'Acumulado',  pill:'success', icon:'↑' },
   redeemed: { label:'Canjeado',   pill:'danger',  icon:'↓' },
@@ -63,6 +35,7 @@ const TYPE_META = {
 // ── Componente ─────────────────────────────────────────────────────────────
 export default function Loyalty({ pushToast }) {
   const { t } = useTranslation();
+  const { members, txns, reload } = useLoyalty();
   const [tab, setTab]       = useState('resumen');
   const [search, setSearch] = useState('');
   const [tierFiltro, setTierFiltro] = useState('todos');
@@ -73,14 +46,14 @@ export default function Loyalty({ pushToast }) {
   const [ajusteNota, setAjusteNota] = useState('');
 
   // KPIs
-  const totalMembers   = MEMBERS.length;
-  const totalPoints    = MEMBERS.reduce((s, m) => s + m.points, 0);
-  const totalRedeemed  = MEMBERS.reduce((s, m) => s + m.redeemed, 0);
-  const activeThisMonth = MEMBERS.filter(m => m.lastPurchase >= '2026-05-01').length;
+  const totalMembers   = members.length;
+  const totalPoints    = members.reduce((s, m) => s + m.points, 0);
+  const totalRedeemed  = members.reduce((s, m) => s + m.redeemed, 0);
+  const activeThisMonth = members.filter(m => m.lastPurchase >= '2026-05-01').length;
 
   // Filtered members
   const filteredMembers = useMemo(() => {
-    let list = MEMBERS;
+    let list = members;
     if (tierFiltro !== 'todos') list = list.filter(m => tierOf(m.points).id === tierFiltro);
     if (search) {
       const q = search.toLowerCase();
@@ -91,8 +64,8 @@ export default function Loyalty({ pushToast }) {
 
   // Filtered transactions
   const filteredTxns = useMemo(() => {
-    if (txnFiltro === 'todos') return TXNS;
-    return TXNS.filter(t => t.type === txnFiltro);
+    if (txnFiltro === 'todos') return txns;
+    return txns.filter(t => t.type === txnFiltro);
   }, [txnFiltro]);
 
   return (
@@ -148,7 +121,7 @@ export default function Loyalty({ pushToast }) {
             </div>
             <div className="stat">
               <div className="label">Tasa de canje</div>
-              <div className="val">{MEMBERS.reduce((s,m)=>s+m.earned,0) > 0 ? ((totalRedeemed/MEMBERS.reduce((s,m)=>s+m.earned,0))*100).toFixed(1) : 0}%</div>
+              <div className="val">{members.reduce((s,m)=>s+m.earned,0) > 0 ? ((totalRedeemed/members.reduce((s,m)=>s+m.earned,0))*100).toFixed(1) : 0}%</div>
               <div className="delta">Pts canjeados / emitidos</div>
             </div>
           </div>
@@ -158,7 +131,7 @@ export default function Loyalty({ pushToast }) {
             <div className="card" style={{padding:16}}>
               <div style={{fontWeight:600, fontSize:13, marginBottom:14}}>Distribución por nivel</div>
               {TIERS.map(tierItem => {
-                const count = MEMBERS.filter(m => tierOf(m.points).id === tierItem.id).length;
+                const count = members.filter(m => tierOf(m.points).id === tierItem.id).length;
                 const pct   = totalMembers > 0 ? (count / totalMembers) * 100 : 0;
                 return (
                   <div key={tierItem.id} style={{marginBottom:10}}>
@@ -178,7 +151,7 @@ export default function Loyalty({ pushToast }) {
 
             <div className="card" style={{padding:16}}>
               <div style={{fontWeight:600, fontSize:13, marginBottom:14}}>Actividad reciente</div>
-              {TXNS.slice(0, 7).map(tx => {
+              {txns.slice(0, 7).map(tx => {
                 const meta = TYPE_META[tx.type];
                 return (
                   <div key={tx.id} style={{display:'flex', alignItems:'center', gap:10, marginBottom:10, fontSize:12}}>
@@ -420,7 +393,7 @@ export default function Loyalty({ pushToast }) {
                 const tier = tierOf(drawer.points);
                 const next = TIERS.find(tierItem => tierItem.min > tier.min);
                 const pctNext = next ? Math.min((drawer.points / next.min) * 100, 100) : 100;
-                const memberTxns = TXNS.filter(tx => tx.memberId === drawer.id);
+                const memberTxns = txns.filter(tx => tx.memberId === drawer.id);
                 return (
                   <>
                     <div style={{textAlign:'center', marginBottom:20}}>
@@ -531,9 +504,19 @@ export default function Loyalty({ pushToast }) {
             </div>
             <div className="modal-foot">
               <button className="btn" onClick={() => setShowAjuste(null)}>{t('common.cancel', 'Cancelar')}</button>
-              <button className="btn accent" onClick={() => {
-                pushToast?.(`Ajuste de ${ajustePts} pts aplicado a ${showAjuste.nombre}`, 'success');
-                setShowAjuste(null);
+              <button className="btn accent" onClick={async () => {
+                const p = parseInt(ajustePts) || 0;
+                try {
+                  await addLoyaltyMovement(showAjuste.backendId, {
+                    movementType: p >= 0 ? 'bonus' : 'redeemed',
+                    points: p,
+                    reference: ajusteNota || 'Ajuste manual',
+                    amount: 0,
+                  });
+                  pushToast?.(`Ajuste de ${ajustePts} pts aplicado a ${showAjuste.nombre}`, 'success');
+                  setShowAjuste(null);
+                  reload();
+                } catch (err) { pushToast?.('No se pudo aplicar el ajuste: ' + err.message, 'error'); }
               }}>
                 <Icon name="check" size={13}/>{t('common.apply', 'Aplicar')} ajuste
               </button>
