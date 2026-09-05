@@ -2,8 +2,10 @@
 // Data-driven contra /api/cost-centers (hook useCostCenters). El análisis de gasto
 // por centro se omite: el backend aún no etiqueta transacciones con centro de costo.
 import React, { useState, useMemo } from 'react';
+import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
 import { useCostCenters } from '../hooks/useMasters.js';
 import { createCostCenter, updateCostCenter } from '../api/wave2.js';
 
@@ -22,7 +24,7 @@ function CenterModal({ center, onSave, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ width: 400 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <span className="modal-title">{center ? t('costcenters.editCenter', 'Editar centro') : t('costcenters.newCenter', 'Nuevo centro de costo')}</span>
+          <h3>{center ? t('costcenters.editCenter', 'Editar centro') : t('costcenters.newCenter', 'Nuevo centro de costo')}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="close" /></button>
         </div>
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
@@ -55,10 +57,10 @@ function CenterModal({ center, onSave, onClose }) {
           </div>
         </div>
         <div className="modal-foot">
-          <button className="btn-ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-          <button className="btn" disabled={!valid} onClick={() => onSave({ ...form, budget: Number(form.budget) })}>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+          <Button icon="check" variant="accent" disabled={!valid} onClick={() => onSave({ ...form, budget: Number(form.budget) })}>
             {center ? t('costcenters.saveChanges', 'Guardar cambios') : t('costcenters.createCenter', 'Crear centro')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -115,25 +117,25 @@ export default function CostCenters({ pushToast }) {
           <div className="page-title">{t('costcenters.title', 'Centros de Costo')}</div>
           <div className="page-sub">
             {t('costcenters.subtitle', 'Catálogo de centros de costo y utilidad')}
-            {source === 'mock' && <span className="pill" style={{ marginLeft: 8, fontSize: 10 }}>demo</span>}
+            {source === 'mock' && <span className="badge-m3" style={{ marginLeft: 8 }}>demo</span>}
           </div>
         </div>
         <div className="page-head-actions">
-          <button className="btn" onClick={openNew}><Icon name="plus" size={12} /> {t('costcenters.newCenter', 'Nuevo centro')}</button>
+          <Button icon="plus" variant="accent" onClick={openNew}>{t('costcenters.newCenter', 'Nuevo centro')}</Button>
         </div>
       </div>
 
       <div className="stat-grid" style={{ marginBottom: 20 }}>
-        <div className="stat-card">
-          <div className="label">{t('costcenters.activeCenters', 'Centros activos')}</div>
-          <div className="value">{activeCount}</div>
-          <div className="sub muted">{centers.length} {t('costcenters.inTotal', 'en total')}</div>
-        </div>
-        <div className="stat-card">
-          <div className="label">{t('costcenters.totalBudget', 'Presupuesto total')}</div>
-          <div className="value">{Q(totalBudget)}</div>
-          <div className="sub muted">mensual · centros activos</div>
-        </div>
+        <StatCard
+          label={t('costcenters.activeCenters', 'Centros activos')}
+          value={activeCount}
+          foot={<>{centers.length} {t('costcenters.inTotal', 'en total')}</>}
+        />
+        <StatCard
+          label={t('costcenters.totalBudget', 'Presupuesto total')}
+          value={Q(totalBudget)}
+          foot="mensual · centros activos"
+        />
       </div>
 
       <div className="card card-outlined">
@@ -167,7 +169,7 @@ export default function CostCenters({ pushToast }) {
                     <td>
                       <div style={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
                         <button className="icon-btn" title={t('common.edit', 'Editar')} style={{ width: 32, height: 32 }} onClick={() => openEdit(c)}><Icon name="edit" size={18} /></button>
-                        <button className="btn-text" style={{ height: 32, padding: '0 10px' }} onClick={() => toggleActive(c)}>{c.active ? t('costcenters.deactivate', 'Desactivar') : t('costcenters.activate', 'Activar')}</button>
+                        <Button variant="ghost" size="sm" onClick={() => toggleActive(c)}>{c.active ? t('costcenters.deactivate', 'Desactivar') : t('costcenters.activate', 'Activar')}</Button>
                       </div>
                     </td>
                   </tr>

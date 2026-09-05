@@ -7,6 +7,8 @@
 // libre en la cuenta, por eso ese tab está oculto (pendiente backend).
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
 import { useBankAccounts } from '../hooks/useOperations.js';
 import { createBankAccount, bankMovements, addBankMovement } from '../api/wave3.js';
@@ -175,44 +177,40 @@ export default function Banks({ pushToast }) {
           <h1 className="page-title">{t('banks.title', 'Bancos & Cuentas')}</h1>
           <p className="page-sub">{t('banks.subtitle', 'Gestión de cuentas bancarias y movimientos')}</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn ghost sm" onClick={() => { setFormTrf(EMPTY_TRF); setShowNuevaTransferencia(true); }}>
-            <Icon name="transfer" size={12} /> {t('banks.newTransfer', 'Transferencia')}
-          </button>
-          <button className="btn sm" onClick={() => { setFormCuenta(EMPTY_CTA); setShowNuevaCuenta(true); }}>
-            <Icon name="plus" size={12} /> {t('banks.newAccount', 'Nueva cuenta')}
-          </button>
+        <div className="page-head-actions">
+          <Button icon="transfer" variant="ghost" onClick={() => { setFormTrf(EMPTY_TRF); setShowNuevaTransferencia(true); }}>{t('banks.newTransfer', 'Transferencia')}
+          </Button>
+          <Button icon="plus" variant="accent" onClick={() => { setFormCuenta(EMPTY_CTA); setShowNuevaCuenta(true); }}>{t('banks.newAccount', 'Nueva cuenta')}
+          </Button>
         </div>
       </div>
 
       {/* KPIs */}
       <div className="stat-grid" style={{ marginBottom: 20 }}>
-        <div className="stat">
-          <div className="label">{t('banks.totalGTQ', 'Saldo total GTQ')}</div>
-          <div className="val mono">{Qf(totalGTQ)}</div>
-          <div className="delta up">
-            {accounts.filter(a => a.moneda === 'GTQ' && a.estado === 'activa').length} {t('banks.activeAccounts', 'cuentas activas')}
-          </div>
-        </div>
-        <div className="stat">
-          <div className="label">{t('banks.totalUSD', 'Saldo total USD')}</div>
-          <div className="val mono">{USDf(totalUSD)}</div>
-          <div className="delta up">
-            {accounts.filter(a => a.moneda === 'USD' && a.estado === 'activa').length} {t('banks.activeAccounts', 'cuentas activas')}
-          </div>
-        </div>
-        <div className="stat">
-          <div className="label">{t('banks.accountingDiffs', 'Diferencias contables')}</div>
-          <div className="val mono">{diferencias}</div>
-          <div className={`delta ${diferencias > 0 ? 'dn' : 'up'}`}>
-            {diferencias > 0 ? t('banks.requireReconciliation', 'Requieren conciliación') : t('banks.allReconciled', 'Todo conciliado')}
-          </div>
-        </div>
-        <div className="stat">
-          <div className="label">{t('banks.movementsToday', 'Movimientos hoy')}</div>
-          <div className="val mono">{movsHoy}</div>
-          <div className="delta up">{movements.length} {t('banks.totalMovements', 'en total')}</div>
-        </div>
+        <StatCard
+          tone="pri"
+          label={t('banks.totalGTQ', 'Saldo total GTQ')}
+          value={Qf(totalGTQ)}
+          trend={{ dir: 'up', label: <>{accounts.filter(a => a.moneda === 'GTQ' && a.estado === 'activa').length} {t('banks.activeAccounts', 'cuentas activas')}</> }}
+        />
+        <StatCard
+          tone="ter"
+          label={t('banks.totalUSD', 'Saldo total USD')}
+          value={USDf(totalUSD)}
+          trend={{ dir: 'up', label: <>{accounts.filter(a => a.moneda === 'USD' && a.estado === 'activa').length} {t('banks.activeAccounts', 'cuentas activas')}</> }}
+        />
+        <StatCard
+          tone="sec"
+          label={t('banks.accountingDiffs', 'Diferencias contables')}
+          value={diferencias}
+          trend={{ dir: diferencias > 0 ? 'down' : 'up', label: diferencias > 0 ? t('banks.requireReconciliation', 'Requieren conciliación') : t('banks.allReconciled', 'Todo conciliado') }}
+        />
+        <StatCard
+          tone="err"
+          label={t('banks.movementsToday', 'Movimientos hoy')}
+          value={movsHoy}
+          trend={{ dir: 'up', label: <>{movements.length} {t('banks.totalMovements', 'en total')}</> }}
+        />
       </div>
 
       {/* Tabs */}
@@ -245,19 +243,19 @@ export default function Banks({ pushToast }) {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 13 }}>{a.alias}</div>
-                      <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>
+                      <div style={{ fontWeight: 500, fontSize: 14 }}>{a.alias}</div>
+                      <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
                         {a.banco} · {a.tipo} · {a.moneda}
                       </div>
                     </div>
                     {a.estado === 'inactiva'
-                      ? <span className="pill">{t('common.inactive', 'Inactiva')}</span>
-                      : <span className="pill success"><span className="dot" />{t('common.active', 'Activa')}</span>}
+                      ? <span className="badge-m3">{t('common.inactive', 'Inactiva')}</span>
+                      : <span className="badge-m3 success"><span className="dot" />{t('common.active', 'Activa')}</span>}
                   </div>
                   <div className="code" style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
                     {a.numero}
                   </div>
-                  <div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--mono)', color: 'var(--accent)' }}>
+                  <div style={{ fontSize: 22, fontWeight: 400, fontFamily: 'var(--mono)', color: 'var(--accent)' }}>
                     {fmt(a)}
                   </div>
                   {diff > 0 && (
@@ -295,7 +293,7 @@ export default function Banks({ pushToast }) {
               <option value="">{t('banks.allTypes', 'Todos los tipos')}</option>
               {Object.entries(TIPO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-            <button className="btn ghost sm"><Icon name="download" size={12} /> {t('common.export', 'Exportar')}</button>
+            <Button icon="download" variant="ghost" size="sm">{t('common.export', 'Exportar')}</Button>
           </div>
           <table className="mtable">
             <thead>
@@ -315,11 +313,11 @@ export default function Banks({ pushToast }) {
                 return (
                   <tr key={m.id}>
                     <td className="muted">{m.fecha}</td>
-                    <td style={{ fontSize: 12 }}>{cta?.alias || m.cuenta}</td>
+                    <td>{cta?.alias || m.cuenta}</td>
                     <td style={{ fontWeight: 500 }}>{m.descripcion}</td>
                     <td className="code muted">{m.referencia}</td>
-                    <td><span className={`pill ${TIPO_PILL[m.tipo] || ''}`}>{TIPO_LABEL[m.tipo] || m.tipo}</span></td>
-                    <td className="num" style={{ fontWeight: 600, color: m.monto >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                    <td><span className={`badge-m3 ${TIPO_PILL[m.tipo] || ''}`}>{TIPO_LABEL[m.tipo] || m.tipo}</span></td>
+                    <td className="num" style={{ fontWeight: 500, color: m.monto>= 0 ? 'var(--success)' : 'var(--danger)' }}>
                       {m.monto >= 0 ? '+' : ''}{Qf(Math.abs(m.monto))}
                     </td>
                     <td className="num mono">{Qf(m.saldo)}</td>
@@ -329,7 +327,7 @@ export default function Banks({ pushToast }) {
             </tbody>
           </table>
           {filteredMovs.length === 0 && (
-            <div className="muted" style={{ textAlign: 'center', padding: '32px 0', fontSize: 13 }}>
+            <div className="muted" style={{ textAlign: 'center', padding: '32px 0', fontSize: 14 }}>
               {t('banks.noMovementsFilter', 'Sin movimientos para los filtros seleccionados.')}
             </div>
           )}
@@ -341,9 +339,8 @@ export default function Banks({ pushToast }) {
         <div className="card">
           <div className="card-head">
             <h3>{t('banks.transferHistory', 'Historial de transferencias')}</h3>
-            <button className="btn sm" onClick={() => { setFormTrf(EMPTY_TRF); setShowNuevaTransferencia(true); }}>
-              <Icon name="plus" size={12} /> {t('banks.newTransfer', 'Nueva transferencia')}
-            </button>
+            <Button icon="plus" variant="accent" size="sm" onClick={() => { setFormTrf(EMPTY_TRF); setShowNuevaTransferencia(true); }}>{t('banks.newTransfer', 'Nueva transferencia')}
+            </Button>
           </div>
           <table className="mtable">
             <thead>
@@ -366,13 +363,13 @@ export default function Banks({ pushToast }) {
                   <td>{acctById[t_.destino]?.alias || t_.destino || '—'}</td>
                   <td>{t_.concepto}</td>
                   <td className="num mono">{Qf(t_.monto)}</td>
-                  <td><span className="pill success"><span className="dot" />{t('banks.completed', 'Completada')}</span></td>
+                  <td><span className="badge-m3 success"><span className="dot"/>{t('banks.completed', 'Completada')}</span></td>
                 </tr>
               ))}
             </tbody>
           </table>
           {transfers.length === 0 && (
-            <div className="muted" style={{ textAlign: 'center', padding: '32px 0', fontSize: 13 }}>
+            <div className="muted" style={{ textAlign: 'center', padding: '32px 0', fontSize: 14 }}>
               {t('banks.noTransfers', 'Sin transferencias registradas.')}
             </div>
           )}
@@ -385,23 +382,24 @@ export default function Banks({ pushToast }) {
           <div className="drawer" onClick={e => e.stopPropagation()}>
             <div className="drawer-head">
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{drawerCuenta.alias}</div>
-                <div className="muted" style={{ fontSize: 11.5 }}>
+                <div style={{ fontWeight: 500, fontSize: 14 }}>{drawerCuenta.alias}</div>
+                <div className="muted" style={{ fontSize: 12 }}>
                   {drawerCuenta.banco} · {drawerCuenta.tipo} · {drawerCuenta.moneda}
                 </div>
               </div>
               <button className="icon-btn" aria-label={t('common.close', 'Cerrar')} onClick={() => setDrawerCuenta(null)}><Icon name="close" /></button>
             </div>
             <div className="drawer-body">
-              <div className="stat" style={{ marginBottom: 20 }}>
-                <div className="label">{t('banks.currentBalance', 'Saldo actual')}</div>
-                <div className="val mono" style={{ fontSize: 24 }}>{fmt(drawerCuenta)}</div>
-                {drawerCuenta.saldo !== drawerCuenta.saldoContable && (
-                  <div className="delta dn">{t('banks.bookBalance', 'Saldo contable')}: {Qf(drawerCuenta.saldoContable)}</div>
-                )}
-              </div>
+              <StatCard
+                tone="pri" style={{ marginBottom: 20 }}
+                label={t('banks.currentBalance', 'Saldo actual')}
+                value={fmt(drawerCuenta)}
+                trend={drawerCuenta.saldo !== drawerCuenta.saldoContable
+                  ? { dir: 'down', label: <>{t('banks.bookBalance', 'Saldo contable')}: {Qf(drawerCuenta.saldoContable)}</> }
+                  : null}
+              />
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 16px', fontSize: 12.5, marginBottom: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 16px', fontSize: 12, marginBottom: 20 }}>
                 <div className="muted">{t('banks.accountNumber', 'N.° de cuenta')}</div>  <div className="code">{drawerCuenta.numero}</div>
                 <div className="muted">{t('common.type', 'Tipo')}</div>            <div style={{ textTransform: 'capitalize' }}>{drawerCuenta.tipo}</div>
                 <div className="muted">{t('banks.currency', 'Moneda')}</div>          <div>{drawerCuenta.moneda}</div>
@@ -410,15 +408,15 @@ export default function Banks({ pushToast }) {
                 <div className="muted">{t('banks.lastMov', 'Último mov.')}</div>     <div>{drawerCuenta.ultimoMov || '—'}</div>
               </div>
 
-              <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8 }}>{t('banks.recentMovements', 'Últimos movimientos')}</div>
-              <table className="mtable" style={{ fontSize: 11.5 }}>
+              <div style={{ fontWeight: 500, fontSize: 12, marginBottom: 8 }}>{t('banks.recentMovements', 'Últimos movimientos')}</div>
+              <table className="mtable">
                 <thead><tr><th>{t('common.date', 'Fecha')}</th><th>{t('common.description', 'Descripción')}</th><th className="num">{t('common.amount', 'Monto')}</th></tr></thead>
                 <tbody>
                   {movsDeCuenta.map(m => (
                     <tr key={m.id}>
                       <td className="muted">{m.fecha}</td>
                       <td>{m.descripcion}</td>
-                      <td className="num" style={{ fontWeight: 600, color: m.monto >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                      <td className="num" style={{ fontWeight: 500, color: m.monto>= 0 ? 'var(--success)' : 'var(--danger)' }}>
                         {m.monto >= 0 ? '+' : ''}{Qf(Math.abs(m.monto))}
                       </td>
                     </tr>
@@ -430,13 +428,8 @@ export default function Banks({ pushToast }) {
               </table>
 
               <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-                <button
-                  className="btn sm ghost"
-                  style={{ flex: 1 }}
-                  onClick={() => { setDrawerCuenta(null); setFormTrf({ ...EMPTY_TRF, origen: drawerCuenta.id }); setShowNuevaTransferencia(true); }}
-                >
-                  <Icon name="transfer" size={12} /> {t('banks.transfer', 'Transferir')}
-                </button>
+                <Button icon="transfer" variant="ghost" size="sm" style={{ flex: 1 }} onClick={() => { setDrawerCuenta(null); setFormTrf({ ...EMPTY_TRF, origen: drawerCuenta.id }); setShowNuevaTransferencia(true); }}>{t('banks.transfer', 'Transferir')}
+                </Button>
               </div>
             </div>
           </div>
@@ -506,14 +499,10 @@ export default function Banks({ pushToast }) {
               </div>
             </div>
             <div className="modal-foot">
-              <button className="btn ghost" onClick={() => setShowNuevaCuenta(false)}>{t('common.cancel', 'Cancelar')}</button>
-              <button
-                className="btn"
-                disabled={saving || !formCuenta.alias || !formCuenta.banco || !formCuenta.numero}
-                onClick={saveAccount}
-              >
+              <Button variant="ghost" onClick={() => setShowNuevaCuenta(false)}>{t('common.cancel', 'Cancelar')}</Button>
+              <Button icon="check" variant="accent" disabled={saving || !formCuenta.alias || !formCuenta.banco || !formCuenta.numero} onClick={saveAccount}>
                 {t('banks.createAccount', 'Crear cuenta')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -582,14 +571,10 @@ export default function Banks({ pushToast }) {
               </div>
             </div>
             <div className="modal-foot">
-              <button className="btn ghost" onClick={() => setShowNuevaTransferencia(false)}>{t('common.cancel', 'Cancelar')}</button>
-              <button
-                className="btn"
-                disabled={saving || !canTransfer}
-                onClick={saveTransfer}
-              >
+              <Button variant="ghost" onClick={() => setShowNuevaTransferencia(false)}>{t('common.cancel', 'Cancelar')}</Button>
+              <Button disabled={saving || !canTransfer} onClick={saveTransfer}>
                 {t('banks.register', 'Registrar')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

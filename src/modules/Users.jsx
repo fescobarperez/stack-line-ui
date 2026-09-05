@@ -1,6 +1,7 @@
 // Stackline — Usuarios & Roles (ES module)
 import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { MODULES_PERM, ACTIONS, initPerms, permsToMatrix, matrixToPerms } from '../lib/permissions.js';
 import { useUsers, useRoles, useBranches } from '../hooks/useMasters.js';
@@ -192,16 +193,14 @@ export default function Users({ pushToast }) {
         <div className="page-head-actions">
           {tab === 'usuarios' && (
             <>
-              <button className="btn"><Icon name="download" />{t('common.export', 'Exportar')}</button>
-              <button className="btn accent" onClick={openCreateUser}>
-                <Icon name="plus" />{t('users.newUser', 'Nuevo usuario')}
-              </button>
+              <Button icon="download">{t('common.export', 'Exportar')}</Button>
+              <Button icon="plus" variant="accent" onClick={openCreateUser}>{t('users.newUser', 'Nuevo usuario')}
+              </Button>
             </>
           )}
           {tab === 'roles' && (
-            <button className="btn accent" onClick={openCreateRole}>
-              <Icon name="plus" />{t('users.newRole', 'Nuevo rol')}
-            </button>
+            <Button icon="plus" variant="accent" onClick={openCreateRole}>{t('users.newRole', 'Nuevo rol')}
+            </Button>
           )}
         </div>
       </div>
@@ -230,7 +229,7 @@ export default function Users({ pushToast }) {
               <div key={s.label} className="card" style={{ flex: 1 }}>
                 <div className="card-body" style={{ padding: '12px 16px' }}>
                   <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{s.label}</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: s.color || 'var(--text)' }}>{s.value}</div>
+                  <div style={{ fontSize: 22, fontWeight: 400, color: s.color || 'var(--text)' }}>{s.value}</div>
                 </div>
               </div>
             ))}
@@ -264,9 +263,8 @@ export default function Users({ pushToast }) {
             <div className="grow"></div>
             <span className="muted mono" style={{ fontSize: 11 }}>{filteredUsers.length} {t('users.results', 'resultados')}</span>
             {(search || filterRole || filterBranch || filterStatus) && (
-              <button className="btn sm" onClick={() => { setSearch(''); setFilterRole(''); setFilterBranch(''); setFilterStatus(''); }}>
-                <Icon name="x" size={12} />{t('users.clearFilters', 'Limpiar')}
-              </button>
+              <Button icon="x" size="sm" onClick={() => { setSearch(''); setFilterRole(''); setFilterBranch(''); setFilterStatus(''); }}>{t('users.clearFilters', 'Limpiar')}
+              </Button>
             )}
           </div>
 
@@ -276,10 +274,9 @@ export default function Users({ pushToast }) {
               <span className="label-large" style={{ color: 'var(--md-sys-color-on-secondary-container)' }}>
                 {selected.length} {t('users.selected', 'seleccionado')}{selected.length > 1 ? 's' : ''}
               </span>
-              <button className="btn-text" onClick={() => setSelected([])}>{t('users.deselect', 'Deseleccionar')}</button>
-              <button className="btn-text" style={{ marginLeft: 'auto', color: 'var(--md-sys-color-error)' }}>
-                <Icon name="trash" size={18} />{t('users.deactivateSelected', 'Desactivar seleccionados')}
-              </button>
+              <Button variant="ghost" onClick={() => setSelected([])}>{t('users.deselect', 'Deseleccionar')}</Button>
+              <Button icon="trash" variant="ghost" style={{ marginLeft: 'auto', color: 'var(--md-sys-color-error)' }}>{t('users.deactivateSelected', 'Desactivar seleccionados')}
+              </Button>
             </div>
           )}
           <DataTable
@@ -335,9 +332,8 @@ export default function Users({ pushToast }) {
             <div className="card">
               <div className="card-head">
                 <h3>{t('users.definedRoles', 'Roles definidos')}</h3>
-                <button className="btn sm accent" onClick={openCreateRole}>
-                  <Icon name="plus" />{t('users.newRole', 'Nuevo rol')}
-                </button>
+                <Button icon="plus" variant="accent" size="sm" onClick={openCreateRole}>{t('users.newRole', 'Nuevo rol')}
+                </Button>
               </div>
               <div className="card-body flush">
                 <table className="mtable">
@@ -362,11 +358,11 @@ export default function Users({ pushToast }) {
                         <td>
                           <div className="row gap-8">
                             <Icon name="shield" size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                            <span style={{ fontWeight: 600 }}>{r.name}</span>
+                            <span style={{ fontWeight: 500 }}>{r.name}</span>
                           </div>
                         </td>
-                        <td className="muted" style={{ fontSize: 12 }}>{r.desc}</td>
-                        <td className="num"><span className="pill">{r.users}</span></td>
+                        <td className="muted">{r.desc}</td>
+                        <td className="num"><span className="badge-m3">{r.users}</span></td>
                         <td>
                           <button
                             className="icon-btn"
@@ -399,17 +395,17 @@ export default function Users({ pushToast }) {
                           <tr key={u.id}>
                             <td>
                               <div className="row gap-8">
-                                <div className="avatar" style={{ width: 24, height: 24, fontSize: 9.5 }}>
+                                <div className="avatar" style={{ width: 24, height: 24, fontSize: 11 }}>
                                   {userInitials(u.name)}
                                 </div>
-                                <span style={{ fontWeight: 500, fontSize: 12.5 }}>{u.name}</span>
+                                <span style={{ fontWeight: 500, fontSize: 12 }}>{u.name}</span>
                               </div>
                             </td>
-                            <td className="muted" style={{ fontSize: 11.5 }}>{u.branch}</td>
+                            <td className="muted">{u.branch}</td>
                             <td>
                               {u.status === 'active'
-                                ? <span className="pill success" style={{ fontSize: 9.5 }}><span className="dot" />{t('common.active', 'Activo')}</span>
-                                : <span className="pill" style={{ fontSize: 9.5 }}><span className="dot" style={{ background: 'var(--muted)' }} />{t('common.inactive', 'Inactivo')}</span>
+                                ? <span className="badge-m3 success"><span className="dot" />{t('common.active', 'Activo')}</span>
+                                : <span className="badge-m3"><span className="dot" style={{ background: 'var(--muted)' }} />{t('common.inactive', 'Inactivo')}</span>
                               }
                             </td>
                           </tr>
@@ -428,7 +424,7 @@ export default function Users({ pushToast }) {
               <h3>
                 {t('users.permissions', 'Permisos')} · {selectedRole?.name || '—'}
                 {selectedRole?.perms.includes('*') && (
-                  <span className="pill accent" style={{ marginLeft: 8, fontSize: 10 }}>{t('users.fullAccess', 'Acceso total')}</span>
+                  <span className="badge-m3 accent" style={{ marginLeft: 8 }}>{t('users.fullAccess', 'Acceso total')}</span>
                 )}
               </h3>
             </div>
@@ -439,7 +435,7 @@ export default function Users({ pushToast }) {
                     <tr>
                       <th style={{ minWidth: 160 }}>{t('users.module', 'Módulo')}</th>
                       {ACTIONS.map(a => (
-                        <th key={a} className="center" style={{ textTransform: 'capitalize', fontSize: 11 }}>{a}</th>
+                        <th key={a} className="center" style={{ textTransform: 'capitalize' }}>{a}</th>
                       ))}
                     </tr>
                   </thead>
@@ -448,7 +444,7 @@ export default function Users({ pushToast }) {
                       const p = matrixForRole[mod];
                       return (
                         <tr key={mod}>
-                          <td style={{ fontSize: 12.5, fontWeight: 500 }}>{mod}</td>
+                          <td style={{ fontWeight: 500 }}>{mod}</td>
                           {ACTIONS.map(acc => (
                             <td key={acc} className="center">
                               {p[acc]
@@ -541,7 +537,7 @@ export default function Users({ pushToast }) {
                 }}>
                   <Icon name="shield" size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 600 }}>{userForm.role}</div>
+                    <div style={{ fontSize: 12, fontWeight: 500 }}>{userForm.role}</div>
                     <div className="muted" style={{ fontSize: 11 }}>
                       {roles.find(r => r.name === userForm.role)?.desc || ''}
                     </div>
@@ -550,11 +546,9 @@ export default function Users({ pushToast }) {
               )}
             </div>
             <div className="modal-foot">
-              <button className="btn" onClick={() => setShowUserModal(false)}>{t('common.cancel', 'Cancelar')}</button>
-              <button className="btn accent" onClick={saveUser}>
-                <Icon name="check" size={13} />
-                {editingUser ? t('users.saveChanges', 'Guardar cambios') : t('users.newUser', 'Crear usuario')}
-              </button>
+              <Button onClick={() => setShowUserModal(false)}>{t('common.cancel', 'Cancelar')}</Button>
+              <Button icon="check" variant="accent" onClick={saveUser}>{editingUser ? t('users.saveChanges', 'Guardar cambios') : t('users.newUser', 'Crear usuario')}
+              </Button>
             </div>
           </div>
         </div>
@@ -603,7 +597,7 @@ export default function Users({ pushToast }) {
                       {ACTIONS.map(a => (
                         <th key={a} className="center" style={{ textTransform: 'capitalize' }}>{a}</th>
                       ))}
-                      <th className="center" style={{ fontSize: 10 }}>{t('users.all', 'Todo')}</th>
+                      <th className="center">{t('users.all', 'Todo')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -612,7 +606,7 @@ export default function Users({ pushToast }) {
                       const allOn = ACTIONS.every(a => p[a]);
                       return (
                         <tr key={mod}>
-                          <td style={{ fontWeight: 500, fontSize: 12 }}>{mod}</td>
+                          <td style={{ fontWeight: 500 }}>{mod}</td>
                           {ACTIONS.map(acc => (
                             <td key={acc} className="center">
                               <input
@@ -642,15 +636,9 @@ export default function Users({ pushToast }) {
               </div>
             </div>
             <div className="modal-foot">
-              <button className="btn" onClick={() => setShowRoleModal(false)}>{t('common.cancel', 'Cancelar')}</button>
-              <button
-                className="btn accent"
-                disabled={!roleForm.name.trim()}
-                onClick={saveRole}
-              >
-                <Icon name="check" size={13} />
-                {editingRole ? t('users.saveChanges', 'Guardar cambios') : t('users.newRole', 'Crear rol')}
-              </button>
+              <Button onClick={() => setShowRoleModal(false)}>{t('common.cancel', 'Cancelar')}</Button>
+              <Button icon="check" variant="accent" disabled={!roleForm.name.trim()} onClick={saveRole}>{editingRole ? t('users.saveChanges', 'Guardar cambios') : t('users.newRole', 'Crear rol')}
+              </Button>
             </div>
           </div>
         </div>
@@ -668,5 +656,5 @@ function RolePill({ role }) {
     'Contador':      '',
   };
   const cls = map[role] || '';
-  return <span className={`pill ${cls}`}>{role}</span>;
+  return <span className={`badge-m3 ${cls}`}>{role}</span>;
 }

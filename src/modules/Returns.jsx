@@ -1,6 +1,8 @@
 // Stackline — Devoluciones · Notas de Crédito FEL
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
 import { useCreditNotes } from '../hooks/useReturns.js';
 import { createCreditNote, retryCreditNoteFel } from '../api/wave2.js';
@@ -210,38 +212,40 @@ export default function Returns({ pushToast }) {
           <div className="page-subtitle">{t('returns.subtitle', 'Anulaciones, devoluciones y ajustes post-venta · FEL Guatemala')}</div>
         </div>
         <div className="page-head-actions">
-          <button className="btn accent" onClick={() => setCreateModal(true)}>
-            <Icon name="plus" size={12} /> {t('returns.newReturn', 'Nueva nota de crédito')}
-          </button>
+          <Button icon="plus" variant="accent" onClick={() => setCreateModal(true)}>{t('returns.newReturn', 'Nueva nota de crédito')}
+          </Button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="return" size={11} />{t('returns.issuedMayo', 'NCs emitidas mayo')}</div>
-          <div className="val mono">{mayo.length}</div>
-          <div className="delta muted">{notes.length} {t('returns.inTotal', 'en total')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="cash" size={11} />{t('returns.amountMayo', 'Monto devuelto mayo')}</div>
-          <div className="val mono" style={{ color: 'var(--danger)' }}>−{Q(totalMayo)}</div>
-          <div className="delta muted">{t('returns.ivaCredit', 'IVA crédito')}: −{Q(totalMayo * 0.12 / 1.12)}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="clock" size={11} />{t('returns.pendingFel', 'Pendientes FEL')}</div>
-          <div className="val mono" style={{ color: pending > 0 ? 'var(--warning)' : undefined }}>{pending}</div>
-          <div className="delta muted">{t('returns.waitingSat', 'Esperando respuesta SAT')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="check" size={11} />{t('returns.authorizedSat', 'Autorizadas SAT')}</div>
-          <div className="val mono" style={{ color: 'var(--success)' }}>{authorized}</div>
-          <div className="delta muted" style={{ color: rejected > 0 ? 'var(--danger)' : undefined }}>
-            {rejected > 0
-              ? t('returns.rejectedNeedAttention', '{{count}} rechazadas — requieren atención', { count: rejected })
-              : t('returns.noRejections', 'Sin rechazos')}
-          </div>
-        </div>
+        <StatCard
+          icon="return" tone="pri"
+          label={t('returns.issuedMayo', 'NCs emitidas mayo')}
+          value={mayo.length}
+          foot={<>{notes.length} {t('returns.inTotal', 'en total')}</>}
+        />
+        <StatCard
+          icon="cash" tone="ter"
+          label={t('returns.amountMayo', 'Monto devuelto mayo')}
+          valueColor={'var(--danger)'}
+          value={<>−{Q(totalMayo)}</>}
+          foot={<>{t('returns.ivaCredit', 'IVA crédito')}: −{Q(totalMayo * 0.12 / 1.12)}</>}
+        />
+        <StatCard
+          icon="clock" tone="sec"
+          label={t('returns.pendingFel', 'Pendientes FEL')}
+          valueColor={pending > 0 ? 'var(--warning)' : undefined}
+          value={pending}
+          foot={t('returns.waitingSat', 'Esperando respuesta SAT')}
+        />
+        <StatCard
+          icon="check" tone="err"
+          label={t('returns.authorizedSat', 'Autorizadas SAT')}
+          valueColor={'var(--success)'}
+          value={authorized}
+          foot={rejected > 0 ? t('returns.rejectedNeedAttention', '{{count}} rechazadas — requieren atención', { count: rejected }) : t('returns.noRejections', 'Sin rechazos')}
+        />
       </div>
 
       {/* Filtros */}
@@ -290,33 +294,32 @@ export default function Returns({ pushToast }) {
               <tr><td colSpan={9} className="empty">{t('returns.noResults', 'Sin notas de crédito con los filtros aplicados')}</td></tr>
             ) : filtered.map(n => (
               <tr key={n.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(n)}>
-                <td><span className="mono" style={{ fontSize: 12, fontWeight: 600 }}>{n.id}</span></td>
+                <td><span className="mono" style={{ fontSize: 12, fontWeight: 500 }}>{n.id}</span></td>
                 <td><span className="mono muted" style={{ fontSize: 12 }}>{n.ticketId}</span></td>
                 <td>
-                  <div style={{ fontSize: 13 }}>{n.clientName}</div>
-                  <div className="mono muted" style={{ fontSize: 10 }}>{n.clientNit}</div>
+                  <div style={{ fontSize: 14 }}>{n.clientName}</div>
+                  <div className="mono muted" style={{ fontSize: 11 }}>{n.clientNit}</div>
                 </td>
-                <td className="muted" style={{ fontSize: 12 }}>{n.date}</td>
+                <td className="muted">{n.date}</td>
                 <td>
-                  <span className={`pill ${TYPE_CLASS[n.type]}`} style={{ fontSize: 9 }}>
+                  <span className={`badge-m3 ${TYPE_CLASS[n.type]}`}>
                     {TYPE_LABEL[n.type]}
                   </span>
                 </td>
-                <td style={{ textAlign: 'right', fontWeight: 700, fontSize: 13, color: 'var(--danger)' }}>
+                <td style={{ textAlign: 'right', fontWeight: 500, color: 'var(--danger)' }}>
                   −{Q(n.amount)}
                 </td>
-                <td className="muted" style={{ fontSize: 12 }}>{n.cashier} · {n.branch}</td>
+                <td className="muted">{n.cashier} · {n.branch}</td>
                 <td>
-                  <span className={`pill ${FEL_CLASS[n.felStatus]}`} style={{ fontSize: 9 }}>
+                  <span className={`badge-m3 ${FEL_CLASS[n.felStatus]}`}>
                     {FEL_LABEL[n.felStatus]}
                   </span>
                 </td>
                 <td onClick={e => e.stopPropagation()}>
                   {n.felStatus === 'rechazada' && (
-                    <button className="btn" style={{ fontSize: 11, padding: '3px 8px', color: 'var(--warning)', borderColor: 'var(--warning)' }}
-                      onClick={() => retryFel(n)}>
+                    <Button size="sm" style={{ color: 'var(--warning)', borderColor: 'var(--warning)' }} onClick={() => retryFel(n)}>
                       {t('returns.retry', 'Reintentar')}
-                    </button>
+                    </Button>
                   )}
                 </td>
               </tr>
@@ -354,12 +357,12 @@ export default function Returns({ pushToast }) {
               <div style={{ marginTop: 16, marginBottom: 8 }}>
                 <div className="detail-label" style={{ marginBottom: 8 }}>{t('returns.felStatus', 'Estado FEL')}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className={`pill ${FEL_CLASS[selected.felStatus]}`}>
+                  <span className={`badge-m3 ${FEL_CLASS[selected.felStatus]}`}>
                     {FEL_LABEL[selected.felStatus]}
                   </span>
                 </div>
                 {selected.felUuid && (
-                  <div className="mono muted" style={{ fontSize: 10, marginTop: 6, wordBreak: 'break-all' }}>
+                  <div className="mono muted" style={{ fontSize: 11, marginTop: 6, wordBreak: 'break-all' }}>
                     UUID: {selected.felUuid}
                   </div>
                 )}
@@ -386,10 +389,10 @@ export default function Returns({ pushToast }) {
                     <tbody>
                       {selected.items.map((item, i) => (
                         <tr key={i}>
-                          <td style={{ fontSize: 12 }}>{item.name}</td>
-                          <td style={{ textAlign: 'right', fontSize: 12 }}>{item.qty}</td>
-                          <td style={{ textAlign: 'right', fontSize: 12 }}>{Q(item.unitPrice)}</td>
-                          <td style={{ textAlign: 'right', fontSize: 12, fontWeight: 600 }}>{Q(item.qty * item.unitPrice)}</td>
+                          <td>{item.name}</td>
+                          <td style={{ textAlign: 'right' }}>{item.qty}</td>
+                          <td style={{ textAlign: 'right' }}>{Q(item.unitPrice)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 500 }}>{Q(item.qty * item.unitPrice)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -399,10 +402,8 @@ export default function Returns({ pushToast }) {
 
               {selected.felStatus === 'rechazada' && (
                 <div style={{ marginTop: 16 }}>
-                  <button className="btn" style={{ width: '100%', justifyContent: 'center', color: 'var(--warning)', borderColor: 'var(--warning)' }}
-                    onClick={() => { retryFel(selected); setSelected(null); }}>
-                    <Icon name="return" size={13} /> {t('returns.retryFel', 'Reintentar envío FEL')}
-                  </button>
+                  <Button icon="return" style={{ width: '100%', justifyContent: 'center', color: 'var(--warning)', borderColor: 'var(--warning)' }} onClick={() => { retryFel(selected); setSelected(null); }}>{t('returns.retryFel', 'Reintentar envío FEL')}
+                  </Button>
                 </div>
               )}
             </div>
@@ -425,7 +426,7 @@ function Row({ label, value, mono, bold }) {
   return (
     <div className="detail-row">
       <span className="detail-label">{label}</span>
-      <span className={mono ? 'mono' : ''} style={{ fontSize: 13, fontWeight: bold ? 700 : 400, textAlign: 'right', maxWidth: 220 }}>{value}</span>
+      <span className={mono ? 'mono' : ''} style={{ fontSize: 14, fontWeight: bold ? 700 : 400, textAlign: 'right', maxWidth: 220 }}>{value}</span>
     </div>
   );
 }
@@ -517,18 +518,16 @@ function CreateModal({ onClose, onSave }) {
                   value={itemQty} onChange={e => setItemQty(e.target.value)} />
                 <input className="field-input mono" type="number" min="0" step="0.01" placeholder={t('returns.unitPrice', 'P. Unit.')}
                   value={itemPrice} onChange={e => setItemPrice(e.target.value)} />
-                <button className="btn" style={{ padding: '0 10px' }} onClick={addItem}>
-                  <Icon name="plus" size={12} />
-                </button>
+                <Button icon="plus" iconOnly onClick={addItem} />
               </div>
               {items.length > 0 && (
                 <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                        <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, color: 'var(--muted)', fontSize: 10 }}>{t('common.product', 'Producto')}</th>
-                        <th style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 500, color: 'var(--muted)', fontSize: 10 }}>{t('returns.qty', 'Cant.')}</th>
-                        <th style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 500, color: 'var(--muted)', fontSize: 10 }}>{t('common.total', 'Total')}</th>
+                        <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, color: 'var(--muted)' }}>{t('common.product', 'Producto')}</th>
+                        <th style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 500, color: 'var(--muted)' }}>{t('returns.qty', 'Cant.')}</th>
+                        <th style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 500, color: 'var(--muted)' }}>{t('common.total', 'Total')}</th>
                         <th style={{ width: 28 }}></th>
                       </tr>
                     </thead>
@@ -536,8 +535,8 @@ function CreateModal({ onClose, onSave }) {
                       {items.map((it, i) => (
                         <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '6px 10px' }}>{it.name}</td>
-                          <td style={{ padding: '6px 10px', textAlign: 'right', fontFamily: 'var(--font-mono)' }}>{it.qty}</td>
-                          <td style={{ padding: '6px 10px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>Q {(it.qty * it.unitPrice).toFixed(2)}</td>
+                          <td className="num" style={{ padding: '6px 10px' }}>{it.qty}</td>
+                          <td className="num" style={{ padding: '6px 10px', fontWeight: 500 }}>Q {(it.qty * it.unitPrice).toFixed(2)}</td>
                           <td style={{ padding: '0 6px' }}>
                             <button className="icon-btn" style={{ width: 22, height: 22 }}
                               onClick={() => setItems(prev => prev.filter((_, j) => j !== i))}>
@@ -551,7 +550,7 @@ function CreateModal({ onClose, onSave }) {
                 </div>
               )}
               {items.length > 0 && (
-                <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, marginTop: 6 }}>
+                <div style={{ textAlign: 'right', fontSize: 14, fontWeight: 500, marginTop: 6 }}>
                   {t('common.total', 'Total')}: −Q {totalItems.toFixed(2)}
                 </div>
               )}
@@ -568,8 +567,8 @@ function CreateModal({ onClose, onSave }) {
           )}
 
           {finalAmount > 0 && (
-            <div style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)', borderRadius: 'var(--r-md)', padding: '10px 14px', fontSize: 13 }}>
-              <span style={{ color: 'var(--danger)', fontWeight: 700 }}>
+            <div style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)', borderRadius: 'var(--r-md)', padding: '10px 14px', fontSize: 14 }}>
+              <span style={{ color: 'var(--danger)', fontWeight: 500 }}>
                 {t('returns.creditNote', 'Nota de crédito')}: −Q {finalAmount.toFixed(2)}
               </span>
               <span className="muted" style={{ marginLeft: 10, fontSize: 12 }}>
@@ -579,17 +578,9 @@ function CreateModal({ onClose, onSave }) {
           )}
         </div>
         <div className="modal-foot">
-          <button className="btn ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-          <button className="btn accent" disabled={!valid}
-            onClick={() => onSave({
-              ticketId, clientName, clientNit, type, reason,
-              amount: finalAmount, items: type === 'descuento'
-                ? [{ name: `Descuento sobre ${ticketId}`, qty: 1, unitPrice: finalAmount }]
-                : items,
-              cashier: cashier || 'Sistema', branch,
-            })}>
-            <Icon name="check" size={13} /> {t('returns.submitFel', 'Emitir y enviar a FEL')}
-          </button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+          <Button icon="check" variant="accent" disabled={!valid} onClick={() => onSave({ ticketId, clientName, clientNit, type, reason, amount: finalAmount, items: type === 'descuento' ? [{ name: `Descuento sobre ${ticketId}`, qty: 1, unitPrice: finalAmount }] : items, cashier: cashier || 'Sistema', branch, })}>{t('returns.submitFel', 'Emitir y enviar a FEL')}
+          </Button>
         </div>
       </div>
     </div>

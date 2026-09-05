@@ -241,17 +241,15 @@
 }
 [data-theme="dark"] .fab { box-shadow: var(--elev-1); }
 
-/* "Spacious" style variation — more breathing room, fewer borders */
-[data-style="spacious"] {
-  font-size: 14px;
-}
+/* "Spacious" style variation — more breathing room, fewer borders.
+   El tamaño ya no se toca aquí: la base de la app es body-medium. */
 [data-style="spacious"] table.tbl tbody td { padding: 11px 14px; }
 [data-style="spacious"] table.tbl thead th { padding: 10px 14px; }
 [data-style="spacious"] .card { border-radius: 14px; }
 [data-style="spacious"] .stat { padding: 18px 20px; }
-[data-style="spacious"] .stat .val { font-size: 30px; margin-top: 8px; }
+[data-style="spacious"] .stat .val { margin-top: 8px; }  /* el tamaño lo da display-small */
 [data-style="spacious"] .page { padding: 24px 32px 40px; }
-[data-style="spacious"] .nav-item { padding: 9px 11px; font-size: 13px; }
+[data-style="spacious"] .nav-item { padding: 9px 11px; }
 [data-style="spacious"] .stat-grid { gap: 16px; margin-bottom: 20px; }
 [data-style="spacious"] .grid-2, [data-style="spacious"] .grid-3 { gap: 16px; }
 [data-style="spacious"] .card-head { padding: 14px 18px; }
@@ -267,7 +265,7 @@
 }
 /* Feedback de hover ágil (que el cambio de tema no arrastre 350ms el hover) */
 table.tbl tbody tr td,
-.nav-item, .btn, .btn-ghost, .btn-outline, .icon-btn, .chip, .seg,
+.nav-item, .btn, .icon-btn, .chip, .seg,
 .pos-prod, .pay-btn, .list-item {
   transition-duration: var(--dur-short);
 }
@@ -277,8 +275,10 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 13px;
-  line-height: 1.45;
+  /* body-medium — base de la escala M3. Sin letter-spacing en el root: los
+     componentes declaran el suyo y el mono de la app usa tracking 0. */
+  font-size: 14px;
+  line-height: 1.43;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "cv11", "ss01", "ss03";
   overflow: hidden;
@@ -321,8 +321,9 @@ html, body {
   flex: none;
   display: block;
 }
-/* title-large — wordmark del drawer */
-.drawer-title {
+/* Wordmark del drawer — excepción declarada a la escala (cara de marca).
+   Antes se llamaba .drawer-title y lo anulaba el título de drawer de más abajo. */
+.drawer-wordmark {
   font: 600 22px/28px 'Space Grotesk', var(--font-sans);
   letter-spacing: -.028em;
   color: var(--md-sys-color-on-surface);
@@ -370,12 +371,13 @@ html, body {
   flex: 1;
   overflow-y: auto;
 }
-/* Section header M3 — label-medium */
+/* Section header M3 — label-medium, sentence case. Las etiquetas venían en
+   mayúsculas desde i18n; ahora el texto va tal cual y el CSS no lo transforma. */
 .nav-section {
   padding: 16px 16px 8px;
   font: 500 12px/16px var(--font-sans);
   letter-spacing: 0.5px;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--md-sys-color-on-surface-variant);
 }
 /* Nav item M3 — pill 56px, active indicator = secondary-container, state layer */
@@ -622,24 +624,27 @@ html, body {
 .btn:disabled { opacity: .38; cursor: not-allowed; }
 .btn:disabled::after { opacity: 0; }
 
-/* Filled (primary) — .accent conserva el nombre legacy */
-.btn.accent, .btn-filled {
+/* ── Variantes M3. Todas son modificadores de .btn: nunca funcionan solas.
+   Antes existía un segundo juego con guión (.btn-filled/.btn-tonal/.btn-text/
+   .btn-ghost/.btn-outline) que duplicaba estas mismas cinco. ──────────────── */
+/* Filled — primario. .accent conserva el nombre legacy */
+.btn.accent {
   background: var(--md-sys-color-primary);
   color: var(--md-sys-color-on-primary);
   border-color: transparent;
 }
-/* Tonal — .primary legacy pasa a secondary-container */
-.btn.primary, .btn-tonal {
+/* Tonal. Antes se llamaba .primary, que engañaba: el primario es .accent */
+.btn.tonal {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
   border-color: transparent;
 }
-[data-theme="dark"] .btn.primary {
+[data-theme="dark"] .btn.tonal {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
 }
 /* Text */
-.btn.ghost, .btn-text {
+.btn.ghost {
   border-color: transparent;
   background: transparent;
   color: var(--md-sys-color-primary);
@@ -651,45 +656,20 @@ html, body {
   border-color: transparent;
 }
 /* Elevated */
-.btn-elevated {
+.btn.elevated {
   background: var(--md-sys-color-surface-container-low);
   color: var(--md-sys-color-primary);
   border-color: transparent;
   box-shadow: var(--elev-1);
 }
-.btn-elevated:hover { box-shadow: var(--elev-2); }
-.btn.sm { height: 32px; padding: 0 14px; font-size: 13px; }
-.btn.lg { height: 48px; padding: 0 28px; font-size: 15px; }
+.btn.elevated:hover { box-shadow: var(--elev-2); }
+/* sm = label-medium, lg = title-medium (el base .btn es label-large) */
+.btn.sm { height: 32px; padding: 0 14px; font: 500 12px/16px var(--font-sans); letter-spacing: .5px; }
+.btn.lg { height: 48px; padding: 0 28px; font: 500 16px/24px var(--font-sans); letter-spacing: .15px; }
 .btn.danger { color: var(--md-sys-color-error); }
+.btn.danger-outline { color: var(--md-sys-color-error); border-color: var(--md-sys-color-error); }
 .btn.icon { padding: 0 12px; }
-
-/* Aliases hiphenados — usados en módulos recientes (M3 con state layer) */
-.btn-ghost, .btn-outline {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--md-sys-color-primary);
-  border-radius: var(--shape-full);
-  padding: 0 20px;
-  font: 500 14px/20px var(--font-sans);
-  letter-spacing: .1px;
-  cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  height: 40px;
-  white-space: nowrap;
-}
-.btn-outline { border-color: var(--md-sys-color-outline); }
-.btn-ghost::after, .btn-outline::after {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background: currentColor; opacity: 0;
-  transition: opacity var(--dur-short) var(--ease-standard);
-  pointer-events: none;
-}
-.btn-ghost:hover::after, .btn-outline:hover::after { opacity: .08; }
-.btn-ghost:active::after, .btn-outline:active::after { opacity: .10; }
-.btn-outline:disabled, .btn-ghost:disabled { opacity: 0.38; cursor: not-allowed; }
+.btn.full { width: 100%; }
 
 /* Chip standalone (fuera de .filterbar) — filter chip M3 */
 .chip {
@@ -698,8 +678,8 @@ html, body {
   padding: 0 12px;
   border: 1px solid var(--md-sys-color-outline);
   border-radius: var(--shape-sm);
-  font-size: 14px; font-weight: 500; letter-spacing: .1px;
-  font-family: inherit;
+  font: 500 14px/20px var(--font-sans);
+  letter-spacing: .1px;
   color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   background: transparent;
@@ -747,59 +727,27 @@ html, body {
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 16px;
   margin-bottom: 16px;
 }
-.stat {
-  background: var(--md-sys-color-surface-container-low);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 14px 16px;
-  position: relative;
-}
-.stat .label {
-  font-size: 11.5px;
-  color: var(--muted);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  font-family: var(--font-mono);
-  display: flex; align-items: center; gap: 6px;
-}
-/* display-small — cifra de KPI */
-.stat .val {
-  font: 400 36px/44px var(--font-sans);
-  letter-spacing: 0;
-  margin-top: 6px;
-  font-feature-settings: "tnum";
-  font-variant-numeric: tabular-nums;
-}
-.stat .val.mono { font-family: var(--font-mono); font-weight: 500; }
-.stat .delta {
-  font-size: 11.5px;
-  margin-top: 4px;
-  display: inline-flex; align-items: center; gap: 4px;
-  font-family: var(--font-mono);
-}
-.stat .delta.up { color: var(--success); }
-.stat .delta.dn { color: var(--danger); }
-.stat .spark { position: absolute; right: 12px; top: 12px; opacity: 0.85; }
 
 /* ===== Tables ===== */
 .tbl-wrap { overflow: auto; }
-/* celdas 13px (ajustado para densidad; base body-medium) */
+/* body-medium — la escala M3 aplica también a las tablas densas; la densidad
+   la da el padding, no un tamaño de letra fuera de escala. */
 table.tbl {
   width: 100%;
   border-collapse: collapse;
-  font: 400 13px/18px var(--font-sans);
+  font: 400 14px/20px var(--font-sans);
   letter-spacing: 0.25px;
 }
-/* label-medium en headers */
+/* title-small en headers — M3 no usa versalitas en data tables */
 table.tbl thead th {
   text-align: left;
-  font: 500 12px/16px var(--font-sans);
-  letter-spacing: 0.5px;
+  font: 500 14px/20px var(--font-sans);
+  letter-spacing: 0.1px;
   color: var(--muted);
-  text-transform: uppercase;
+  text-transform: none;
   padding: 8px 12px;
   background: var(--surface-2);
   border-bottom: 1px solid var(--border);
@@ -818,37 +766,17 @@ table.tbl tbody td {
 table.tbl tbody tr:hover td { background: color-mix(in oklab, var(--md-sys-color-on-surface) 8%, transparent); }
 table.tbl .num {
   text-align: right;
-  font-family: var(--font-mono);
+  font: 400 13px/20px var(--font-mono);
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
 table.tbl .code {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
+  font: 400 13px/20px var(--font-mono);
+  letter-spacing: 0;
   color: var(--text-2);
 }
 table.tbl .center { text-align: center; }
 table.tbl tbody tr:last-child td { border-bottom: none; }
-
-/* ===== Pills / badges ===== */
-.pill {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 11px;
-  font-family: var(--font-mono);
-  padding: 1px 7px;
-  border-radius: 99px;
-  background: var(--surface-3);
-  color: var(--text-2);
-  border: 1px solid var(--border);
-  font-weight: 500;
-}
-/* Badges M3 — par container / on-container (contraste garantizado ≥4.5:1) */
-.pill.success { background: var(--md-sys-color-success-container); color: var(--md-sys-color-on-success-container); border-color: transparent; }
-.pill.warning { background: var(--md-sys-color-warning-container); color: var(--md-sys-color-on-warning-container); border-color: transparent; }
-.pill.danger  { background: var(--md-sys-color-error-container);   color: var(--md-sys-color-on-error-container);   border-color: transparent; }
-/* info y warning se separan por TONO (86 vs 81), no por matiz */
-.pill.info    { background: var(--md-sys-color-secondary-container);color: var(--md-sys-color-on-secondary-container);border-color: transparent; }
-.pill.accent  { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); border-color: transparent; }
-.pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
 /* ===== Tabs ===== */
 .tabs {
@@ -878,11 +806,11 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
 .field {
   display: flex; flex-direction: column; gap: 4px;
 }
-/* label-medium */
+/* label-medium — sentence case, igual que .stat .label y .detail-label */
 .field label {
   font: 500 12px/16px var(--font-sans);
   color: var(--muted);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.5px;
 }
 /* body-large */
@@ -923,7 +851,8 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
   padding: 4px 9px;
   border: 1px dashed var(--border-strong);
   border-radius: 99px;
-  font-size: 11.5px;
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: .5px;
   color: var(--text-2);
   cursor: pointer;
   background: transparent;
@@ -1599,7 +1528,12 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
   border-bottom: 1px solid var(--border);
   display: flex; justify-content: space-between; align-items: center;
 }
-.modal-head h3 { margin: 0; font-size: 14px; font-weight: 600; }
+/* title-large — mismo rol que .confirm-title. Antes 14px, el tamaño del cuerpo. */
+.modal-head h3 {
+  font: 400 22px/28px var(--font-sans);
+  letter-spacing: 0;
+  margin: 0;
+}
 .modal-body { padding: 16px 18px; overflow-y: auto; }
 .modal-foot {
   padding: 12px 18px;
@@ -1610,7 +1544,9 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
 
 /* ===== Ticket / Receipt 80mm =====
    Excepción a la regla "sin hex fuera de los bloques de tokens": simula papel
-   térmico impreso, siempre negro sobre blanco, independiente del tema. */
+   térmico impreso, siempre negro sobre blanco, independiente del tema.
+   También queda FUERA de la escala tipográfica M3 a propósito: es un
+   facsímil de un ticket de 80mm, no una superficie de UI. */
 .ticket {
   width: 280px;
   background: white;
@@ -1703,7 +1639,8 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
   color: var(--surface);
   padding: 9px 14px;
   border-radius: var(--r-md);
-  font-size: 12.5px;
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: 0.25px;
   box-shadow: var(--shadow-lg);
   display: flex; align-items: center; gap: 8px;
   animation: toast-in 0.2s ease;
@@ -1738,7 +1675,8 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
   color: var(--warning);
   padding: 9px 12px;
   border-radius: var(--r-md);
-  font-size: 12.5px;
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: 0.25px;
   display: flex; align-items: center; gap: 8px;
 }
 [data-theme="dark"] .alert { color: var(--warning); }
@@ -1761,28 +1699,8 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
   z-index: 100;
   padding: 24px;
 }
-/* Modal title & footer alias */
-.modal-title { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
-.modal-footer {
-  padding: 12px 18px;
-  border-top: 1px solid var(--border);
-  display: flex; justify-content: flex-end; gap: 8px;
-  background: var(--surface-2);
-}
-
-/* Drawer title */
-.drawer-title { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
-.drawer-header {
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-  display: flex; justify-content: space-between; align-items: center;
-}
-.drawer-footer {
-  padding: 12px 18px;
-  border-top: 1px solid var(--border);
-  display: flex; justify-content: flex-end; gap: 8px;
-}
-
+/* Drawer title — title-large, igual que el de modal */
+.drawer-title { font: 400 22px/28px var(--font-sans); letter-spacing: 0; }
 /* Table aliases (modules used data-table / table-wrap) */
 .table-wrap {
   overflow: auto;
@@ -1793,15 +1711,15 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
 table.data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: 0.25px;
 }
 table.data-table thead th {
   text-align: left;
-  font-weight: 500;
-  font-size: 11px;
+  font: 500 14px/20px var(--font-sans);
+  letter-spacing: 0.1px;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  text-transform: none;
   padding: 8px 12px;
   background: var(--surface-2);
   border-bottom: 1px solid var(--border);
@@ -1819,9 +1737,10 @@ table.data-table tbody tr.clickable { cursor: pointer; }
 table.tbl tbody tr.clickable { cursor: pointer; }
 table.data-table tbody tr:last-child td { border-bottom: none; }
 table.data-table .num,
-table.data-table .right { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-table.data-table .mono { font-family: var(--font-mono); font-size: 11.5px; }
-table.tbl .right { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+table.data-table .right { text-align: right; font: 400 13px/20px var(--font-mono); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+table.data-table .mono,
+table.tbl .mono { font: 400 13px/20px var(--font-mono); letter-spacing: 0; }
+table.tbl .right { text-align: right; font: 400 13px/20px var(--font-mono); letter-spacing: 0; font-variant-numeric: tabular-nums; }
 table.data-table .muted { color: var(--muted); }
 table.data-table .empty { text-align: center; padding: 28px; color: var(--muted); }
 table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
@@ -1869,12 +1788,15 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
 .form-grid .span-2 { grid-column: 1 / -1; }
 
 /* Field label / input explicit aliases */
+/* Etiqueta de campo — mismo rol que `.field label` (label-medium, sentence case).
+   Era 11px mono en versalitas: el último bolsón del set anterior, y el más usado
+   (123 sitios). Pasó desapercibido en las auditorías porque 11px SÍ está en la
+   escala; lo que estaba fuera era la familia y las versalitas. */
 .field-label {
-  font-size: 11px;
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: 0.5px;
   color: var(--muted);
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  text-transform: none;
 }
 .field-input {
   border: 1px solid var(--border);
@@ -1903,7 +1825,8 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   text-align: center;
   padding: 32px 16px;
   color: var(--muted);
-  font-size: 13px;
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: 0.25px;
 }
 
 /* Key-value detail rows (used in drawers) */
@@ -1913,19 +1836,31 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   gap: 12px;
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
-  font-size: 13px;
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: 0.25px;
 }
 .detail-row:last-child { border-bottom: none; }
+/* label-medium — misma decisión que .stat .label */
 .detail-label {
-  font-size: 11px;
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: 0.5px;
   color: var(--muted);
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  text-transform: none;
   flex-shrink: 0;
 }
 
 /* Stat card (used inside drawers / tabs) */
+/* Panel compuesto de drawer (badges, progreso, varias filas). Las tarjetas de
+   KPI que vivían aquí ahora son <StatCard>. */
+.stat-card .label { font: 500 12px/16px var(--font-sans); letter-spacing: .5px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+/* Panel compuesto de drawer (badges, progreso, varias filas). Las tarjetas de
+   KPI que vivían aquí ahora son <StatCard>; estos .label quedaron sin regla. */
+.stat-card .label {
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: .5px;
+  color: var(--muted);
+  display: inline-flex; align-items: center; gap: 6px;
+}
 .stat-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1934,13 +1869,11 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   box-shadow: var(--shadow-sm);
 }
 
-/* Pill neutral variant */
-.pill.neutral { background: var(--surface-3); color: var(--text-2); border-color: var(--border); }
-
 /* Info row (key-value inside modal body) */
 .info-row {
   display: flex; justify-content: space-between; align-items: center;
-  font-size: 13px;
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: 0.25px;
   gap: 12px;
 }
 
@@ -1952,39 +1885,63 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   gap: 0;
 }
 .fs-col-head {
-  min-width: 180px; text-align: right;
-  font-size: 10.5px; font-weight: 700;
-  letter-spacing: 0.05em; color: var(--text-1);
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: 0.5px;
+  text-transform: none;
+  min-width: 180px;
+  text-align: right;
+  color: var(--text);
   padding-right: 16px;
 }
 .fs-col-head.muted { color: var(--muted); }
 
 .fs-cmp-label {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 12.5px; color: var(--text-2); cursor: pointer;
+  font: 400 12px/16px var(--font-sans);
+  letter-spacing: 0.4px;
+  text-transform: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  cursor: pointer;
 }
 
 .fs-section-hdr td {
+  font: 500 14px/20px var(--font-sans);
+  letter-spacing: 0.1px;
+  text-transform: none;
   padding: 14px 16px 6px;
-  font-size: 10.5px; font-weight: 700;
-  letter-spacing: 0.07em;
   color: var(--muted);
   border-bottom: 1px solid var(--border);
 }
-.fs-row td { padding: 6px 16px; font-size: 13px; }
+.fs-row td {
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: 0.25px;
+  text-transform: none;
+  padding: 6px 16px;
+}
 .fs-total td {
-  padding: 8px 16px; font-size: 13px;
+  font: 500 14px/20px var(--font-sans);
+  letter-spacing: 0.1px;
+  text-transform: none;
+  padding: 8px 16px;
   border-top: 1px solid var(--border);
   background: var(--surface-2);
 }
 .fs-grand td {
-  padding: 9px 16px; font-size: 13.5px;
+  font: 500 16px/24px var(--font-sans);
+  letter-spacing: 0.15px;
+  text-transform: none;
+  padding: 9px 16px;
   border-top: 2px solid var(--border);
   border-bottom: 2px solid var(--border);
   background: var(--surface-2);
 }
 .fs-net td {
-  padding: 12px 16px; font-size: 14px;
+  font: 500 16px/24px var(--font-sans);
+  letter-spacing: 0.15px;
+  text-transform: none;
+  padding: 12px 16px;
   border-top: 2px solid var(--border);
 }
 .fs-net.profit td { background: color-mix(in srgb, var(--success) 8%, transparent); }
@@ -1998,13 +1955,21 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
 .rec-matched td:first-child { border-left: 3px solid var(--success); }
 
 .rec-side-label {
-  font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em;
-  color: var(--muted); margin-bottom: 10px;
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: 0.5px;
+  text-transform: none;
+  color: var(--muted);
+  margin-bottom: 10px;
 }
 .rec-diff-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 12px 20px; border-top: 2px solid var(--border);
-  font-weight: 700; font-size: 14px;
+  font: 500 14px/20px var(--font-sans);
+  letter-spacing: 0.1px;
+  text-transform: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-top: 2px solid var(--border);
 }
 .rec-diff-row.balanced { background: color-mix(in srgb, var(--success) 8%, transparent); color: var(--success); }
 .rec-diff-row.unbalanced { background: color-mix(in srgb, var(--danger) 8%, transparent); color: var(--danger); }
@@ -2064,36 +2029,33 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
 }
 [data-theme="dark"] .login-mark { color: var(--text); }
 .login-logo-name {
-  font-weight: 700;
-  font-size: 18px;
-  letter-spacing: -0.01em;
+  /* wordmark — excepción declarada a la escala, igual que .drawer-title */
+  font: 600 18px/24px 'Space Grotesk', var(--font-sans);
+  letter-spacing: -0.028em;
   color: var(--surface);
 }
 [data-theme="dark"] .login-logo-name { color: var(--text); }
 .login-logo-tier {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
+  font: 500 11px/16px var(--font-sans);
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--accent);
   margin-top: 2px;
 }
 
 .login-headline {
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
+  font: 400 32px/40px var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--surface);
   margin-bottom: 10px;
 }
 [data-theme="dark"] .login-headline { color: var(--text); }
 
 .login-subheadline {
-  font-family: var(--font-mono);
-  font-size: 12px;
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: 0.5px;
   color: var(--accent);
-  letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: 40px;
 }
@@ -2104,15 +2066,16 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   display: flex; flex-direction: column; gap: 16px;
 }
 .login-feature-item {
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: 0.25px;
+  text-transform: none;
   display: flex; align-items: flex-start; gap: 10px;
-  font-size: 13px;
   color: rgba(255,255,255,0.75);
-  line-height: 1.4;
 }
 [data-theme="dark"] .login-feature-item { color: var(--text-2); }
 .login-feature-item strong {
   color: var(--surface);
-  font-weight: 600;
+  font-weight: 500;
 }
 [data-theme="dark"] .login-feature-item strong { color: var(--text); }
 .login-feature-desc { opacity: 0.65; }
@@ -2153,14 +2116,16 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   margin-bottom: 28px;
 }
 .login-title {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font: 400 24px/32px var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
   margin: 0 0 6px;
   color: var(--text);
 }
 .login-desc {
-  font-size: 13px;
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: 0.25px;
+  text-transform: none;
   color: var(--muted);
   margin: 0;
 }
@@ -2179,12 +2144,10 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
 }
 
 .login-label {
-  font-size: 11px;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: 0.5px;
+  text-transform: none;
   color: var(--muted);
-  font-weight: 500;
 }
 
 .login-label-row {
@@ -2194,13 +2157,14 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
 }
 
 .login-forgot {
-  font-size: 11.5px;
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: 0.5px;
+  text-transform: none;
   color: var(--accent);
   background: none;
   border: none;
   cursor: pointer;
   padding: 0;
-  font: inherit;
 }
 .login-forgot:hover { text-decoration: underline; }
 
@@ -2218,14 +2182,15 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   pointer-events: none;
 }
 .login-input {
+  font: 400 16px/24px var(--font-sans);
+  letter-spacing: 0.5px;
+  text-transform: none;
   width: 100%;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
   border-radius: var(--r-md);
   padding: 10px 12px 10px 36px;
-  font: inherit;
-  font-size: 13px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -2235,7 +2200,7 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
 }
 .login-input.mono-input {
   font-family: var(--font-mono);
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 .login-field.has-error .login-input {
@@ -2260,9 +2225,10 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
 .login-eye:hover { color: var(--text); background: var(--surface-3); }
 
 .login-error {
-  font-size: 11.5px;
+  font: 400 12px/16px var(--font-sans);
+  letter-spacing: 0.4px;
+  text-transform: none;
   color: var(--danger);
-  font-family: var(--font-mono);
 }
 
 .login-company-preview {
@@ -2281,7 +2247,7 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   flex-shrink: 0;
 }
 .login-company-name {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--success);
   flex: 1;
   white-space: nowrap;
@@ -2294,26 +2260,29 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   font-size: 11px;
 }
 .login-tier-badge {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  font-weight: 700;
+  font: 500 11px/16px var(--font-sans);
+  letter-spacing: 0.5px;
   padding: 1px 6px;
   border-radius: 99px;
   background: color-mix(in oklab, var(--success) 20%, transparent);
   color: var(--success);
-  letter-spacing: 0.06em;
 }
 
 .login-alert {
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: 0.25px;
+  text-transform: none;
   background: var(--danger-soft);
   color: var(--danger);
   border: 1px solid color-mix(in oklab, var(--danger) 25%, transparent);
   border-radius: var(--r-md);
   padding: 9px 12px;
-  font-size: 12.5px;
 }
 
 .login-submit {
+  font: 500 14px/20px var(--font-sans);
+  letter-spacing: 0.1px;
+  text-transform: none;
   position: relative; overflow: hidden; isolation: isolate;
   width: 100%;
   background: var(--md-sys-color-primary);
@@ -2321,9 +2290,6 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   border: none;
   border-radius: var(--shape-full);
   padding: 12px 16px;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 8px;
   margin-top: 4px;
@@ -2362,11 +2328,10 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   border-top: 1px solid var(--border);
 }
 .login-demo-label {
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: 0.5px;
+  text-transform: none;
   display: block;
-  font-size: 10.5px;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
   color: var(--muted);
   margin-bottom: 10px;
 }
@@ -2376,8 +2341,9 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   gap: 6px;
 }
 .login-demo-chip {
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font: 500 11px/16px var(--font-mono);
+  letter-spacing: 0;
+  text-transform: none;
   padding: 4px 10px;
   border: 1px dashed var(--border-strong);
   border-radius: 99px;
@@ -2385,7 +2351,6 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   color: var(--text-2);
   cursor: pointer;
   transition: all 0.12s;
-  letter-spacing: 0.03em;
 }
 .login-demo-chip:hover {
   border-style: solid;
@@ -2414,7 +2379,7 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
 .app[data-sidebar="collapsed"] .sidebar-toggle {
   display: none;
 }
-/* Aire para los pills en el rail */
+/* Aire para los items del rail colapsado */
 .app[data-sidebar="collapsed"] .sidebar-nav {
   padding-left: 8px;
   padding-right: 8px;
@@ -2486,11 +2451,12 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   flex-shrink: 0;
 }
 .gsearch-input {
+  font: 400 16px/24px var(--font-sans);
+  letter-spacing: 0.5px;
+  text-transform: none;
   flex: 1;
   border: none;
   background: transparent;
-  font: inherit;
-  font-size: 15px;
   color: var(--text);
   outline: none;
   min-width: 0;
@@ -2502,13 +2468,11 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   padding: 6px 0;
 }
 .gsearch-group {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: 0.5px;
+  text-transform: none;
   color: var(--muted);
   padding: 10px 16px 4px;
-  font-family: var(--font-mono);
 }
 .gsearch-item {
   display: flex;
@@ -2540,24 +2504,27 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   gap: 1px;
 }
 .gsearch-item-title {
-  font-size: 13.5px;
-  font-weight: 500;
+  font: 500 14px/20px var(--font-sans);
+  letter-spacing: 0.1px;
+  text-transform: none;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .gsearch-item-sub {
-  font-size: 11px;
+  font: 400 12px/16px var(--font-mono);
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--muted);
-  font-family: var(--font-mono);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .gsearch-item-tag {
-  font-size: 10px;
-  font-family: var(--font-mono);
+  font: 500 11px/16px var(--font-mono);
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--muted);
   background: var(--surface-2);
   padding: 2px 6px;
@@ -2566,8 +2533,9 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   flex-shrink: 0;
 }
 .gsearch-item-alert {
-  font-size: 10px;
-  font-weight: 600;
+  font: 500 11px/16px var(--font-sans);
+  letter-spacing: 0.5px;
+  text-transform: none;
   background: var(--danger-soft);
   color: var(--danger);
   padding: 2px 6px;
@@ -2581,10 +2549,12 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   opacity: 0.7;
 }
 .gsearch-empty {
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: 0.25px;
+  text-transform: none;
   padding: 40px 16px;
   text-align: center;
   color: var(--muted);
-  font-size: 13px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2600,12 +2570,13 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   flex-shrink: 0;
 }
 .gsearch-footer kbd {
+  font: 500 11px/16px var(--font-mono);
+  letter-spacing: 0;
+  text-transform: none;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1px 5px;
-  font-family: var(--font-mono);
-  font-size: 10px;
   color: var(--text);
   margin-right: 2px;
 }
@@ -2719,7 +2690,7 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
   box-shadow: var(--elev-3);
-  font: inherit; font-weight: 500; font-size: 14px; letter-spacing: .1px;
+  font: 500 14px/20px var(--font-sans); letter-spacing: .1px;
   cursor: pointer;
 }
 .fab::after {
@@ -2745,6 +2716,16 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
 .badge-m3.error   { background: var(--md-sys-color-error-container);   color: var(--md-sys-color-on-error-container); }
 .badge-m3.primary { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
 .badge-m3.tertiary{ background: var(--md-sys-color-tertiary-container);color: var(--md-sys-color-on-tertiary-container); }
+/* Alias de compatibilidad — nombres de variante heredados de .pill.
+   Mismo criterio que los tokens legacy → roles M3 del :root: permiten migrar
+   el markup sin reescribir los objetos de configuración (STATUS_CLASS, TIPOS,
+   ESTADOS…) que guardan el nombre de la variante como dato. */
+.badge-m3.danger  { background: var(--md-sys-color-error-container);     color: var(--md-sys-color-on-error-container); }
+.badge-m3.accent  { background: var(--md-sys-color-primary-container);   color: var(--md-sys-color-on-primary-container); }
+.badge-m3.info    { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+.badge-m3.neutral { background: var(--md-sys-color-surface-container-highest); color: var(--md-sys-color-on-surface-variant); }
+/* Punto de estado (venía de .pill .dot) */
+.badge-m3 .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
 
 /* ===== Linear progress M3 ===== */
 .prog {
@@ -2868,7 +2849,8 @@ table.tbl.zebra tbody tr:nth-child(even) td { background: var(--md-sys-color-sur
 table.tbl tfoot td {
   padding: 12px;
   border-top: 1px solid var(--md-sys-color-outline);
-  font-weight: 600;
+  font: 500 14px/20px var(--font-sans);
+  letter-spacing: 0.1px;
   background: var(--md-sys-color-surface-container);
   position: sticky; bottom: 0; z-index: 1;
 }
@@ -2995,22 +2977,27 @@ table.tbl tfoot td {
 .dash .card-body { padding: 0 24px 24px; }
 .dash .card-body.flush { padding: 0 0 8px; }
 
-/* KPI cards */
-.dash .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.dash .kpi { padding: 20px; }
-.dash .kpi-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-.dash .kpi-ic { width: 40px; height: 40px; border-radius: var(--shape-md); display: grid; place-items: center; flex: none; }
-.dash .kpi-ic.pri { background: var(--md-primary-container); color: var(--md-on-primary-container); }
-.dash .kpi-ic.ter { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
-.dash .kpi-ic.sec { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
-.dash .kpi-ic.err { background: var(--md-error-container); color: var(--md-on-error-container); }
-.dash .kpi-label { color: var(--md-on-surface-variant); flex: 1; }
-.dash .kpi-val { font: 400 36px/44px var(--font-sans); letter-spacing: 0; font-variant-numeric: tabular-nums; color: var(--md-on-surface); }
-.dash .kpi-foot { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--md-on-surface-variant); }
-.dash .trend { display: inline-flex; align-items: center; gap: 2px; font: 500 12px/16px var(--font-sans); letter-spacing: .5px; }
-.dash .trend.up { color: var(--md-success); }
-.dash .trend.down { color: var(--md-error); }
-.dash .trend .msi { font-size: 16px; }
+/* KPI cards — SIN scope .dash: las usa <StatCard> en toda la app.
+   Estructura: [icono en contenedor 40px][label] / [cifra] / [pie].
+   El contenedor del icono es lo que distingue esta tarjeta de la vieja .stat. */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.kpi { padding: 20px; }
+.kpi-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.kpi-ic { width: 40px; height: 40px; border-radius: var(--shape-md); display: grid; place-items: center; flex: none; }
+.kpi-ic.pri { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.kpi-ic.ter { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
+.kpi-ic.sec { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.kpi-ic.err { background: var(--md-error-container); color: var(--md-on-error-container); }
+.kpi-label { color: var(--md-on-surface-variant); flex: 1; }
+.kpi-val { font: 400 36px/44px var(--font-sans); letter-spacing: 0; font-variant-numeric: tabular-nums; color: var(--md-on-surface); }
+/* Un escalón menos cuando el valor es texto y no una cifra */
+.kpi-val.sz-headline { font: 400 24px/32px var(--font-sans); letter-spacing: 0; }
+.kpi-val.sz-title    { font: 500 16px/24px var(--font-sans); letter-spacing: .15px; }
+.kpi-foot { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--md-on-surface-variant); }
+.trend { display: inline-flex; align-items: center; gap: 2px; font: 500 12px/16px var(--font-sans); letter-spacing: .5px; }
+.trend.up { color: var(--md-success); }
+.trend.down { color: var(--md-error); }
+.trend .msi { font-size: 16px; }
 
 /* Grids */
 .dash .grid-2 { display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; align-items: start; }
@@ -3108,7 +3095,7 @@ table.tbl tfoot td {
 .mtable td .nm { font-weight: 500; letter-spacing: .1px; }
 .mtable .num { text-align: right; font-variant-numeric: tabular-nums; }
 .mtable .code { font-family: var(--font-mono); font-size: 12px; color: var(--md-sys-color-on-surface-variant); }
-.mtable tfoot td { height: 48px; padding: 0 16px; font-weight: 600; color: var(--md-sys-color-on-surface); border-top: 1px solid var(--md-sys-color-outline); }
+.mtable tfoot td { height: 48px; padding: 0 16px; font: 500 14px/20px var(--font-sans); letter-spacing: .1px; color: var(--md-sys-color-on-surface); border-top: 1px solid var(--md-sys-color-outline); }
 
 /* .sku / .nm globales (para DataTable y tablas personalizadas) */
 .sku { font-variant-numeric: tabular-nums; color: var(--md-sys-color-on-surface-variant); font-size: 12px; letter-spacing: .4px; }
@@ -3117,7 +3104,7 @@ table.tbl tfoot td {
 /* Fila de sección/grupo dentro de .mtable */
 .mtable tr.section td {
   height: auto; padding: 14px 16px 4px;
-  font: 500 12px/16px var(--font-sans); letter-spacing: .5px; text-transform: uppercase;
+  font: 500 14px/20px var(--font-sans); letter-spacing: .1px; text-transform: none;
   color: var(--md-sys-color-on-surface-variant); background: none; border: none;
 }
 
@@ -3166,8 +3153,9 @@ table.tbl tfoot td {
 }
 .fel-section-title { font: 500 14px/20px var(--font-sans); letter-spacing: .1px; }
 .fel-section-sub {
-  font: 400 11px/16px var(--font-sans);
-  letter-spacing: .5px;
+  font: 400 12px/16px var(--font-sans);
+  letter-spacing: 0.4px;
+  text-transform: none;
   color: var(--md-sys-color-on-surface-variant);
   margin-top: 2px;
 }
@@ -3192,10 +3180,11 @@ table.tbl tfoot td {
 
 /* Aviso en bloque. Pares container/on-container: contraste garantizado. */
 .fel-note {
+  font: 400 12px/16px var(--font-sans);
+  letter-spacing: 0.4px;
+  text-transform: none;
   padding: 12px 16px;
   border-radius: var(--shape-md);
-  font: 400 12px/18px var(--font-sans);
-  letter-spacing: .4px;
 }
 .fel-note.warn {
   background: var(--md-sys-color-tertiary-container);
@@ -3247,13 +3236,16 @@ table.tbl tfoot td {
   padding: 12px;
 }
 .fel-mini .k {
-  font: 400 11px/16px var(--font-sans);
-  letter-spacing: .5px;
+  font: 400 12px/16px var(--font-sans);
+  letter-spacing: 0.4px;
+  text-transform: none;
   color: var(--md-sys-color-on-surface-variant);
   margin-bottom: 4px;
 }
 .fel-mini .v {
-  font: 600 16px/24px var(--font-mono);
+  font: 500 16px/24px var(--font-mono);
+  letter-spacing: 0;
+  text-transform: none;
   font-variant-numeric: tabular-nums;
   color: var(--md-sys-color-on-surface);
 }
@@ -3265,7 +3257,7 @@ table.tbl tfoot td {
   padding-top: 16px;
   border-top: 1px solid var(--md-sys-color-outline-variant);
 }
-.fel-block-btn { width: 100%; margin-top: 16px; }
+.fel-actions + .btn.full, .fel-card .btn.full { margin-top: 16px; }
 
 /* Log de certificaciones */
 .fel-log-row {
@@ -3274,12 +3266,13 @@ table.tbl tfoot td {
   border-bottom: 1px solid var(--md-sys-color-outline-variant);
 }
 .fel-log-row:last-child { border-bottom: none; }
-.fel-log-row .pill { min-width: 76px; justify-content: center; }
+.fel-log-row .badge-m3 { min-width: 76px; justify-content: center; }
 .fel-log-main { flex: 1; min-width: 0; }
 .fel-log-ref { font: 400 12px/16px var(--font-mono); letter-spacing: .4px; }
 .fel-log-ts {
-  font: 400 11px/16px var(--font-sans);
-  letter-spacing: .5px;
+  font: 400 12px/16px var(--font-sans);
+  letter-spacing: 0.4px;
+  text-transform: none;
   color: var(--md-sys-color-on-surface-variant);
 }
 .fel-log-amt {
@@ -3290,24 +3283,26 @@ table.tbl tfoot td {
 }
 
 /* Detalle del DTE (drawer) */
-.fel-drawer-title { font: 500 16px/24px var(--font-sans); letter-spacing: .15px; }
+.fel-drawer-title { font: 400 22px/28px var(--font-sans); letter-spacing: 0; }
 .fel-drawer-sub {
-  font: 400 11px/16px var(--font-sans);
-  letter-spacing: .5px;
+  font: 400 12px/16px var(--font-sans);
+  letter-spacing: 0.4px;
+  text-transform: none;
   color: var(--md-sys-color-on-surface-variant);
   margin-top: 2px;
 }
 .fel-pills { display: flex; gap: 8px; margin-bottom: 20px; }
 .fel-field-label {
-  font: 500 11px/16px var(--font-mono);
-  letter-spacing: .5px;
-  text-transform: uppercase;
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: 0.5px;
+  text-transform: none;
   color: var(--md-sys-color-on-surface-variant);
   margin-bottom: 6px;
 }
 .fel-uuid {
-  font: 400 12px/18px var(--font-mono);
-  letter-spacing: .4px;
+  font: 400 12px/16px var(--font-mono);
+  letter-spacing: 0;
+  text-transform: none;
   padding: 10px 12px;
   background: var(--md-sys-color-surface-container-high);
   border-radius: var(--shape-sm);
@@ -3315,7 +3310,6 @@ table.tbl tfoot td {
 }
 .fel-actions { display: flex; gap: 8px; margin-top: 20px; }
 .fel-actions .btn { flex: 1; }
-.fel-btn-danger { color: var(--md-sys-color-error); border-color: var(--md-sys-color-error); }
 .fel-err-cell {
   font: 400 12px/16px var(--font-sans);
   letter-spacing: .4px;
@@ -3340,19 +3334,21 @@ table.tbl tfoot td {
   color: var(--md-sys-color-on-surface);
 }
 .cfg-hint {
-  font: 400 11px/16px var(--font-sans);
-  letter-spacing: .5px;
+  font: 400 12px/16px var(--font-sans);
+  letter-spacing: 0.4px;
+  text-transform: none;
   color: var(--md-sys-color-on-surface-variant);
   margin-top: 4px;
 }
 /* Aviso de sección. Pares container/on-container en vez de rgba() sobre un hex. */
 .cfg-note {
+  font: 400 12px/16px var(--font-sans);
+  letter-spacing: 0.4px;
+  text-transform: none;
   display: flex; align-items: flex-start; gap: 8px;
   padding: 12px 16px;
   border-radius: var(--shape-md);
   margin-bottom: 20px;
-  font: 400 12px/18px var(--font-sans);
-  letter-spacing: .4px;
 }
 .cfg-note.warn {
   background: var(--md-sys-color-tertiary-container);
@@ -3375,15 +3371,17 @@ table.tbl tfoot td {
   margin-bottom: 12px;
 }
 .cfg-preview-row {
+  font: 400 12px/16px var(--font-sans);
+  letter-spacing: 0.4px;
+  text-transform: none;
   display: flex; justify-content: space-between;
   gap: 12px;
   margin-bottom: 4px;
-  font: 400 12px/18px var(--font-sans);
-  letter-spacing: .4px;
 }
 .cfg-readonly {
-  font: 400 12px/18px var(--font-mono);
-  letter-spacing: .4px;
+  font: 400 12px/16px var(--font-mono);
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--md-sys-color-on-surface-variant);
   padding: 8px 0;
 }
@@ -3409,14 +3407,15 @@ table.tbl tfoot td {
 }
 .po-progress-fill.is-done { background: var(--md-sys-color-success); }
 .po-progress-pct {
-  font: 400 11px/16px var(--font-mono);
-  letter-spacing: .5px;
+  font: 400 12px/16px var(--font-mono);
+  letter-spacing: 0;
+  text-transform: none;
   font-variant-numeric: tabular-nums;
   color: var(--md-sys-color-on-surface-variant);
   flex: none;
 }
 .po-missing {
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--md-sys-color-tertiary);
 }

@@ -6,7 +6,7 @@ import { listTransfers } from '../api/transfers.js';
 import { listPayments, getAging } from '../api/receivables.js';
 import { listPurchaseInvoices, listSupplierPayments, listUnits } from '../api/wave2.js';
 import { listBankAccounts, listAssets } from '../api/wave3.js';
-import { listCashRegisters, listSales } from '../api/pos.js';
+import { listCashRegisters, listSales, listCashPoints, listPendingRegisters } from '../api/pos.js';
 import { listMovements } from '../api/inventory.js';
 
 const EMPTY_AGING = {
@@ -42,6 +42,10 @@ export const usePurchaseInvoices = makeListHook(listPurchaseInvoices);
 export const useSupplierPayments = makeListHook(listSupplierPayments);
 export const useBankAccounts = makeListHook(listBankAccounts);
 export const useCashRegisters = makeListHook(() => listCashRegisters());
+// Cajas físicas: cada fila trae `openSessionId` si ya está ocupada.
+export const useCashPoints = makeListHook(() => listCashPoints());
+// Turnos abiertos de días anteriores: bloquean abrir hasta cuadrarlos.
+export const usePendingRegisters = makeListHook(listPendingRegisters);
 export const useSales = makeListHook(listSales);
 export const useStockMovements = makeListHook(listMovements);
 export const useUomUnits = makeListHook(listUnits);

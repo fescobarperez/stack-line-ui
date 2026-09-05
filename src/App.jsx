@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { canView } from './lib/permissions.js';
 import Icon from './components/Icon.jsx';
+import Button from './components/Button.jsx';
 import {
   useTweaks,
   TweaksPanel,
@@ -225,7 +226,7 @@ export default function App({ session, onLogout }) {
         <div className="sidebar-brand">
           <Logo size={40} className="drawer-mark" />
           <div className="sidebar-brand-text">
-            <div className="drawer-title">Stack<span className="wm-l">line</span></div>
+            <div className="drawer-wordmark">Stack<span className="wm-l">line</span></div>
             <div className="tier">STACKLINE · RETAIL v4.0</div>
           </div>
           <button
@@ -243,7 +244,7 @@ export default function App({ session, onLogout }) {
             <span className="sidebar-org-dot"></span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="sidebar-org-name">{session.company.name}</div>
-              <div className="muted mono" style={{ fontSize: 9.5, marginTop: 1 }}>
+              <div className="muted mono" style={{ fontSize: 11, marginTop: 1 }}>
                 {session.company.code} · {session.company.tier}
               </div>
             </div>
@@ -317,18 +318,13 @@ export default function App({ session, onLogout }) {
           </div>
           <div className="topbar-spacer"></div>
           <div className="topbar-actions">
-            <span className="pill success" style={{ marginRight: 4 }}>
+            <span className="badge-m3 success" style={{ marginRight: 4 }}>
               <span className="dot" />
               {t('shell.satOnline')}
             </span>
-            <button
-              className="btn btn-text"
-              title={t('common.language')}
-              onClick={toggleLang}
-              style={{ minWidth: 44, padding: '0 10px' }}
-            >
+            <Button variant="ghost" title={t('common.language')} onClick={toggleLang} style={{ minWidth: 44, padding: '0 10px' }}>
               {i18n.language === 'es' ? 'ES' : 'EN'}
-            </button>
+            </Button>
             <NotificationsPanel
               notifications={notifications}
               unreadCount={unreadCount}
@@ -445,8 +441,8 @@ function AccessDenied() {
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--border-strong)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 16 }}>
           <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
         </svg>
-        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{t('shell.accessDenied')}</div>
-        <div className="muted" style={{ fontSize: 13 }}>{t('shell.accessDeniedDesc')}</div>
+        <div style={{ fontWeight: 500, fontSize: 16, marginBottom: 6 }}>{t('shell.accessDenied')}</div>
+        <div className="muted" style={{ fontSize: 14 }}>{t('shell.accessDeniedDesc')}</div>
       </div>
     </div>
   );

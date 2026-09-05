@@ -1,6 +1,8 @@
 // Stackline — Fidelización / Puntos
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { useTranslation } from 'react-i18next';
 import { useLoyalty } from '../hooks/useLoyalty.js';
@@ -79,17 +81,17 @@ export default function Loyalty({ pushToast }) {
       const pctNext = next ? Math.min((m.points / next.min) * 100, 100) : 100;
       return (
         <div>
-          <span className={`pill ${tier.pill}`}>{tier.icon} {tier.nombre}</span>
+          <span className={`badge-m3 ${tier.pill}`}>{tier.icon} {tier.nombre}</span>
           {next && (
             <div style={{ marginTop: 4, width: 90 }}>
               <div className="prog" style={{ height: 3 }}><i style={{ width: `${pctNext}%` }} /></div>
-              <div style={{ fontSize: 9, color: 'var(--muted)', marginTop: 1 }}>{next.min - m.points} pts para {next.nombre}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>{next.min - m.points} pts para {next.nombre}</div>
             </div>
           )}
         </div>
       );
     } },
-    { key: 'points', header: 'Puntos actuales', align: 'right', sortable: true, render: (m) => <span className="num" style={{ fontWeight: 700, color: 'var(--accent)' }}>{pts(m.points)}</span> },
+    { key: 'points', header: 'Puntos actuales', align: 'right', sortable: true, render: (m) => <span className="num" style={{ fontWeight: 500, color: 'var(--accent)' }}>{pts(m.points)}</span> },
     { key: 'earned', header: 'Total acumulado', align: 'right', sortable: true, render: (m) => <span className="num">{pts(m.earned)}</span> },
     { key: 'totalSpent', header: 'Total gastado', align: 'right', sortable: true, render: (m) => <span className="num">{Qs(m.totalSpent)}</span> },
     { key: 'lastPurchase', header: 'Último movimiento', render: (m) => <span className="sku">{m.lastPurchase}</span> },
@@ -105,12 +107,10 @@ export default function Loyalty({ pushToast }) {
           </div>
         </div>
         <div className="row gap-8">
-          <button className="btn" onClick={() => pushToast?.('Exportando…', '')}>
-            <Icon name="download" size={13}/>{t('common.export', 'Exportar')}
-          </button>
-          <button className="btn accent" onClick={() => pushToast?.('Redirigiendo a Clientes…', '')}>
-            <Icon name="plus" size={13}/>{t('loyalty.tabs.members', 'Nuevo miembro')}
-          </button>
+          <Button icon="download" onClick={() => pushToast?.('Exportando…', '')}>{t('common.export', 'Exportar')}
+          </Button>
+          <Button icon="plus" variant="accent" onClick={() => pushToast?.('Redirigiendo a Clientes…', '')}>{t('loyalty.tabs.members', 'Nuevo miembro')}
+          </Button>
         </div>
       </div>
 
@@ -131,32 +131,36 @@ export default function Loyalty({ pushToast }) {
       {tab === 'resumen' && (
         <div>
           <div className="stat-grid" style={{marginBottom:20}}>
-            <div className="stat">
-              <div className="label">Total miembros</div>
-              <div className="val">{totalMembers}</div>
-              <div className="delta up">{activeThisMonth} activos este mes</div>
-            </div>
-            <div className="stat">
-              <div className="label">Puntos vigentes</div>
-              <div className="val">{totalPoints.toLocaleString('es-GT')}</div>
-              <div className="delta up">≈ {Q(totalPoints * CONFIG.valorPunto)} en circulación</div>
-            </div>
-            <div className="stat">
-              <div className="label">Puntos canjeados (total)</div>
-              <div className="val">{totalRedeemed.toLocaleString('es-GT')}</div>
-              <div className="delta up">{Q(totalRedeemed * CONFIG.valorPunto)} en descuentos</div>
-            </div>
-            <div className="stat">
-              <div className="label">Tasa de canje</div>
-              <div className="val">{members.reduce((s,m)=>s+m.earned,0) > 0 ? ((totalRedeemed/members.reduce((s,m)=>s+m.earned,0))*100).toFixed(1) : 0}%</div>
-              <div className="delta">Pts canjeados / emitidos</div>
-            </div>
+            <StatCard
+              tone="pri"
+              label="Total miembros"
+              value={totalMembers}
+              trend={{ dir: 'up', label: <>{activeThisMonth} activos este mes</> }}
+            />
+            <StatCard
+              tone="ter"
+              label="Puntos vigentes"
+              value={totalPoints.toLocaleString('es-GT')}
+              trend={{ dir: 'up', label: <>≈ {Q(totalPoints * CONFIG.valorPunto)} en circulación</> }}
+            />
+            <StatCard
+              tone="sec"
+              label="Puntos canjeados (total)"
+              value={totalRedeemed.toLocaleString('es-GT')}
+              trend={{ dir: 'up', label: <>{Q(totalRedeemed * CONFIG.valorPunto)} en descuentos</> }}
+            />
+            <StatCard
+              tone="err"
+              label="Tasa de canje"
+              value={<>{members.reduce((s,m)=>s+m.earned,0) > 0 ? ((totalRedeemed/members.reduce((s,m)=>s+m.earned,0))*100).toFixed(1) : 0}%</>}
+              foot="Pts canjeados / emitidos"
+            />
           </div>
 
           {/* Distribución por tier */}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20}}>
             <div className="card" style={{padding:16}}>
-              <div style={{fontWeight:600, fontSize:13, marginBottom:14}}>Distribución por nivel</div>
+              <div style={{fontWeight: 500, fontSize: 14, marginBottom:14}}>Distribución por nivel</div>
               {TIERS.map(tierItem => {
                 const count = members.filter(m => tierOf(m.points).id === tierItem.id).length;
                 const pct   = totalMembers > 0 ? (count / totalMembers) * 100 : 0;
@@ -164,7 +168,7 @@ export default function Loyalty({ pushToast }) {
                   <div key={tierItem.id} style={{marginBottom:10}}>
                     <div style={{display:'flex', justifyContent:'space-between', fontSize:12, marginBottom:4}}>
                       <span style={{display:'flex', alignItems:'center', gap:6}}>
-                        <span className={`pill ${tierItem.pill}`} style={{fontSize:10}}>{tierItem.icon} {tierItem.nombre}</span>
+                        <span className={`badge-m3 ${tierItem.pill}`}>{tierItem.icon} {tierItem.nombre}</span>
                       </span>
                       <span className="muted" style={{fontFamily:'var(--font-mono)', fontSize:11}}>{count} miembros · {pct.toFixed(0)}%</span>
                     </div>
@@ -177,19 +181,19 @@ export default function Loyalty({ pushToast }) {
             </div>
 
             <div className="card" style={{padding:16}}>
-              <div style={{fontWeight:600, fontSize:13, marginBottom:14}}>Actividad reciente</div>
+              <div style={{fontWeight: 500, fontSize: 14, marginBottom:14}}>Actividad reciente</div>
               {txns.slice(0, 7).map(tx => {
                 const meta = TYPE_META[tx.type];
                 return (
                   <div key={tx.id} style={{display:'flex', alignItems:'center', gap:10, marginBottom:10, fontSize:12}}>
-                    <span className={`pill ${meta.pill}`} style={{fontSize:10, minWidth:72, justifyContent:'center'}}>
+                    <span className={`badge-m3 ${meta.pill}`} style={{minWidth:72, justifyContent:'center'}}>
                       {meta.icon} {meta.label}
                     </span>
                     <div style={{flex:1, minWidth:0}}>
                       <div style={{fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{tx.nombre}</div>
-                      <div className="muted" style={{fontSize:10.5, fontFamily:'var(--font-mono)'}}>{tx.ref} · {tx.date}</div>
+                      <div className="muted" style={{fontSize: 11, fontFamily:'var(--font-mono)'}}>{tx.ref} · {tx.date}</div>
                     </div>
-                    <div style={{fontFamily:'var(--font-mono)', fontSize:12, fontWeight:600,
+                    <div style={{fontFamily:'var(--font-mono)', fontSize:12, fontWeight: 500,
                       color: tx.points > 0 ? 'var(--success)' : 'var(--danger)'}}>
                       {tx.points > 0 ? '+' : ''}{tx.points} pts
                     </div>
@@ -208,15 +212,14 @@ export default function Loyalty({ pushToast }) {
             <div style={{position:'relative', flex:1, minWidth:200}}>
               <Icon name="search" size={13} style={{position:'absolute', left:9, top:'50%', transform:'translateY(-50%)', color:'var(--muted)'}}/>
               <input
-                style={{width:'100%', paddingLeft:30, border:'1px solid var(--border)', borderRadius:'var(--r-md)', padding:'6px 10px 6px 30px', background:'var(--surface)', color:'var(--text)', fontSize:13}}
+                style={{width:'100%', paddingLeft:30, border:'1px solid var(--border)', borderRadius:'var(--r-md)', padding:'6px 10px 6px 30px', background:'var(--surface)', color:'var(--text)', fontSize: 14}}
                 placeholder={t('clients.searchPlaceholder', 'Buscar por nombre o NIT…')}
                 value={search} onChange={e => setSearch(e.target.value)}
               />
             </div>
             <div style={{display:'flex', gap:4}}>
               {[{v:'todos',l:t('common.all', 'Todos')},...TIERS.map(tierItem=>({v:tierItem.id,l:tierItem.nombre}))].map(o => (
-                <button key={o.v} className={`btn ${tierFiltro===o.v?'accent':''}`} style={{fontSize:11}}
-                  onClick={() => setTierFiltro(o.v)}>{o.l}</button>
+                <Button size="sm" variant={tierFiltro===o.v?'accent':'outlined'} key={o.v} onClick={() => setTierFiltro(o.v)}>{o.l}</Button>
               ))}
             </div>
           </div>
@@ -230,10 +233,9 @@ export default function Loyalty({ pushToast }) {
             onRowClick={(m) => setDrawer(m)}
             empty={t('common.noResults', 'Sin resultados')}
             actions={(m) => (
-              <button className="btn-text" style={{ height: 32, padding: '0 10px' }}
-                onClick={() => { setShowAjuste(m); setAjustePts(''); setAjusteNota(''); }}>
+              <Button variant="ghost" size="sm" onClick={() => { setShowAjuste(m); setAjustePts(''); setAjusteNota(''); }}>
                 Ajustar
-              </button>
+              </Button>
             )}
           />
         </div>
@@ -244,8 +246,7 @@ export default function Loyalty({ pushToast }) {
         <div>
           <div style={{display:'flex', gap:4, marginBottom:14}}>
             {[{v:'todos',l:t('common.all', 'Todos')},...Object.entries(TYPE_META).map(([v,m])=>({v,l:m.label}))].map(o => (
-              <button key={o.v} className={`btn ${txnFiltro===o.v?'accent':''}`} style={{fontSize:11}}
-                onClick={() => setTxnFiltro(o.v)}>{o.l}</button>
+              <Button size="sm" variant={txnFiltro===o.v?'accent':'outlined'} key={o.v} onClick={() => setTxnFiltro(o.v)}>{o.l}</Button>
             ))}
           </div>
 
@@ -269,15 +270,15 @@ export default function Loyalty({ pushToast }) {
                     <tr key={tx.id}>
                       <td className="code">{tx.id}</td>
                       <td style={{fontWeight:500}}>{tx.nombre}</td>
-                      <td><span className={`pill ${meta.pill}`} style={{fontSize:10}}>{meta.icon} {meta.label}</span></td>
-                      <td className="num" style={{fontWeight:600, color: tx.points > 0 ? 'var(--success)' : 'var(--danger)'}}>
+                      <td><span className={`badge-m3 ${meta.pill}`}>{meta.icon} {meta.label}</span></td>
+                      <td className="num" style={{ fontWeight:500, color: tx.points> 0 ? 'var(--success)' : 'var(--danger)' }}>
                         {tx.points > 0 ? '+' : ''}{tx.points}
                       </td>
                       <td className="num" style={{color:'var(--muted)'}}>
                         {tx.monto !== 0 ? Q(Math.abs(tx.monto)) : '—'}
                       </td>
                       <td className="code">{tx.ref}</td>
-                      <td style={{fontSize:11, color:'var(--muted)'}}>{tx.date}</td>
+                      <td style={{ color:'var(--muted)' }}>{tx.date}</td>
                     </tr>
                   );
                 })}
@@ -291,7 +292,7 @@ export default function Loyalty({ pushToast }) {
       {tab === 'config' && (
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16}}>
           <div className="card" style={{padding:20}}>
-            <div style={{fontWeight:600, fontSize:13, marginBottom:16}}>Reglas de acumulación</div>
+            <div style={{fontWeight: 500, fontSize: 14, marginBottom:16}}>Reglas de acumulación</div>
             <div className="field" style={{marginBottom:12}}>
               <label>Puntos por cada Q10 gastados</label>
               <input type="number" defaultValue={CONFIG.puntosXQ10} style={{fontFamily:'var(--font-mono)'}}/>
@@ -304,13 +305,12 @@ export default function Loyalty({ pushToast }) {
               <label>Expiración por inactividad (meses)</label>
               <input type="number" defaultValue={CONFIG.expiracionMeses} style={{fontFamily:'var(--font-mono)'}}/>
             </div>
-            <button className="btn accent" style={{width:'100%'}} onClick={() => pushToast?.('Configuración guardada', 'success')}>
-              <Icon name="check" size={13}/>{t('common.save', 'Guardar')} cambios
-            </button>
+            <Button icon="check" variant="accent" full onClick={() => pushToast?.('Configuración guardada', 'success')}>{t('common.save', 'Guardar')} cambios
+            </Button>
           </div>
 
           <div className="card" style={{padding:20}}>
-            <div style={{fontWeight:600, fontSize:13, marginBottom:16}}>Niveles de fidelización</div>
+            <div style={{fontWeight: 500, fontSize: 14, marginBottom:16}}>Niveles de fidelización</div>
             <table className="mtable">
               <thead>
                 <tr>
@@ -323,10 +323,10 @@ export default function Loyalty({ pushToast }) {
               <tbody>
                 {TIERS.map(tierItem => (
                   <tr key={tierItem.id}>
-                    <td><span className={`pill ${tierItem.pill}`} style={{fontSize:10}}>{tierItem.icon} {tierItem.nombre}</span></td>
+                    <td><span className={`badge-m3 ${tierItem.pill}`}>{tierItem.icon} {tierItem.nombre}</span></td>
                     <td className="num">{tierItem.min.toLocaleString('es-GT')} pts</td>
                     <td className="num">{tierItem.max === Infinity ? '∞' : tierItem.max.toLocaleString('es-GT') + ' pts'}</td>
-                    <td className="num" style={{fontWeight:600}}>{tierItem.bonus}×</td>
+                    <td className="num" style={{ fontWeight:500 }}>{tierItem.bonus}×</td>
                   </tr>
                 ))}
               </tbody>
@@ -338,7 +338,7 @@ export default function Loyalty({ pushToast }) {
           </div>
 
           <div className="card" style={{padding:20, gridColumn:'1/-1'}}>
-            <div style={{fontWeight:600, fontSize:13, marginBottom:14}}>Bonificaciones especiales</div>
+            <div style={{fontWeight: 500, fontSize: 14, marginBottom:14}}>Bonificaciones especiales</div>
             <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12}}>
               {[
                 { label:'Doble puntos fin de semana', activo:true,  desc:'Sáb y Dom — 2× sobre base' },
@@ -349,7 +349,7 @@ export default function Loyalty({ pushToast }) {
                   <div style={{marginTop:2}}>
                     <div style={{width:14, height:14, borderRadius:3,
                       background: b.activo ? 'var(--success)' : 'var(--border)',
-                      display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'var(--md-sys-color-on-success)'}}>
+                      display:'flex', alignItems:'center', justifyContent:'center', fontSize: 11, color:'var(--md-sys-color-on-success)'}}>
                       {b.activo ? '✓' : ''}
                     </div>
                   </div>
@@ -370,7 +370,7 @@ export default function Loyalty({ pushToast }) {
           <div className="drawer" onClick={e => e.stopPropagation()} style={{width:420}}>
             <div className="drawer-head">
               <div>
-                <div style={{fontWeight:700, fontSize:15}}>{drawer.nombre}</div>
+                <div style={{fontWeight: 500, fontSize: 16}}>{drawer.nombre}</div>
                 <div className="muted" style={{fontSize:11}}>NIT {drawer.nit} · Desde {drawer.joinDate}</div>
               </div>
               <button className="icon-btn" onClick={() => setDrawer(null)}><Icon name="x"/></button>
@@ -384,10 +384,10 @@ export default function Loyalty({ pushToast }) {
                 return (
                   <>
                     <div style={{textAlign:'center', marginBottom:20}}>
-                      <span className={`pill ${tier.pill}`} style={{fontSize:14, padding:'4px 14px'}}>
+                      <span className={`badge-m3 ${tier.pill}`} style={{fontSize:14, height:32, padding:'0 16px'}}>
                         {tier.icon} {tier.nombre}
                       </span>
-                      <div style={{fontFamily:'var(--font-mono)', fontWeight:700, fontSize:28, marginTop:10, color:'var(--accent)'}}>
+                      <div style={{fontFamily:'var(--font-mono)', fontWeight: 400, fontSize:28, marginTop:10, color:'var(--accent)'}}>
                         {drawer.points.toLocaleString('es-GT')} pts
                       </div>
                       <div style={{fontSize:12, color:'var(--muted)'}}>
@@ -414,8 +414,8 @@ export default function Loyalty({ pushToast }) {
                         { label:'Total gastado', val:Qs(drawer.totalSpent) },
                       ].map(s => (
                         <div key={s.label} className="card" style={{padding:10, textAlign:'center'}}>
-                          <div style={{fontSize:10, color:'var(--muted)', marginBottom:4}}>{s.label}</div>
-                          <div style={{fontFamily:'var(--font-mono)', fontWeight:600, fontSize:12}}>{s.val}</div>
+                          <div style={{fontSize: 11, color:'var(--muted)', marginBottom:4}}>{s.label}</div>
+                          <div style={{fontFamily:'var(--font-mono)', fontWeight: 500, fontSize:12}}>{s.val}</div>
                         </div>
                       ))}
                     </div>
@@ -428,12 +428,12 @@ export default function Loyalty({ pushToast }) {
                       const meta = TYPE_META[tx.type];
                       return (
                         <div key={tx.id} style={{display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderBottom:'1px solid var(--border)'}}>
-                          <span className={`pill ${meta.pill}`} style={{fontSize:10}}>{meta.label}</span>
+                          <span className={`badge-m3 ${meta.pill}`}>{meta.label}</span>
                           <div style={{flex:1}}>
                             <div className="code" style={{fontSize:11}}>{tx.ref}</div>
-                            <div style={{fontSize:10.5, color:'var(--muted)'}}>{tx.date}</div>
+                            <div style={{fontSize: 11, color:'var(--muted)'}}>{tx.date}</div>
                           </div>
-                          <div style={{fontFamily:'var(--font-mono)', fontWeight:700, fontSize:13,
+                          <div style={{fontFamily:'var(--font-mono)', fontWeight: 500, fontSize: 14,
                             color: tx.points > 0 ? 'var(--success)' : 'var(--danger)'}}>
                             {tx.points > 0 ? '+' : ''}{tx.points} pts
                           </div>
@@ -441,10 +441,9 @@ export default function Loyalty({ pushToast }) {
                       );
                     })}
 
-                    <button className="btn" style={{width:'100%', marginTop:16}}
-                      onClick={() => { setDrawer(null); setShowAjuste(drawer); setAjustePts(''); setAjusteNota(''); }}>
+                    <Button style={{width:'100%', marginTop:16 }} onClick={() => { setDrawer(null); setShowAjuste(drawer); setAjustePts(''); setAjusteNota(''); }}>
                       Ajustar puntos manualmente
-                    </button>
+                    </Button>
                   </>
                 );
               })()}
@@ -490,23 +489,9 @@ export default function Loyalty({ pushToast }) {
               )}
             </div>
             <div className="modal-foot">
-              <button className="btn" onClick={() => setShowAjuste(null)}>{t('common.cancel', 'Cancelar')}</button>
-              <button className="btn accent" onClick={async () => {
-                const p = parseInt(ajustePts) || 0;
-                try {
-                  await addLoyaltyMovement(showAjuste.backendId, {
-                    movementType: p >= 0 ? 'bonus' : 'redeemed',
-                    points: p,
-                    reference: ajusteNota || 'Ajuste manual',
-                    amount: 0,
-                  });
-                  pushToast?.(`Ajuste de ${ajustePts} pts aplicado a ${showAjuste.nombre}`, 'success');
-                  setShowAjuste(null);
-                  reload();
-                } catch (err) { pushToast?.('No se pudo aplicar el ajuste: ' + err.message, 'error'); }
-              }}>
-                <Icon name="check" size={13}/>{t('common.apply', 'Aplicar')} ajuste
-              </button>
+              <Button onClick={() => setShowAjuste(null)}>{t('common.cancel', 'Cancelar')}</Button>
+              <Button icon="check" variant="accent" onClick={async () => { const p = parseInt(ajustePts) || 0; try { await addLoyaltyMovement(showAjuste.backendId, { movementType: p >= 0 ? 'bonus' : 'redeemed', points: p, reference: ajusteNota || 'Ajuste manual', amount: 0, }); pushToast?.(`Ajuste de ${ajustePts} pts aplicado a ${showAjuste.nombre}`, 'success'); setShowAjuste(null); reload(); } catch (err) { pushToast?.('No se pudo aplicar el ajuste: ' + err.message, 'error'); } }}>{t('common.apply', 'Aplicar')} ajuste
+              </Button>
             </div>
           </div>
         </div>

@@ -3,6 +3,8 @@
 // línea recta se calcula en el front sobre el costo/fecha reales.
 import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { useAssets } from '../hooks/useOperations.js';
 import { useAccounts } from '../hooks/useAccounting.js';
@@ -121,7 +123,7 @@ export default function FixedAssets({ pushToast }) {
     { key: 'branch', header: t('common.branch', 'Sucursal'), sortable: true, render: (a) => <span style={{ color: 'var(--muted)' }}>{a.branch}</span> },
     { key: 'purchase', header: t('fixedassets.historicalCostShort', 'Costo histórico'), align: 'right', sortable: true, render: (a) => <span className="num">{Q(a.purchase)}</span> },
     { key: 'deprAcum', header: t('fixedassets.accDeprShort', 'Dep. acumulada'), align: 'right', render: (a) => <span className="num" style={{ color: 'var(--danger)' }}>{a.status === 'active' ? Q(a.depr.deprAcum) : '—'}</span> },
-    { key: 'valorLibros', header: t('fixedassets.bookValue', 'Valor en libros'), align: 'right', sortable: true, sortValue: (a) => a.depr.valorLibros, render: (a) => <span className="num" style={{ fontWeight: 600, color: a.depr.fullyDepr ? 'var(--muted)' : undefined }}>{a.status === 'active' ? Q(a.depr.valorLibros) : '—'}</span> },
+    { key: 'valorLibros', header: t('fixedassets.bookValue', 'Valor en libros'), align: 'right', sortable: true, sortValue: (a) => a.depr.valorLibros, render: (a) => <span className="num" style={{ fontWeight: 500, color: a.depr.fullyDepr ? 'var(--muted)' : undefined }}>{a.status === 'active' ? Q(a.depr.valorLibros) : '—'}</span> },
     { key: 'pctDep', header: t('fixedassets.pctDepr', '% Dep.'), render: (a) => {
       if (a.status !== 'active') return null;
       const barW = Math.round(a.depr.pctDepAcum * 100);
@@ -210,12 +212,10 @@ export default function FixedAssets({ pushToast }) {
           </div>
         </div>
         <div className="page-head-actions">
-          <button className="btn" onClick={() => setShowConfig(true)}>
-            <Icon name="settings" size={12}/>{t('fixedassets.accountConfig', 'Configuración contable')}
-          </button>
-          <button className="btn accent" onClick={() => setShowNew(true)}>
-            <Icon name="plus" size={12}/>{t('fixedassets.newAsset', 'Nuevo activo')}
-          </button>
+          <Button icon="settings" onClick={() => setShowConfig(true)}>{t('fixedassets.accountConfig', 'Configuración contable')}
+          </Button>
+          <Button icon="plus" variant="accent" onClick={() => setShowNew(true)}>{t('fixedassets.newAsset', 'Nuevo activo')}
+          </Button>
         </div>
       </div>
 
@@ -238,30 +238,32 @@ export default function FixedAssets({ pushToast }) {
         <>
           {/* KPIs */}
           <div className="stat-grid" style={{gridTemplateColumns:'repeat(4,1fr)', marginBottom:16}}>
-            <div className="stat">
-              <div className="label"><Icon name="box" size={11}/>{t('fixedassets.historicalCost', 'Costo histórico total')}</div>
-              <div className="val mono" style={{fontSize:20}}>{Q(summary.totalCosto)}</div>
-              <div className="delta" style={{color:'var(--muted)'}}>{summary.count} {t('fixedassets.activeAssets', 'activos activos')}</div>
-            </div>
-            <div className="stat">
-              <div className="label"><Icon name="chart" size={11}/>{t('fixedassets.bookValue', 'Valor en libros')}</div>
-              <div className="val mono" style={{fontSize:20}}>{Q(summary.totalLibros)}</div>
-              <div className="delta" style={{color:'var(--muted)'}}>
-                {pct(summary.totalLibros / summary.totalCosto)} {t('fixedassets.ofCost', 'del costo')}
-              </div>
-            </div>
-            <div className="stat">
-              <div className="label"><Icon name="arrowDown" size={11}/>{t('fixedassets.accumulatedDepr', 'Depreciación acumulada')}</div>
-              <div className="val mono" style={{fontSize:20, color:'var(--danger)'}}>{Q(summary.totalAcum)}</div>
-              <div className="delta" style={{color:'var(--muted)'}}>
-                {pct(summary.totalAcum / summary.totalCosto)} {t('fixedassets.depreciated', 'depreciado')}
-              </div>
-            </div>
-            <div className="stat">
-              <div className="label"><Icon name="calendar" size={11}/>{t('fixedassets.monthlyDepr', 'Depreciación mensual')}</div>
-              <div className="val mono" style={{fontSize:20, color:'var(--accent)'}}>{Q(summary.totalMensual)}</div>
-              <div className="delta" style={{color:'var(--muted)'}}>{Q(summary.totalAnual)} {t('fixedassets.annual', 'anual')}</div>
-            </div>
+            <StatCard
+              icon="box" tone="pri"
+              label={t('fixedassets.historicalCost', 'Costo histórico total')}
+              value={Q(summary.totalCosto)}
+              foot={<>{summary.count} {t('fixedassets.activeAssets', 'activos activos')}</>}
+            />
+            <StatCard
+              icon="chart" tone="ter"
+              label={t('fixedassets.bookValue', 'Valor en libros')}
+              value={Q(summary.totalLibros)}
+              foot={<>{pct(summary.totalLibros / summary.totalCosto)} {t('fixedassets.ofCost', 'del costo')}</>}
+            />
+            <StatCard
+              icon="arrowDown" tone="sec"
+              label={t('fixedassets.accumulatedDepr', 'Depreciación acumulada')}
+              valueColor={'var(--danger)'}
+              value={Q(summary.totalAcum)}
+              foot={<>{pct(summary.totalAcum / summary.totalCosto)} {t('fixedassets.depreciated', 'depreciado')}</>}
+            />
+            <StatCard
+              icon="calendar" tone="err"
+              label={t('fixedassets.monthlyDepr', 'Depreciación mensual')}
+              valueColor={'var(--accent)'}
+              value={Q(summary.totalMensual)}
+              foot={<>{Q(summary.totalAnual)} {t('fixedassets.annual', 'anual')}</>}
+            />
           </div>
 
           {/* Filtros */}
@@ -309,12 +311,12 @@ export default function FixedAssets({ pushToast }) {
                 <div className="meta">{t('fixedassets.straightLineMethod', 'Línea recta · Método aceptado SAT Decreto 26-92')}</div>
               </div>
               <div className="row gap-6">
-                <button className="btn sm"><Icon name="receipt" size={12}/>{t('fixedassets.registerEntry', 'Registrar partida')}</button>
-                <button className="btn sm"><Icon name="download" size={12}/>Excel</button>
+                <Button icon="receipt" size="sm">{t('fixedassets.registerEntry', 'Registrar partida')}</Button>
+                <Button icon="download" size="sm">Excel</Button>
               </div>
             </div>
             <div className="tbl-wrap">
-              <table className="mtable" style={{fontSize:11.5}}>
+              <table className="mtable">
                 <thead>
                   <tr>
                     <th>{t('common.code', 'Código')}</th>
@@ -339,21 +341,21 @@ export default function FixedAssets({ pushToast }) {
                         <td className="num">{Q(a.purchase)}</td>
                         <td className="num mono">{pct(a.depr.rate)}</td>
                         <td className="num">{Q(a.depr.deprAnual)}</td>
-                        <td className="num" style={{color:'var(--accent)', fontWeight:600}}>
+                        <td className="num" style={{ color:'var(--accent)', fontWeight:500 }}>
                           {Q(a.depr.deprMensual)}
                         </td>
                         <td className="num" style={{color:'var(--danger)'}}>{Q(a.depr.deprAcum)}</td>
-                        <td className="num" style={{fontWeight:600,
-                          color: a.depr.fullyDepr ? 'var(--muted)' : 'var(--text)'}}>
+                        <td className="num" style={{ fontWeight:500,
+                          color: a.depr.fullyDepr ? 'var(--muted)' : 'var(--text)' }}>
                           {Q(a.depr.valorLibros)}
-                          {a.depr.fullyDepr && <span className="pill warning" style={{marginLeft:6, fontSize:9}}>{t('fixedassets.exhausted', 'Agotado')}</span>}
+                          {a.depr.fullyDepr && <span className="badge-m3 warning" style={{ marginLeft:6 }}>{t('fixedassets.exhausted', 'Agotado')}</span>}
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
                 <tfoot>
-                  <tr style={{background:'var(--surface-2)', fontWeight:700}}>
+                  <tr style={{background:'var(--surface-2)', fontWeight: 500}}>
                     <td colSpan={3} style={{padding:'8px 12px'}}>{t('fixedassets.totals', 'TOTALES')}</td>
                     <td className="num" style={{padding:'8px 12px'}}>{Q(summary.totalCosto)}</td>
                     <td/>
@@ -413,11 +415,11 @@ export default function FixedAssets({ pushToast }) {
                     <td className="mono">1-2-01-099</td>
                     <td>Depreciación acumulada (acumulado del período)</td>
                     <td className="num">—</td>
-                    <td className="num" style={{fontWeight:700, color:'var(--accent)'}}>{Q(summary.totalMensual)}</td>
+                    <td className="num" style={{ fontWeight:500, color:'var(--accent)' }}>{Q(summary.totalMensual)}</td>
                   </tr>
                 </tbody>
                 <tfoot>
-                  <tr style={{fontWeight:700}}>
+                  <tr style={{fontWeight: 500}}>
                     <td colSpan={2} style={{padding:'8px 12px'}}>{t('fixedassets.totals', 'TOTALES')}</td>
                     <td className="num" style={{padding:'8px 12px'}}>{Q(summary.totalMensual)}</td>
                     <td className="num" style={{padding:'8px 12px'}}>{Q(summary.totalMensual)}</td>
@@ -440,7 +442,7 @@ export default function FixedAssets({ pushToast }) {
                   <h3>
                     <span style={{marginRight:8}}>{cat.icon}</span>{cat.name}
                   </h3>
-                  <span className="pill accent mono">{pct(cat.rate)}/{t('fixedassets.year', 'año')}</span>
+                  <span className="badge-m3 accent mono">{pct(cat.rate)}/{t('fixedassets.year', 'año')}</span>
                 </div>
                 <div className="card-body">
                   <div className="detail-grid">
@@ -547,14 +549,14 @@ export default function FixedAssets({ pushToast }) {
             </div>
             <div className="drawer-body">
               <div className="row" style={{marginBottom:16, gap:8}}>
-                <span className={`pill ${STATUS_PILL[selAsset.status]}`}>
+                <span className={`badge-m3 ${STATUS_PILL[selAsset.status]}`}>
                   <span className="dot"/>{STATUS_LABELS[selAsset.status]}
                 </span>
-                <span className="pill">{selAsset.branch}</span>
+                <span className="badge-m3">{selAsset.branch}</span>
               </div>
 
               {/* Datos */}
-              <div style={{fontFamily:'var(--font-mono)', fontSize:10, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8}}>{t('fixedassets.assetData', 'Datos del activo')}</div>
+              <div style={{fontFamily:'var(--font-mono)', fontSize: 11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8}}>{t('fixedassets.assetData', 'Datos del activo')}</div>
               <div className="detail-grid" style={{marginBottom:20}}>
                 {[
                   [t('fixedassets.acquisitionDate', 'Fecha de adquisición'), selAsset.acquired],
@@ -576,11 +578,11 @@ export default function FixedAssets({ pushToast }) {
                 const barW = Math.round(d.pctDepAcum * 100);
                 return (
                   <>
-                    <div style={{fontFamily:'var(--font-mono)', fontSize:10, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8}}>{t('fixedassets.accumulatedDepr', 'Depreciación acumulada')}</div>
+                    <div style={{fontFamily:'var(--font-mono)', fontSize: 11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8}}>{t('fixedassets.accumulatedDepr', 'Depreciación acumulada')}</div>
                     <div style={{marginBottom:10}}>
                       <div className="row" style={{justifyContent:'space-between', marginBottom:4, fontSize:11}}>
                         <span className="mono muted">0%</span>
-                        <span className="mono" style={{fontWeight:600}}>{barW}% {t('fixedassets.depreciated', 'depreciado')}</span>
+                        <span className="mono" style={{fontWeight: 500}}>{barW}% {t('fixedassets.depreciated', 'depreciado')}</span>
                         <span className="mono muted">100%</span>
                       </div>
                       <div className="bar" style={{height:10}}>
@@ -590,19 +592,19 @@ export default function FixedAssets({ pushToast }) {
                     </div>
                     <div className="card" style={{marginBottom:16}}>
                       <div className="card-body" style={{padding:0}}>
-                        <table className="mtable" style={{fontSize:12}}>
+                        <table className="mtable">
                           <tbody>
                             <tr><td>{t('fixedassets.deprRate', 'Tasa de depreciación')}</td><td className="num">{pct(d.rate)}/{t('fixedassets.year', 'año')}</td></tr>
                             <tr><td>{t('fixedassets.annualDepr', 'Depreciación anual')}</td><td className="num">{Q(d.deprAnual)}</td></tr>
                             <tr><td>{t('fixedassets.monthlyDeprShort', 'Depreciación mensual')}</td><td className="num" style={{color:'var(--accent)'}}>{Q(d.deprMensual)}</td></tr>
                             <tr><td>{t('fixedassets.monthsInUse', 'Meses en uso')}</td><td className="num">{d.monthsOwned} {t('fixedassets.months', 'meses')}</td></tr>
                             <tr><td>{t('fixedassets.accDeprToDate', 'Dep. acumulada a la fecha')}</td><td className="num" style={{color:'var(--danger)'}}>{Q(d.deprAcum)}</td></tr>
-                            <tr style={{background:'var(--surface-2)', fontWeight:700}}>
+                            <tr style={{background:'var(--surface-2)', fontWeight: 500}}>
                               <td style={{padding:'9px 12px'}}>{t('fixedassets.bookValue', 'Valor en libros')}</td>
-                              <td className="num" style={{padding:'9px 12px', fontSize:15,
-                                color: d.fullyDepr ? 'var(--muted)' : 'var(--text)'}}>
+                              <td className="num" style={{ padding:'9px 12px',
+                                color: d.fullyDepr ? 'var(--muted)' : 'var(--text)' }}>
                                 {Q(d.valorLibros)}
-                                {d.fullyDepr && <span className="pill warning" style={{marginLeft:8, fontSize:9}}>{t('fixedassets.fullyDepreciated', 'Totalmente depreciado')}</span>}
+                                {d.fullyDepr && <span className="badge-m3 warning" style={{ marginLeft:8 }}>{t('fixedassets.fullyDepreciated', 'Totalmente depreciado')}</span>}
                               </td>
                             </tr>
                             {!d.fullyDepr && (
@@ -620,13 +622,12 @@ export default function FixedAssets({ pushToast }) {
               })()}
             </div>
             <div className="drawer-foot">
-              <button className="btn ghost" onClick={() => setSelAsset(null)}>{t('common.close', 'Cerrar')}</button>
+              <Button variant="ghost" onClick={() => setSelAsset(null)}>{t('common.close', 'Cerrar')}</Button>
               {selAsset.status === 'active' && (
-                <button className="btn danger" onClick={() => { setBajaReason('Obsolescencia'); setShowBaja(selAsset); setSelAsset(null); }}>
-                  <Icon name="trash" size={12}/>{t('fixedassets.retire', 'Dar de baja')}
-                </button>
+                <Button icon="trash" variant="danger" onClick={() => { setBajaReason('Obsolescencia'); setShowBaja(selAsset); setSelAsset(null); }}>{t('fixedassets.retire', 'Dar de baja')}
+                </Button>
               )}
-              <button className="btn accent"><Icon name="edit" size={12}/>{t('common.edit', 'Editar')}</button>
+              <Button icon="edit" variant="accent">{t('common.edit', 'Editar')}</Button>
             </div>
           </div>
         </>
@@ -685,7 +686,7 @@ export default function FixedAssets({ pushToast }) {
               {/* Preview tasa seleccionada */}
               {newForm.cat && newForm.purchase && (
                 <div style={{marginTop:16, padding:'12px 14px', background:'var(--accent-soft)', borderRadius:'var(--r-md)'}}>
-                  <div style={{fontFamily:'var(--font-mono)', fontSize:10, color:'var(--accent-ink)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6}}>
+                  <div style={{fontFamily:'var(--font-mono)', fontSize: 11, color:'var(--accent-ink)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6}}>
                     {t('fixedassets.deprPreview', 'Vista previa depreciación')}
                   </div>
                   {(() => {
@@ -712,10 +713,9 @@ export default function FixedAssets({ pushToast }) {
               )}
             </div>
             <div className="modal-foot">
-              <button className="btn ghost" onClick={() => setShowNew(false)}>{t('common.cancel', 'Cancelar')}</button>
-              <button className="btn accent" onClick={handleSaveNew}>
-                <Icon name="check" size={12}/>{t('fixedassets.registerAsset', 'Registrar activo')}
-              </button>
+              <Button variant="ghost" onClick={() => setShowNew(false)}>{t('common.cancel', 'Cancelar')}</Button>
+              <Button icon="check" variant="accent" onClick={handleSaveNew}>{t('fixedassets.registerAsset', 'Registrar activo')}
+              </Button>
             </div>
           </div>
         </div>
@@ -736,13 +736,13 @@ export default function FixedAssets({ pushToast }) {
               </div>
               <div className="detail-grid">
                 <div className="detail-row"><span className="detail-label">{t('fixedassets.asset', 'Activo')}</span>
-                  <span style={{fontWeight:600}}>{showBaja.name}</span></div>
+                  <span style={{fontWeight: 500}}>{showBaja.name}</span></div>
                 <div className="detail-row"><span className="detail-label">{t('fixedassets.historicalCostShort', 'Costo histórico')}</span>
                   <span className="mono">{Q(showBaja.purchase)}</span></div>
                 <div className="detail-row"><span className="detail-label">{t('fixedassets.accDeprShort', 'Dep. acumulada')}</span>
                   <span className="mono" style={{color:'var(--danger)'}}>{Q(showBaja.depr.deprAcum)}</span></div>
                 <div className="detail-row"><span className="detail-label">{t('fixedassets.bookValue', 'Valor en libros')}</span>
-                  <span className="mono" style={{fontWeight:700}}>{Q(showBaja.depr.valorLibros)}</span></div>
+                  <span className="mono" style={{fontWeight: 500}}>{Q(showBaja.depr.valorLibros)}</span></div>
               </div>
               <div className="field" style={{marginTop:16}}>
                 <label className="field-label">{t('fixedassets.retirementReason', 'Motivo de la baja')}</label>
@@ -757,8 +757,8 @@ export default function FixedAssets({ pushToast }) {
               </div>
 
               {/* Partida contable de disposición (automática) */}
-              <div style={{marginTop:16, padding:'10px 14px', background:'var(--surface-2)', borderRadius:'var(--r-md)', fontSize:11.5}}>
-                <div style={{fontWeight:600, marginBottom:6}}>
+              <div style={{marginTop:16, padding:'10px 14px', background:'var(--surface-2)', borderRadius:'var(--r-md)', fontSize: 12}}>
+                <div style={{fontWeight: 500, marginBottom:6}}>
                   <Icon name="receipt" size={12} style={{marginRight:6, verticalAlign:'-1px'}}/>
                   {t('fixedassets.autoEntry', 'Se generará la partida contable automáticamente')}
                 </div>
@@ -774,20 +774,18 @@ export default function FixedAssets({ pushToast }) {
                   <span>Cr {t('fixedassets.assetCostShort', 'Activo fijo (costo)')}</span><span className="mono">{Q(showBaja.purchase)}</span>
                 </div>
                 <div style={{marginTop:8, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
-                  <span style={{fontSize:10.5, color:'var(--muted)'}}>
+                  <span style={{fontSize: 11, color:'var(--muted)'}}>
                     {t('fixedassets.usesConfigAccounts', 'Usa las cuentas definidas en Configuración contable.')}
                   </span>
-                  <button className="btn sm ghost" onClick={() => { setShowBaja(null); setShowConfig(true); }}>
-                    <Icon name="settings" size={11}/>{t('fixedassets.configure', 'Configurar')}
-                  </button>
+                  <Button icon="settings" variant="ghost" size="sm" onClick={() => { setShowBaja(null); setShowConfig(true); }}>{t('fixedassets.configure', 'Configurar')}
+                  </Button>
                 </div>
               </div>
             </div>
             <div className="modal-foot">
-              <button className="btn ghost" onClick={() => setShowBaja(null)}>{t('common.cancel', 'Cancelar')}</button>
-              <button className="btn danger" disabled={bajaBusy} onClick={handleBaja}>
-                <Icon name="trash" size={12}/>{t('fixedassets.confirmRetirement', 'Confirmar baja')}
-              </button>
+              <Button variant="ghost" onClick={() => setShowBaja(null)}>{t('common.cancel', 'Cancelar')}</Button>
+              <Button icon="trash" variant="danger" disabled={bajaBusy} onClick={handleBaja}>{t('fixedassets.confirmRetirement', 'Confirmar baja')}
+              </Button>
             </div>
           </div>
         </div>
@@ -865,10 +863,9 @@ function DisposalConfigModal({ accounts, pushToast, onClose }) {
           )}
         </div>
         <div className="modal-foot">
-          <button className="btn ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-          <button className="btn accent" disabled={!valid || saving} onClick={save}>
-            <Icon name="check" size={13} /> {t('common.save', 'Guardar')}
-          </button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+          <Button icon="check" variant="accent" disabled={!valid || saving} onClick={save}>{t('common.save', 'Guardar')}
+          </Button>
         </div>
       </div>
     </div>

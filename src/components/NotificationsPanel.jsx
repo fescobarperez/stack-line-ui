@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from './Icon.jsx';
+import Button from './Button.jsx';
 import { getNotifications } from '../api/notifications.js';
 
 const TYPE_ICON  = { stock_low: 'alert', expiry: 'clock', po_pending: 'truck', transfer: 'transfer', cash: 'cash', cxc: 'card' };
@@ -69,7 +70,7 @@ export function NotificationsPanel({ notifications, unreadCount, onMarkRead, onM
             position: 'absolute', top: 5, right: 5,
             minWidth: 16, height: 16, borderRadius: 8,
             background: 'var(--danger)', color: 'var(--md-sys-color-on-error)',
-            fontSize: 9, fontWeight: 700,
+            fontSize: 11, fontWeight: 500,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '0 3px', lineHeight: 1,
           }}>
@@ -88,14 +89,14 @@ export function NotificationsPanel({ notifications, unreadCount, onMarkRead, onM
         }}>
           {/* Cabecera */}
           <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>
-              Notificaciones {unreadCount > 0 && <span className="pill danger" style={{ fontSize: 10, marginLeft: 6 }}>{unreadCount}</span>}
+            <div style={{ fontWeight: 500, fontSize: 14 }}>
+              Notificaciones {unreadCount > 0 && <span className="badge-m3 danger" style={{ marginLeft: 6 }}>{unreadCount}</span>}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {unreadCount > 0 && (
-                <button className="btn" style={{ fontSize: 11, padding: '3px 8px' }} onClick={onMarkAllRead}>
+                <Button size="sm" onClick={onMarkAllRead}>
                   Marcar todas leídas
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -141,13 +142,13 @@ export function NotificationsPanel({ notifications, unreadCount, onMarkRead, onM
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                    <div style={{ fontWeight: n.readAt ? 400 : 600, fontSize: 13, lineHeight: 1.3 }}>{n.title}</div>
+                    <div style={{ fontWeight: n.readAt ? 400 : 600, fontSize: 14, lineHeight: 1.3 }}>{n.title}</div>
                     {!n.readAt && <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, marginTop: 4 }} />}
                   </div>
                   <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.3 }}>{n.body}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <span className={`pill ${TYPE_CLASS[n.type]}`} style={{ fontSize: 9 }}>{TYPE_LABEL[n.type]}</span>
-                    <span className="muted" style={{ fontSize: 10 }}>{n.createdAt.split(' ')[1] || n.createdAt}</span>
+                    <span className={`badge-m3 ${TYPE_CLASS[n.type]}`}>{TYPE_LABEL[n.type]}</span>
+                    <span className="muted" style={{ fontSize: 11 }}>{n.createdAt.split(' ')[1] || n.createdAt}</span>
                   </div>
                 </div>
               </div>

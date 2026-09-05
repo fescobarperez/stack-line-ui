@@ -2,6 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { usePurchaseOrders } from '../hooks/useOperations.js';
 import { createPurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder } from '../api/purchasing.js';
@@ -58,7 +60,7 @@ function ReceiveModal({ po, onSave, onClose }) {
       <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
           <div>
-            <div className="modal-title">{t('purchases.receiveTitle', 'Recibir mercancía')}</div>
+            <h3>{t('purchases.receiveTitle', 'Recibir mercancía')}</h3>
             <div className="muted" style={{ fontSize: 12 }}>{po.id} · {po.supplier}</div>
           </div>
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
@@ -78,7 +80,7 @@ function ReceiveModal({ po, onSave, onClose }) {
                 {pending.map(item => (
                   <tr key={item.id}>
                     <td>
-                      <div style={{ fontWeight: 500, fontSize: 13 }}>{item.name}</div>
+                      <div style={{ fontWeight: 500, fontSize: 14 }}>{item.name}</div>
                       <div className="mono muted" style={{ fontSize: 11 }}>{item.sku}</div>
                     </td>
                     <td className="right mono">{item.qtyOrdered}</td>
@@ -95,11 +97,10 @@ function ReceiveModal({ po, onSave, onClose }) {
               </tbody>
             </table>
           </div>
-          <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-            <button type="submit" className="btn accent">
-              <Icon name="check" size={12} />{t('purchases.confirmReceive', 'Confirmar recepción')}
-            </button>
+          <div className="modal-foot">
+            <Button type="button" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+            <Button icon="check" variant="accent" type="submit">{t('purchases.confirmReceive', 'Confirmar recepción')}
+            </Button>
           </div>
         </form>
       </div>
@@ -145,7 +146,7 @@ function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 680 }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
-          <div className="modal-title">{t('purchases.newPOTitle', 'Nueva orden de compra')}</div>
+          <h3>{t('purchases.newPOTitle', 'Nueva orden de compra')}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
         <form onSubmit={handleSubmit}>
@@ -171,7 +172,7 @@ function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
               </div>
             </div>
 
-            <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 12 }}>{t('common.product', 'Productos')}</div>
+            <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 12 }}>{t('common.product', 'Productos')}</div>
 
             {/* Buscador de productos */}
             <div style={{ position: 'relative', marginBottom: 12 }}>
@@ -182,7 +183,7 @@ function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
               {matchedProducts.length > 0 && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--shape-sm)', boxShadow: 'var(--shadow-md)', zIndex: 50, maxHeight: 200, overflowY: 'auto' }}>
                   {matchedProducts.map(p => (
-                    <div key={p.sku} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 13 }}
+                    <div key={p.sku} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 14 }}
                       onClick={() => { selectProduct(items.length - 1, p); }}>
                       <span style={{ fontWeight: 500 }}>{p.name}</span>
                       <span className="mono muted" style={{ fontSize: 11, marginLeft: 8 }}>{p.sku}</span>
@@ -209,7 +210,7 @@ function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
                     <td>
                       {item.name ? (
                         <div>
-                          <div style={{ fontWeight: 500, fontSize: 13 }}>{item.name}</div>
+                          <div style={{ fontWeight: 500, fontSize: 14 }}>{item.name}</div>
                           <div className="mono muted" style={{ fontSize: 11 }}>{item.sku}</div>
                         </div>
                       ) : (
@@ -225,7 +226,7 @@ function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
                       <input type="number" min="0" step="0.01" className="field-input mono" style={{ width: 110, textAlign: 'right', padding: '4px 8px' }}
                         placeholder="0.00" value={item.unitCost} onChange={e => setItem(idx, 'unitCost', e.target.value)} />
                     </td>
-                    <td className="right mono" style={{ fontSize: 13 }}>
+                    <td className="right mono">
                       {fmt((parseFloat(item.unitCost) || 0) * (parseInt(item.qtyOrdered) || 0))}
                     </td>
                     <td>
@@ -240,21 +241,19 @@ function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={3} style={{ textAlign: 'right', fontWeight: 600, padding: '10px 12px', color: 'var(--muted)', fontSize: 13 }}>{t('purchases.totalPO', 'Total OC')}</td>
-                  <td className="right mono" style={{ fontWeight: 700, fontSize: 15, padding: '10px 12px' }}>{fmt(total)}</td>
+                  <td colSpan={3} style={{ textAlign: 'right', fontWeight: 500, padding: '10px 12px', color: 'var(--muted)' }}>{t('purchases.totalPO', 'Total OC')}</td>
+                  <td className="right mono" style={{ fontWeight: 500, padding: '10px 12px' }}>{fmt(total)}</td>
                   <td></td>
                 </tr>
               </tfoot>
             </table>
-            <button type="button" className="btn" style={{ fontSize: 12 }} onClick={addItem}>
-              <Icon name="plus" size={11} />{t('purchases.addLine', 'Agregar línea')}
-            </button>
+            <Button size="sm" icon="plus" type="button" onClick={addItem}>{t('purchases.addLine', 'Agregar línea')}
+            </Button>
           </div>
-          <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-            <button type="submit" className="btn accent" disabled={!valid}>
-              <Icon name="check" size={12} />{t('purchases.createPO', 'Crear OC')}
-            </button>
+          <div className="modal-foot">
+            <Button type="button" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+            <Button icon="check" variant="accent" type="submit" disabled={!valid}>{t('purchases.createPO', 'Crear OC')}
+            </Button>
           </div>
         </form>
       </div>
@@ -281,14 +280,13 @@ function PODetail({ po, onClose, onReceive, onCancel }) {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {canReceive && (
-            <button className="btn accent" onClick={onReceive}>
-              <Icon name="truck" size={12} />{t('purchases.receive', 'Recibir')}
-            </button>
+            <Button icon="truck" variant="accent" onClick={onReceive}>{t('purchases.receive', 'Recibir')}
+            </Button>
           )}
           {canReceive && (
-            <button className="btn" style={{ color: 'var(--danger)' }} onClick={onCancel}>
+            <Button style={{ color: 'var(--danger)' }} onClick={onCancel}>
               {t('purchases.cancelPO', 'Cancelar OC')}
-            </button>
+            </Button>
           )}
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
@@ -299,11 +297,11 @@ function PODetail({ po, onClose, onReceive, onCancel }) {
         <div className="stat-card" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span className="label">{t('purchases.reception', 'Recepción')}</span>
-            <span className={`pill ${STATUS_CLASS[po.status]}`}>{STATUS_LABEL[po.status]}</span>
+            <span className={`badge-m3 ${STATUS_CLASS[po.status]}`}>{STATUS_LABEL[po.status]}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span className="mono" style={{ fontSize: 18, fontWeight: 700 }}>{totalReceived}<span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>/{totalOrdered} {t('purchases.units', 'unid.')}</span></span>
-            <span className="mono" style={{ fontSize: 18, fontWeight: 700 }}>{fmt(po.total)}</span>
+            <span className="mono" style={{ fontSize: 22, fontWeight: 400 }}>{totalReceived}<span className="muted" style={{ fontSize: 14, fontWeight: 400 }}>/{totalOrdered} {t('purchases.units', 'unid.')}</span></span>
+            <span className="mono" style={{ fontSize: 22, fontWeight: 400 }}>{fmt(po.total)}</span>
           </div>
           <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${pct}%`, background: po.status === 'received' ? 'var(--success)' : 'var(--accent)', borderRadius: 3, transition: 'width .3s' }} />
@@ -312,7 +310,7 @@ function PODetail({ po, onClose, onReceive, onCancel }) {
         </div>
 
         {po.notes && (
-          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', marginBottom: 16, fontSize: 13, color: 'var(--muted)' }}>
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', marginBottom: 16, fontSize: 14, color: 'var(--muted)' }}>
             <Icon name="dots" size={11} style={{ marginRight: 6 }} />{po.notes}
           </div>
         )}
@@ -334,12 +332,12 @@ function PODetail({ po, onClose, onReceive, onCancel }) {
               return (
                 <tr key={item.id}>
                   <td>
-                    <div style={{ fontWeight: 500, fontSize: 13 }}>{item.name}</div>
+                    <div style={{ fontWeight: 500, fontSize: 14 }}>{item.name}</div>
                     <div className="mono muted" style={{ fontSize: 11 }}>{item.sku}</div>
                   </td>
                   <td className="right mono">{item.qtyOrdered}</td>
                   <td className="right">
-                    <span className={`pill ${done ? 'success' : item.qtyReceived > 0 ? 'warning' : 'neutral'}`} style={{ fontSize: 10 }}>
+                    <span className={`badge-m3 ${done ? 'success' : item.qtyReceived > 0 ? 'warning' : 'neutral'}`}>
                       {item.qtyReceived}/{item.qtyOrdered}
                     </span>
                   </td>
@@ -409,7 +407,7 @@ export default function Purchases({ pushToast }) {
     render: (oc) => fmt(oc.total) };
   const colStatus = { key: 'status', header: t('purchases.headers.status', 'Estado'), sortable: true,
     sortValue: (oc) => STATUS_LABEL[oc.status],
-    render: (oc) => <span className={`pill ${STATUS_CLASS[oc.status]}`}>{STATUS_LABEL[oc.status]}</span> };
+    render: (oc) => <span className={`badge-m3 ${STATUS_CLASS[oc.status]}`}>{STATUS_LABEL[oc.status]}</span> };
 
   const pctOf = (oc) => {
     const ord = oc.items.reduce((a, i) => a + i.qtyOrdered, 0);
@@ -513,36 +511,38 @@ export default function Purchases({ pushToast }) {
           <div className="page-subtitle">{orders.length} {t('purchases.registeredOCs', 'OCs registradas')} · {pendingOrders.length} {t('purchases.pendingReception', 'pendientes de recepción')}</div>
         </div>
         <div className="page-head-actions">
-          <button className="btn accent" onClick={() => setShowNew(true)}>
-            <Icon name="plus" size={12} />{t('purchases.newPO', 'Nueva OC')}
-          </button>
+          <Button icon="plus" variant="accent" onClick={() => setShowNew(true)}>{t('purchases.newPO', 'Nueva OC')}
+          </Button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="receipt" size={11} />{t('purchases.totalOCsMonth', 'Total OCs (mes)')}</div>
-          <div className="val mono">{orders.filter(o => o.status !== 'cancelled').length}</div>
-          <div className="delta muted">{orders.filter(o => o.status === 'cancelled').length} {t('common.cancelled', 'canceladas')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="cash" size={11} />{t('purchases.purchasedValueMonth', 'Valor comprado (mes)')}</div>
-          <div className="val mono">{`Q ${Math.round(totalThisMonth / 1000)}k`}</div>
-          <div className="delta muted">{fmt(totalThisMonth)}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="clock" size={11} />{t('purchases.pendingToReceive', 'Pendiente de recibir')}</div>
-          <div className="val mono" style={{ color: pendingOrders.length > 0 ? 'var(--warning)' : undefined }}>
-            {pendingOrders.length}
-          </div>
-          <div className="delta muted">{fmt(totalPending)}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="supplier" size={11} />{t('purchases.activeSuppliers', 'Proveedores activos')}</div>
-          <div className="val mono">{SUPPLIERS.length}</div>
-          <div className="delta muted">{t('purchases.inBranches', 'en')} {BRANCHES.length} {t('purchases.branchesWord', 'sucursales')}</div>
-        </div>
+        <StatCard
+          icon="receipt" tone="pri"
+          label={t('purchases.totalOCsMonth', 'Total OCs (mes)')}
+          value={orders.filter(o => o.status !== 'cancelled').length}
+          foot={<>{orders.filter(o => o.status === 'cancelled').length} {t('common.cancelled', 'canceladas')}</>}
+        />
+        <StatCard
+          icon="cash" tone="ter"
+          label={t('purchases.purchasedValueMonth', 'Valor comprado (mes)')}
+          value={`Q ${Math.round(totalThisMonth / 1000)}k`}
+          foot={fmt(totalThisMonth)}
+        />
+        <StatCard
+          icon="clock" tone="sec"
+          label={t('purchases.pendingToReceive', 'Pendiente de recibir')}
+          valueColor={pendingOrders.length > 0 ? 'var(--warning)' : undefined}
+          value={pendingOrders.length}
+          foot={fmt(totalPending)}
+        />
+        <StatCard
+          icon="supplier" tone="err"
+          label={t('purchases.activeSuppliers', 'Proveedores activos')}
+          value={SUPPLIERS.length}
+          foot={<>{t('purchases.inBranches', 'en')} {BRANCHES.length} {t('purchases.branchesWord', 'sucursales')}</>}
+        />
       </div>
 
       {/* Tabs */}
@@ -612,10 +612,8 @@ export default function Purchases({ pushToast }) {
             total: fmt(visibleRows.reduce((a, oc) => a + oc.total, 0)),
           }}
           actions={(oc) => (
-            <button className="btn sm accent"
-              onClick={() => { setSelected(oc); setReceive(true); }}>
-              <Icon name="truck" size={18} />{t('purchases.receive', 'Recibir')}
-            </button>
+            <Button icon="truck" variant="accent" size="sm" onClick={() => { setSelected(oc); setReceive(true); }}>{t('purchases.receive', 'Recibir')}
+            </Button>
           )}
         />
       )}

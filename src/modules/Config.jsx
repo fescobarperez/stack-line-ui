@@ -1,6 +1,7 @@
 // Stackline — Módulo de Configuración del sistema
 import React, { useState } from 'react';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
 import { useTranslation } from 'react-i18next';
 
 const MOCK_CONFIG = {
@@ -82,9 +83,8 @@ export default function Config({ pushToast }) {
           <div className="page-subtitle">{t('config.subtitle', 'Datos de la empresa, credenciales FEL, impuestos y parámetros globales')}</div>
         </div>
         <div className="page-head-actions">
-          <button className="btn accent" onClick={handleSave}>
-            <Icon name="check" size={12} />{t('config.saveChanges', 'Guardar cambios')}
-          </button>
+          <Button icon="check" variant="accent" onClick={handleSave}>{t('config.saveChanges', 'Guardar cambios')}
+          </Button>
         </div>
       </div>
 
@@ -303,9 +303,8 @@ export default function Config({ pushToast }) {
           )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-            <button type="submit" className="btn accent">
-              <Icon name="check" size={12} />{t('config.saveChanges', 'Guardar cambios')}
-            </button>
+            <Button icon="check" variant="accent" type="submit">{t('config.saveChanges', 'Guardar cambios')}
+            </Button>
           </div>
         </form>
       </div>

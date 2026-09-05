@@ -2,6 +2,8 @@
 // Data-driven: /api/receivables/aging (hook useAging) + /api/payments (usePayments).
 import React, { useState } from 'react';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import { useAging, usePayments } from '../hooks/useOperations.js';
 import { createPayment } from '../api/receivables.js';
 import { useTranslation } from 'react-i18next';
@@ -60,33 +62,40 @@ export default function CxC({ pushToast }) {
           <h1 className="page-title">{t('cxc.title', 'Cuentas por Cobrar')}</h1>
           <div className="page-subtitle">
             Cartera de crédito · antigüedad · cobros
-            {source === 'mock' && <span className="pill" style={{ marginLeft: 8, fontSize: 10 }}>demo</span>}
+            {source === 'mock' && <span className="badge-m3" style={{ marginLeft: 8 }}>demo</span>}
           </div>
         </div>
       </div>
 
       {/* Stats */}
       <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="card" size={11} />Total CxC</div>
-          <div className="val mono">{Q(aging.totalReceivable)}</div>
-          <div className="delta muted">{aging.openCount} documentos abiertos</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="alert" size={11} />Cartera vencida</div>
-          <div className="val mono" style={{ color: 'var(--danger)' }}>{Q(aging.overdue)}</div>
-          <div className="delta muted">Saldo con plazo expirado</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="clock" size={11} />Crítico (+60 días)</div>
-          <div className="val mono" style={{ color: aging.criticalCount > 0 ? 'var(--danger)' : undefined }}>{aging.criticalCount}</div>
-          <div className="delta muted">Documentos en riesgo</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="cash" size={11} />Cobrado</div>
-          <div className="val mono" style={{ color: 'var(--success)' }}>{Q(cobrado)}</div>
-          <div className="delta muted">Abonos registrados</div>
-        </div>
+        <StatCard
+          icon="card" tone="pri"
+          label="Total CxC"
+          value={Q(aging.totalReceivable)}
+          foot={<>{aging.openCount} documentos abiertos</>}
+        />
+        <StatCard
+          icon="alert" tone="ter"
+          label="Cartera vencida"
+          valueColor={'var(--danger)'}
+          value={Q(aging.overdue)}
+          foot="Saldo con plazo expirado"
+        />
+        <StatCard
+          icon="clock" tone="sec"
+          label="Crítico (+60 días)"
+          valueColor={aging.criticalCount > 0 ? 'var(--danger)' : undefined}
+          value={aging.criticalCount}
+          foot="Documentos en riesgo"
+        />
+        <StatCard
+          icon="cash" tone="err"
+          label="Cobrado"
+          valueColor={'var(--success)'}
+          value={Q(cobrado)}
+          foot="Abonos registrados"
+        />
       </div>
 
       {/* Tabs */}
@@ -102,7 +111,7 @@ export default function CxC({ pushToast }) {
             {BUCKET_ORDER.map((b) => (
               <div key={b} className="card" style={{ padding: '14px 16px', borderTop: `3px solid var(--${BUCKET_CLASS[b]})` }}>
                 <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{BUCKET_LABEL[b]}</div>
-                <div style={{ fontWeight: 700, fontSize: 18 }}>{Q(summary[b]?.total || 0)}</div>
+                <div style={{ fontWeight: 400, fontSize: 22 }}>{Q(summary[b]?.total || 0)}</div>
                 <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{summary[b]?.count || 0} doc.</div>
               </div>
             ))}
@@ -121,15 +130,15 @@ export default function CxC({ pushToast }) {
                 {clientAging.length === 0 && <tr><td colSpan={7}><div className="empty" style={{ padding: 24 }}>Sin saldos por cobrar</div></td></tr>}
                 {clientAging.map((row) => (
                   <tr key={row.clientId}>
-                    <td style={{ fontWeight: 600, fontSize: 13 }}>{row.clientName}</td>
+                    <td style={{ fontWeight: 500 }}>{row.clientName}</td>
                     {BUCKET_ORDER.map((b) => (
-                      <td key={b} style={{ textAlign: 'right', fontSize: 13 }}>
+                      <td key={b} style={{ textAlign: 'right' }}>
                         {row.buckets?.[b]
                           ? <span style={{ color: b === 'current' ? 'inherit' : `var(--${BUCKET_CLASS[b]})`, fontWeight: b !== 'current' ? 600 : 400 }}>{Q(row.buckets[b])}</span>
                           : <span className="muted">—</span>}
                       </td>
                     ))}
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{Q(row.total)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 500 }}>{Q(row.total)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -164,15 +173,15 @@ export default function CxC({ pushToast }) {
                     return (
                       <tr key={inv.saleId}>
                         <td><span className="mono" style={{ fontSize: 12 }}>{inv.docNumber}</span></td>
-                        <td style={{ fontSize: 13 }}>{inv.clientName}</td>
-                        <td className="muted" style={{ fontSize: 12 }}>{inv.saleDate}</td>
-                        <td style={{ fontSize: 12, color: inv.daysOverdue > 0 ? 'var(--danger)' : 'inherit' }}>{inv.dueDate}</td>
-                        <td style={{ textAlign: 'right', fontSize: 13 }}>{Q(inv.amount)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, fontSize: 13 }}>{Q(inv.outstanding)}</td>
-                        <td><span className={`pill ${BUCKET_CLASS[inv.bucket]}`} style={{ fontSize: 9 }}>{inv.bucket === 'current' ? 'Al día' : `${inv.bucket} días`}</span></td>
-                        <td><span className={`pill ${STATUS_CLASS[st]}`} style={{ fontSize: 9 }}>{STATUS_LABEL[st]}</span></td>
+                        <td>{inv.clientName}</td>
+                        <td className="muted">{inv.saleDate}</td>
+                        <td style={{ color: inv.daysOverdue> 0 ? 'var(--danger)' : 'inherit' }}>{inv.dueDate}</td>
+                        <td style={{ textAlign: 'right' }}>{Q(inv.amount)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 500 }}>{Q(inv.outstanding)}</td>
+                        <td><span className={`badge-m3 ${BUCKET_CLASS[inv.bucket]}`}>{inv.bucket === 'current' ? 'Al día' : `${inv.bucket} días`}</span></td>
+                        <td><span className={`badge-m3 ${STATUS_CLASS[st]}`}>{STATUS_LABEL[st]}</span></td>
                         <td>
-                          <button className="btn" style={{ fontSize: 11, padding: '3px 10px' }} onClick={() => setPayModal(inv)}>Cobrar</button>
+                          <Button size="sm" onClick={() => setPayModal(inv)}>Cobrar</Button>
                         </td>
                       </tr>
                     );
@@ -196,11 +205,11 @@ export default function CxC({ pushToast }) {
               {payments.length === 0 && <tr><td colSpan={5}><div className="empty" style={{ padding: 24 }}>Sin cobros registrados</div></td></tr>}
               {payments.map((p) => (
                 <tr key={p.id}>
-                  <td className="mono" style={{ fontSize: 12 }}>{p.paymentDate || p.date}</td>
-                  <td style={{ fontSize: 13 }}>{p.clientName || p.clientId}</td>
-                  <td><span className="pill">{p.method || p.paymentMethod}</span></td>
-                  <td className="muted" style={{ fontSize: 12 }}>{p.reference || '—'}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 600 }}>{Q(p.amount)}</td>
+                  <td className="mono">{p.paymentDate || p.date}</td>
+                  <td>{p.clientName || p.clientId}</td>
+                  <td><span className="badge-m3">{p.method || p.paymentMethod}</span></td>
+                  <td className="muted">{p.reference || '—'}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 500 }}>{Q(p.amount)}</td>
                 </tr>
               ))}
             </tbody>
@@ -240,8 +249,8 @@ export default function CxC({ pushToast }) {
               </div>
             </div>
             <div className="modal-foot">
-              <button className="btn" onClick={() => setPayModal(null)}>{t('common.cancel', 'Cancelar')}</button>
-              <button className="btn accent" onClick={submitPayment}><Icon name="check" size={13} />Registrar abono</button>
+              <Button onClick={() => setPayModal(null)}>{t('common.cancel', 'Cancelar')}</Button>
+              <Button icon="check" variant="accent" onClick={submitPayment}>Registrar abono</Button>
             </div>
           </div>
         </div>

@@ -2,6 +2,8 @@
 // Data-driven: /api/purchase-invoices + /api/supplier-payments (aging client-side).
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import { usePurchaseInvoices, useSupplierPayments } from '../hooks/useOperations.js';
 import { useSuppliers } from '../hooks/useMasters.js';
 import { createSupplierPayment } from '../api/wave2.js';
@@ -156,26 +158,33 @@ export default function CxP({ pushToast }) {
 
       {/* Stats */}
       <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="receipt" size={11} />Total CxP</div>
-          <div className="val mono">{Q(totalCxP)}</div>
-          <div className="delta muted">{openCount} documentos pendientes</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="alert" size={11} />Obligaciones vencidas</div>
-          <div className="val mono" style={{ color: 'var(--danger)' }}>{Q(overdueAmt)}</div>
-          <div className="delta muted">Saldo con plazo expirado</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="clock" size={11} />Crítico (+60 días)</div>
-          <div className="val mono" style={{ color: criticalCount > 0 ? 'var(--danger)' : undefined }}>{criticalCount}</div>
-          <div className="delta muted">Facturas en mora crítica</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="cash" size={11} />Pagado</div>
-          <div className="val mono" style={{ color: 'var(--success)' }}>{Q(paidMayo)}</div>
-          <div className="delta muted">Pagos a proveedores</div>
-        </div>
+        <StatCard
+          icon="receipt" tone="pri"
+          label="Total CxP"
+          value={Q(totalCxP)}
+          foot={<>{openCount} documentos pendientes</>}
+        />
+        <StatCard
+          icon="alert" tone="ter"
+          label="Obligaciones vencidas"
+          valueColor={'var(--danger)'}
+          value={Q(overdueAmt)}
+          foot="Saldo con plazo expirado"
+        />
+        <StatCard
+          icon="clock" tone="sec"
+          label="Crítico (+60 días)"
+          valueColor={criticalCount > 0 ? 'var(--danger)' : undefined}
+          value={criticalCount}
+          foot="Facturas en mora crítica"
+        />
+        <StatCard
+          icon="cash" tone="err"
+          label="Pagado"
+          valueColor={'var(--success)'}
+          value={Q(paidMayo)}
+          foot="Pagos a proveedores"
+        />
       </div>
 
       {/* Tabs */}
@@ -192,7 +201,7 @@ export default function CxP({ pushToast }) {
             {BUCKET_ORDER.map(b => (
               <div key={b} className="card" style={{ padding: '14px 16px', borderTop: `3px solid var(--${BUCKET_CLASS[b]})` }}>
                 <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{BUCKET_LABEL[b]}</div>
-                <div style={{ fontWeight: 700, fontSize: 18 }}>{Q(agingSummary[b]?.total || 0)}</div>
+                <div style={{ fontWeight: 400, fontSize: 22 }}>{Q(agingSummary[b]?.total || 0)}</div>
                 <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{agingSummary[b]?.count || 0} doc.</div>
               </div>
             ))}
@@ -222,11 +231,11 @@ export default function CxP({ pushToast }) {
                   return (
                     <tr key={s?.id}>
                       <td>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{s?.name}</div>
-                        <div className="muted mono" style={{ fontSize: 10 }}>{s?.nit}</div>
+                        <div style={{ fontWeight: 500, fontSize: 14 }}>{s?.name}</div>
+                        <div className="muted mono" style={{ fontSize: 11 }}>{s?.nit}</div>
                       </td>
                       {BUCKET_ORDER.map(b => (
-                        <td key={b} style={{ textAlign: 'right', fontSize: 13 }}>
+                        <td key={b} style={{ textAlign: 'right' }}>
                           {row.buckets[b] ? (
                             <span style={{ color: b === 'current' ? 'inherit' : `var(--${BUCKET_CLASS[b]})`, fontWeight: b !== 'current' ? 600 : 400 }}>
                               {Q(row.buckets[b])}
@@ -234,11 +243,11 @@ export default function CxP({ pushToast }) {
                           ) : <span className="muted">—</span>}
                         </td>
                       ))}
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: hasOverdue ? 'var(--danger)' : 'inherit' }}>
+                      <td style={{ textAlign: 'right', fontWeight: 500, color: hasOverdue ? 'var(--danger)' : 'inherit' }}>
                         {Q(row.total)}
                       </td>
                       <td>
-                        <span className={`pill ${hasOverdue ? 'danger' : 'success'}`} style={{ fontSize: 9 }}>
+                        <span className={`badge-m3 ${hasOverdue ? 'danger' : 'success'}`}>
                           {s?.terms || '—'}
                         </span>
                       </td>
@@ -288,26 +297,25 @@ export default function CxP({ pushToast }) {
                 ) : filtered.map(b => (
                   <tr key={b.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedBill(b)}>
                     <td><span className="mono" style={{ fontSize: 12 }}>{b.id}</span></td>
-                    <td style={{ fontSize: 13 }}>{b.supplierName}</td>
+                    <td>{b.supplierName}</td>
                     <td><span className="mono muted" style={{ fontSize: 11 }}>{b.ocId || '—'}</span></td>
-                    <td className="muted" style={{ fontSize: 12 }}>{b.date}</td>
-                    <td style={{ fontSize: 12, color: b.daysOverdue > 0 ? 'var(--danger)' : 'inherit' }}>{b.dueDate}</td>
-                    <td style={{ textAlign: 'right', fontSize: 13 }}>{Q(b.amount)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, fontSize: 13 }}>{Q(b.balance)}</td>
+                    <td className="muted">{b.date}</td>
+                    <td style={{ color: b.daysOverdue> 0 ? 'var(--danger)' : 'inherit' }}>{b.dueDate}</td>
+                    <td style={{ textAlign: 'right' }}>{Q(b.amount)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 500 }}>{Q(b.balance)}</td>
                     <td>
                       {b.balance > 0 && (
-                        <span className={`pill ${BUCKET_CLASS[b.bucket]}`} style={{ fontSize: 9 }}>
+                        <span className={`badge-m3 ${BUCKET_CLASS[b.bucket]}`}>
                           {b.bucket === 'current' ? 'Al día' : `${b.bucket} días`}
                         </span>
                       )}
                     </td>
-                    <td><span className={`pill ${STATUS_CLASS[b.status]}`} style={{ fontSize: 9 }}>{STATUS_LABEL[b.status]}</span></td>
+                    <td><span className={`badge-m3 ${STATUS_CLASS[b.status]}`}>{STATUS_LABEL[b.status]}</span></td>
                     <td onClick={e => e.stopPropagation()}>
                       {b.balance > 0 && (
-                        <button className="btn" style={{ fontSize: 11, padding: '3px 10px' }}
-                          onClick={() => setPayModal(b)}>
+                        <Button size="sm" onClick={() => setPayModal(b)}>
                           Pagar
-                        </button>
+                        </Button>
                       )}
                     </td>
                   </tr>
@@ -335,13 +343,13 @@ export default function CxP({ pushToast }) {
             <tbody>
               {[...payments].sort((a, b) => b.date?.localeCompare(a.date)).map(p => (
                 <tr key={p.id}>
-                  <td className="muted" style={{ fontSize: 12 }}>{p.date}</td>
-                  <td style={{ fontSize: 13 }}>{p.supplierName || suppliers[p.supplierId]?.name || '—'}</td>
+                  <td className="muted">{p.date}</td>
+                  <td>{p.supplierName || suppliers[p.supplierId]?.name || '—'}</td>
                   <td><span className="mono" style={{ fontSize: 11 }}>{p.billId}</span></td>
                   <td><span className="mono" style={{ fontSize: 11 }}>{p.reference || '—'}</span></td>
-                  <td><span className="pill info" style={{ fontSize: 9, textTransform: 'capitalize' }}>{p.method}</span></td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--danger)' }}>{Q(p.amount)}</td>
-                  <td className="muted" style={{ fontSize: 12 }}>{p.notes || '—'}</td>
+                  <td><span className="badge-m3 info" style={{ textTransform: 'capitalize' }}>{p.method}</span></td>
+                  <td style={{ textAlign: 'right', fontWeight: 500, color: 'var(--danger)' }}>{Q(p.amount)}</td>
+                  <td className="muted">{p.notes || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -374,11 +382,10 @@ export default function CxP({ pushToast }) {
                   : `Vence en ${Math.abs(selectedBill.daysOverdue)} días`}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 }}>
-                <span className={`pill ${STATUS_CLASS[selectedBill.status]}`}>{STATUS_LABEL[selectedBill.status]}</span>
+                <span className={`badge-m3 ${STATUS_CLASS[selectedBill.status]}`}>{STATUS_LABEL[selectedBill.status]}</span>
                 {selectedBill.balance > 0 && (
-                  <button className="btn" onClick={() => { setSelectedBill(null); setPayModal(selectedBill); }}>
-                    <Icon name="cash" size={13} /> Registrar pago
-                  </button>
+                  <Button icon="cash" onClick={() => { setSelectedBill(null); setPayModal(selectedBill); }}>Registrar pago
+                  </Button>
                 )}
               </div>
             </div>
@@ -402,7 +409,7 @@ function Row({ label, value, mono, bold }) {
   return (
     <div className="detail-row">
       <span className="detail-label">{label}</span>
-      <span className={mono ? 'mono' : ''} style={{ fontSize: 13, fontWeight: bold ? 700 : 400, textAlign: 'right' }}>{value}</span>
+      <span className={mono ? 'mono' : ''} style={{ fontSize: 14, fontWeight: bold ? 700 : 400, textAlign: 'right' }}>{value}</span>
     </div>
   );
 }
@@ -425,11 +432,11 @@ function PayModal({ bill, onClose, onSave }) {
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="field">
             <label className="field-label">Documento</label>
-            <div className="mono" style={{ fontSize: 13, padding: '6px 0' }}>{bill.id} — {bill.supplierName}</div>
+            <div className="mono" style={{ fontSize: 14, padding: '6px 0' }}>{bill.id} — {bill.supplierName}</div>
           </div>
           <div className="field">
             <label className="field-label">{t('clients.payment.pendingBalance', 'Saldo pendiente')}</label>
-            <div style={{ fontWeight: 700, color: 'var(--danger)', padding: '6px 0' }}>{Q(bill.balance)}</div>
+            <div style={{ fontWeight: 500, color: 'var(--danger)', padding: '6px 0' }}>{Q(bill.balance)}</div>
           </div>
           <div className="field">
             <label className="field-label">Monto a pagar (Q)</label>
@@ -453,14 +460,9 @@ function PayModal({ bill, onClose, onSave }) {
           )}
         </div>
         <div className="modal-foot">
-          <button className="btn ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-          <button
-            className="btn"
-            disabled={!valid}
-            onClick={() => onSave({ billId: bill.id, amount, method, reference })}
-          >
-            <Icon name="check" size={13} /> Registrar pago
-          </button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+          <Button icon="check" disabled={!valid} onClick={() => onSave({ billId: bill.id, amount, method, reference })}>Registrar pago
+          </Button>
         </div>
       </div>
     </div>
