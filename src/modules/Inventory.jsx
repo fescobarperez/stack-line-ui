@@ -1,5 +1,7 @@
 // Stackline — InventoryModule (ES module)
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 // Stackline — Inventory module
@@ -140,17 +142,17 @@ function InventoryModule({ pushToast }) {
   const productColumns = [
     { key: 'sku', header: t('inventory.headers.sku', 'SKU / Código'), sortable: true, mono: true },
     { key: 'name', header: t('inventory.headers.product', 'Producto'), sortable: true,
-      render: (p) => (<><div style={{ fontWeight: 500 }}>{p.name}</div><div className="muted" style={{ fontSize: 10.5 }}>{p.unit}</div></>) },
+      render: (p) => (<><div style={{ fontWeight: 500 }}>{p.name}</div><div className="muted" style={{ fontSize: 11 }}>{p.unit}</div></>) },
     { key: 'cat', header: t('inventory.headers.category', 'Categoría'), sortable: true,
       sortValue: (p) => catName(p.cat), render: (p) => catName(p.cat) },
     { key: 'cost', header: t('inventory.headers.cost', 'Costo'), align: 'right', sortable: true, render: (p) => Q(p.cost) },
     { key: 'price', header: t('inventory.headers.price', 'Precio'), align: 'right', sortable: true,
-      render: (p) => (<span style={{ fontWeight: 600 }}>{Q(p.price)}</span>) },
+      render: (p) => (<span style={{ fontWeight: 500 }}>{Q(p.price)}</span>) },
     { key: 'margin', header: t('inventory.headers.margin', 'Margen'), align: 'right', sortable: true,
       sortValue: (p) => ((p.price - p.cost) / p.price * 100),
       render: (p) => { const m = ((p.price - p.cost) / p.price * 100); return <span style={{ color: m > 30 ? 'var(--success)' : m > 15 ? 'var(--text-2)' : 'var(--warning)' }}>{m.toFixed(1)}%</span>; } },
     { key: 'stock', header: t('inventory.headers.stock', 'Stock'), align: 'right', sortable: true,
-      render: (p) => (<span style={{ fontWeight: 600, color: p.stock === 0 ? 'var(--danger)' : p.stock < p.min ? 'var(--warning)' : 'var(--text)' }}>{p.stock}</span>) },
+      render: (p) => (<span style={{ fontWeight: 500, color: p.stock === 0 ? 'var(--danger)' : p.stock < p.min ? 'var(--warning)' : 'var(--text)' }}>{p.stock}</span>) },
     { key: 'min', header: t('inventory.headers.min', 'Mín'), align: 'right', sortable: true, className: 'muted' },
     { key: 'batch', header: t('inventory.headers.lot', 'Lote'), mono: true, className: 'muted', render: (p) => p.batch || '—' },
     { key: 'exp', header: t('inventory.headers.expires', 'Vence'), mono: true, className: 'muted', render: (p) => p.exp || '—' },
@@ -164,34 +166,39 @@ function InventoryModule({ pushToast }) {
           <div className="page-subtitle">{PRODUCTS.length} SKUs activos · {CATEGORIES.length - 1} categorías · Valor cost. <span className="mono">{Qs(totalValueCost)}</span></div>
         </div>
         <div className="page-head-actions">
-          <button className="btn"><Icon name="upload"/>{t('common.import', 'Importar')}</button>
-          <button className="btn"><Icon name="download"/>{t('common.export', 'Exportar')}</button>
-          <button className="btn accent" onClick={openNew}><Icon name="plus"/>{t('inventory.newProduct', 'Nuevo producto')}</button>
+          <Button icon="upload">{t('common.import', 'Importar')}</Button>
+          <Button icon="download">{t('common.export', 'Exportar')}</Button>
+          <Button icon="plus" variant="accent" onClick={openNew}>{t('inventory.newProduct', 'Nuevo producto')}</Button>
         </div>
       </div>
 
       {/* Stats row */}
       <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="box" size={11}/>Total SKUs</div>
-          <div className="val mono">{PRODUCTS.length.toLocaleString()}</div>
-          <div className="delta muted">{CATEGORIES.length - 1} categorías</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="cash" size={11}/>Valor inventario (costo)</div>
-          <div className="val mono">{Qs(totalValueCost)}</div>
-          <div className="delta up"><Icon name="arrowUp" size={11}/>4.2% vs mes anterior</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="tag" size={11}/>Margen potencial</div>
-          <div className="val mono">{Qs(totalValueSale - totalValueCost)}</div>
-          <div className="delta muted">{((totalValueSale - totalValueCost)/totalValueCost*100).toFixed(1)}% sobre costo</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="alert" size={11}/>Requiere atención</div>
-          <div className="val mono" style={{color:'var(--warning)'}}>{LOW_STOCK.length + EXPIRING_SOON.filter(p => p.daysLeft < 30).length}</div>
-          <div className="delta dn">{LOW_STOCK.length} bajo · {EXPIRING_SOON.filter(p => p.daysLeft < 30).length} vencen pronto</div>
-        </div>
+        <StatCard
+          icon="box" tone="pri"
+          label="Total SKUs"
+          value={PRODUCTS.length.toLocaleString()}
+          foot={<>{CATEGORIES.length - 1} categorías</>}
+        />
+        <StatCard
+          icon="cash" tone="ter"
+          label="Valor inventario (costo)"
+          value={Qs(totalValueCost)}
+          trend={{ dir: 'up', label: "4.2% vs mes anterior" }}
+        />
+        <StatCard
+          icon="tag" tone="sec"
+          label="Margen potencial"
+          value={Qs(totalValueSale - totalValueCost)}
+          foot={<>{((totalValueSale - totalValueCost)/totalValueCost*100).toFixed(1)}% sobre costo</>}
+        />
+        <StatCard
+          icon="alert" tone="err"
+          label="Requiere atención"
+          valueColor={'var(--warning)'}
+          value={LOW_STOCK.length + EXPIRING_SOON.filter(p => p.daysLeft < 30).length}
+          trend={{ dir: 'down', label: <>{LOW_STOCK.length} bajo · {EXPIRING_SOON.filter(p => p.daysLeft < 30).length} vencen pronto</> }}
+        />
       </div>
 
       {/* Tabs */}
@@ -238,7 +245,7 @@ function InventoryModule({ pushToast }) {
             </div>
             <div className="grow"></div>
             <span className="muted mono" style={{fontSize:11}}>{filtered.length} resultados</span>
-            <button className="btn sm"><Icon name="filter" size={12}/>{t('common.filter', 'Filtrar')}</button>
+            <Button icon="filter" size="sm">{t('common.filter', 'Filtrar')}</Button>
           </div>
 
           <DataTable
@@ -279,8 +286,8 @@ function InventoryModule({ pushToast }) {
               {BRANCHES.map(b => <option key={b.id}>{b.name}</option>)}
             </select>
             <div className="grow"></div>
-            <button className="btn sm"><Icon name="calendar" size={12}/>Mayo 2026</button>
-            <button className="btn sm"><Icon name="download" size={12}/>{t('inventory.exportMovements', 'Exportar')}</button>
+            <Button icon="calendar" size="sm">Mayo 2026</Button>
+            <Button icon="download" size="sm">{t('inventory.exportMovements', 'Exportar')}</Button>
           </div>
           <div className="card card-outlined">
             <table className="mtable">
@@ -307,7 +314,7 @@ function InventoryModule({ pushToast }) {
                     </td>
                     <td><span className="sku">{m.sku.slice(-7)}</span></td>
                     <td>{m.name}</td>
-                    <td className="r num" style={{color: m.qty > 0 ? 'var(--md-success)' : 'var(--md-error)', fontWeight:600}}>
+                    <td className="r num" style={{ color: m.qty> 0 ? 'var(--md-success)' : 'var(--md-error)', fontWeight:500 }}>
                       {m.qty > 0 ? '+' : ''}{m.qty}
                     </td>
                     <td><span className="sku">{m.ref}</span></td>
@@ -332,7 +339,7 @@ function InventoryModule({ pushToast }) {
               <button className="chip">Vencidos</button>
             </div>
             <div className="grow"></div>
-            <button className="btn sm accent"><Icon name="tag" size={12}/>{t('inventory.createPromoExpiring', 'Crear promoción para vencimientos')}</button>
+            <Button icon="tag" variant="accent" size="sm">{t('inventory.createPromoExpiring', 'Crear promoción para vencimientos')}</Button>
           </div>
           <div className="card">
             <table className="tbl">
@@ -356,21 +363,21 @@ function InventoryModule({ pushToast }) {
                       <td className="code">{p.batch || '—'}</td>
                       <td>
                         <div style={{fontWeight:500}}>{p.name}</div>
-                        <div className="code muted" style={{fontSize:10.5}}>{p.sku}</div>
+                        <div className="code muted" style={{fontSize: 11}}>{p.sku}</div>
                       </td>
                       <td>Zona 10</td>
                       <td className="num">{p.stock}</td>
                       <td className="code">{p.exp}</td>
-                      <td className="num" style={{color: days < 30 ? 'var(--danger)' : days < 90 ? 'var(--warning)' : 'var(--text-2)', fontWeight:600}}>
+                      <td className="num" style={{ color: days < 30 ? 'var(--danger)' : days < 90 ? 'var(--warning)' : 'var(--text-2)', fontWeight:500 }}>
                         {days}d
                       </td>
                       <td>
-                        {days < 0 && <span className="pill danger">Vencido</span>}
-                        {days >= 0 && days < 30 && <span className="pill danger"><span className="dot"/>Crítico</span>}
-                        {days >= 30 && days < 90 && <span className="pill warning"><span className="dot"/>Atención</span>}
-                        {days >= 90 && <span className="pill success"><span className="dot"/>OK</span>}
+                        {days < 0 && <span className="badge-m3 danger">Vencido</span>}
+                        {days >= 0 && days < 30 && <span className="badge-m3 danger"><span className="dot"/>Crítico</span>}
+                        {days >= 30 && days < 90 && <span className="badge-m3 warning"><span className="dot"/>Atención</span>}
+                        {days >= 90 && <span className="badge-m3 success"><span className="dot"/>OK</span>}
                       </td>
-                      <td><button className="btn sm ghost"><Icon name="tag" size={11}/>Promo</button></td>
+                      <td><Button icon="tag" variant="ghost" size="sm">Promo</Button></td>
                     </tr>
                   );
                 })}
@@ -385,7 +392,7 @@ function InventoryModule({ pushToast }) {
           <div className="alert" style={{marginBottom:12}}>
             <Icon name="alert" size={14}/>
             <span><strong>{LOW_STOCK.length} productos</strong> {t('inventory.lowStockWarning', 'están por debajo del stock mínimo y requieren reorden.')} Sugerencia: generar órdenes de compra automáticas con los proveedores asignados.</span>
-            <button className="btn sm accent" style={{marginLeft:'auto'}}>Generar OCs automáticas</button>
+            <Button variant="accent" size="sm" style={{marginLeft:'auto' }}>Generar OCs automáticas</Button>
           </div>
 
           <div className="card">
@@ -418,17 +425,17 @@ function InventoryModule({ pushToast }) {
                         <td className="code">{p.sku.slice(-7)}</td>
                         <td><div style={{fontWeight:500}}>{p.name}</div></td>
                         <td className="num">
-                          <span style={{color:'var(--danger)', fontWeight:600}}>{p.stock}</span>
+                          <span style={{color:'var(--danger)', fontWeight: 500}}>{p.stock}</span>
                         </td>
                         <td className="num muted">{p.min}</td>
-                        <td className="num" style={{fontWeight:600, color:'var(--accent)'}}>+{suggested}</td>
+                        <td className="num" style={{ fontWeight:500, color:'var(--accent)' }}>+{suggested}</td>
                         <td>{SUPPLIERS[i % SUPPLIERS.length].name.split(',')[0]}</td>
                         <td>
                           <div className="bar danger" style={{width:80}}>
                             <div style={{width: Math.min(100, pct) + '%'}}/>
                           </div>
                         </td>
-                        <td><button className="btn sm"><Icon name="truck" size={11}/>OC</button></td>
+                        <td><Button icon="truck" size="sm">OC</Button></td>
                       </tr>
                     );
                   })}
@@ -464,8 +471,8 @@ function InventoryModule({ pushToast }) {
                 <textarea rows="3" placeholder={t('inventory.adjustment.reason', 'Detalle de la razón del ajuste…')}></textarea>
               </div>
               <div className="row gap-8" style={{marginTop:6}}>
-                <button className="btn accent"><Icon name="check"/>Registrar ajuste</button>
-                <button className="btn">{t('common.cancel', 'Cancelar')}</button>
+                <Button icon="check" variant="accent">Registrar ajuste</Button>
+                <Button>{t('common.cancel', 'Cancelar')}</Button>
               </div>
             </div>
           </div>
@@ -488,8 +495,8 @@ function InventoryModule({ pushToast }) {
               </div>
               <div className="field"><label>{t('inventory.transfer.carrier', 'Transportista / chofer')}</label><input placeholder={t('inventory.transfer.carrierPlaceholder', 'Nombre del responsable')}/></div>
               <div className="row gap-8" style={{marginTop:6}}>
-                <button className="btn accent"><Icon name="truck"/>{t('inventory.transfer.create', 'Crear transferencia')}</button>
-                <button className="btn">{t('common.saveDraft', 'Guardar borrador')}</button>
+                <Button icon="truck" variant="accent">{t('inventory.transfer.create', 'Crear transferencia')}</Button>
+                <Button>{t('common.saveDraft', 'Guardar borrador')}</Button>
               </div>
             </div>
           </div>
@@ -499,28 +506,31 @@ function InventoryModule({ pushToast }) {
       {tab === 'valoracion' && (
         <div>
           <div className="stat-grid" style={{marginBottom:16}}>
-            <div className="stat">
-              <div className="label"><Icon name="cash" size={11}/>Valor costo promedio</div>
-              <div className="val mono">{Qs(PRODUCTS.reduce((s, p) => s + (p.avgCost || p.cost) * p.stock, 0))}</div>
-              <div className="delta muted">Método: Promedio Ponderado</div>
-            </div>
-            <div className="stat">
-              <div className="label"><Icon name="tag" size={11}/>Valor a precio de venta</div>
-              <div className="val mono">{Qs(PRODUCTS.reduce((s, p) => s + p.price * p.stock, 0))}</div>
-              <div className="delta up">Margen bruto potencial {((1 - PRODUCTS.reduce((s, p) => s + (p.avgCost||p.cost)*p.stock,0) / PRODUCTS.reduce((s, p) => s + p.price*p.stock,0))*100).toFixed(1)}%</div>
-            </div>
-            <div className="stat">
-              <div className="label"><Icon name="box" size={11}/>SKUs con costo promedio</div>
-              <div className="val mono">{PRODUCTS.filter(p => p.avgCost).length}</div>
-              <div className="delta muted">de {PRODUCTS.length} activos</div>
-            </div>
-            <div className="stat">
-              <div className="label"><Icon name="arrowUp" size={11}/>Variación vs. costo base</div>
-              <div className="val mono" style={{color:'var(--success)'}}>
-                {((PRODUCTS.reduce((s,p)=>s+(p.avgCost||p.cost)*p.stock,0)/PRODUCTS.reduce((s,p)=>s+p.cost*p.stock,0)-1)*100).toFixed(2)}%
-              </div>
-              <div className="delta muted">Promedio vs. costo estándar</div>
-            </div>
+            <StatCard
+              icon="cash" tone="pri"
+              label="Valor costo promedio"
+              value={Qs(PRODUCTS.reduce((s, p) => s + (p.avgCost || p.cost) * p.stock, 0))}
+              foot="Método: Promedio Ponderado"
+            />
+            <StatCard
+              icon="tag" tone="ter"
+              label="Valor a precio de venta"
+              value={Qs(PRODUCTS.reduce((s, p) => s + p.price * p.stock, 0))}
+              trend={{ dir: 'up', label: <>Margen bruto potencial {((1 - PRODUCTS.reduce((s, p) => s + (p.avgCost||p.cost)*p.stock,0) / PRODUCTS.reduce((s, p) => s + p.price*p.stock,0))*100).toFixed(1)}%</> }}
+            />
+            <StatCard
+              icon="box" tone="sec"
+              label="SKUs con costo promedio"
+              value={PRODUCTS.filter(p => p.avgCost).length}
+              foot={<>de {PRODUCTS.length} activos</>}
+            />
+            <StatCard
+              icon="arrowUp" tone="err"
+              label="Variación vs. costo base"
+              valueColor={'var(--success)'}
+              value={<>{((PRODUCTS.reduce((s,p)=>s+(p.avgCost||p.cost)*p.stock,0)/PRODUCTS.reduce((s,p)=>s+p.cost*p.stock,0)-1)*100).toFixed(2)}%</>}
+              foot="Promedio vs. costo estándar"
+            />
           </div>
           <div className="card">
             <div className="tbl-wrap">
@@ -543,13 +553,13 @@ function InventoryModule({ pushToast }) {
                     const diff = ((avg - p.cost) / p.cost * 100);
                     return (
                       <tr key={p.sku}>
-                        <td className="mono muted" style={{fontSize:11}}>{p.sku}</td>
+                        <td className="mono muted">{p.sku}</td>
                         <td style={{fontWeight:500}}>{p.name}</td>
                         <td className="num mono">{p.stock}</td>
                         <td className="num mono muted">{Q(p.cost)}</td>
                         <td className="num mono">{Q(avg)}</td>
                         <td className="num">
-                          <span style={{fontSize:11, color: diff > 0 ? 'var(--danger)' : diff < 0 ? 'var(--success)' : 'var(--muted)', fontWeight:600}}>
+                          <span style={{fontSize:11, color: diff > 0 ? 'var(--danger)' : diff < 0 ? 'var(--success)' : 'var(--muted)', fontWeight: 500}}>
                             {diff >= 0 ? '+' : ''}{diff.toFixed(2)}%
                           </span>
                         </td>
@@ -573,27 +583,29 @@ function InventoryModule({ pushToast }) {
             <div className="drawer-head">
               <div>
                 <div className="code muted" style={{fontSize:11}}>{selected.sku}</div>
-                <h3 style={{margin:0, marginTop:2, fontSize:15}}>{selected.name}</h3>
+                <h3 style={{margin:0, marginTop:2, fontSize: 16}}>{selected.name}</h3>
               </div>
               <button className="icon-btn" onClick={() => setSelected(null)}><Icon name="x"/></button>
             </div>
             <div className="drawer-body">
               <div className="stat-grid" style={{gridTemplateColumns:'1fr 1fr', marginBottom:12}}>
-                <div className="stat">
-                  <div className="label">Stock total</div>
-                  <div className="val mono">{selected.stock}</div>
-                  <div className="delta muted">Mín {selected.min} · {selected.unit}</div>
-                </div>
-                <div className="stat">
-                  <div className="label">{t('inventory.headers.price', 'Precio')}</div>
-                  <div className="val mono">{Q(selected.price)}</div>
-                  <div className="delta up">Margen {((selected.price-selected.cost)/selected.price*100).toFixed(1)}%</div>
-                </div>
+                <StatCard
+                  tone="pri"
+                  label="Stock total"
+                  value={selected.stock}
+                  foot={<>Mín {selected.min} · {selected.unit}</>}
+                />
+                <StatCard
+                  tone="ter"
+                  label={t('inventory.headers.price', 'Precio')}
+                  value={Q(selected.price)}
+                  trend={{ dir: 'up', label: <>Margen {((selected.price-selected.cost)/selected.price*100).toFixed(1)}%</> }}
+                />
               </div>
 
               <div className="card" style={{marginBottom:12}}>
-                <div className="card-head"><h3>{t('inventory.generalData', 'Datos generales')}</h3><button className="btn sm ghost" onClick={() => editProduct(selected)}><Icon name="edit" size={11}/>{t('common.edit', 'Editar')}</button></div>
-                <div className="card-body" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 14px', fontSize:12.5}}>
+                <div className="card-head"><h3>{t('inventory.generalData', 'Datos generales')}</h3><Button icon="edit" variant="ghost" size="sm" onClick={() => editProduct(selected)}>{t('common.edit', 'Editar')}</Button></div>
+                <div className="card-body" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 14px', fontSize: 12}}>
                   <div><div className="muted" style={{fontSize:11}}>{t('inventory.headers.category', 'Categoría')}</div><div>{CATEGORIES.find(c=>c.id===selected.cat)?.name}</div></div>
                   <div><div className="muted" style={{fontSize:11}}>Unidad</div><div>{selected.unit}</div></div>
                   <div><div className="muted" style={{fontSize:11}}>Costo unitario</div><div className="mono">{Q(selected.cost)}</div></div>
@@ -617,7 +629,7 @@ function InventoryModule({ pushToast }) {
                             <td className="num">{s}</td>
                             <td className="num muted">{Math.floor(selected.min/3)}</td>
                             <td>
-                              {s < selected.min/3 ? <span className="pill warning"><span className="dot"/>Bajo</span> : <span className="pill success"><span className="dot"/>OK</span>}
+                              {s < selected.min/3 ? <span className="badge-m3 warning"><span className="dot"/>Bajo</span> : <span className="badge-m3 success"><span className="dot"/>OK</span>}
                             </td>
                           </tr>
                         );
@@ -628,8 +640,8 @@ function InventoryModule({ pushToast }) {
               </div>
             </div>
             <div className="drawer-foot">
-              <button className="btn danger" onClick={() => deleteProduct(selected)}><Icon name="trash"/>{t('common.delete', 'Eliminar')}</button>
-              <button className="btn accent" onClick={() => editProduct(selected)}><Icon name="edit"/>{t('inventory.editProduct', 'Editar producto')}</button>
+              <Button icon="trash" variant="danger" onClick={() => deleteProduct(selected)}>{t('common.delete', 'Eliminar')}</Button>
+              <Button icon="edit" variant="accent" onClick={() => editProduct(selected)}>{t('inventory.editProduct', 'Editar producto')}</Button>
             </div>
           </div>
         </>
@@ -686,10 +698,9 @@ function InventoryModule({ pushToast }) {
               </div>
             </div>
             <div className="modal-foot">
-              <button className="btn" onClick={() => setShowNew(false)} disabled={saving}>{t('common.cancel', 'Cancelar')}</button>
-              <button className="btn accent" onClick={saveProduct} disabled={saving}>
-                <Icon name="check"/>{saving ? t('common.saving', 'Guardando…') : (editingId != null ? t('common.saveChanges', 'Guardar cambios') : t('inventory.newProduct', 'Nuevo producto'))}
-              </button>
+              <Button onClick={() => setShowNew(false)} disabled={saving}>{t('common.cancel', 'Cancelar')}</Button>
+              <Button icon="check" variant="accent" onClick={saveProduct} disabled={saving}>{saving ? t('common.saving', 'Guardando…') : (editingId != null ? t('common.saveChanges', 'Guardar cambios') : t('inventory.newProduct', 'Nuevo producto'))}
+              </Button>
             </div>
           </div>
         </div>

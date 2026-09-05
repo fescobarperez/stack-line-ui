@@ -1,7 +1,9 @@
 // Stackline — Cotizaciones a clientes + RFQ a proveedores
 import React, { useState, useMemo } from 'react';
+import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
 import { useClientQuotes, useSupplierRfqs, mapQuote, mapRfq } from '../hooks/useQuotes.js';
 import { getQuote, createQuote as apiCreateQuote, updateQuoteStatus } from '../api/wave2.js';
 
@@ -273,13 +275,13 @@ function CreateModal({ onSave, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ width: 680, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
-          <span className="modal-title">{t('quotes.newQuote', 'Nueva Cotización')}</span>
+          <h3>{t('quotes.newQuote', 'Nueva Cotización')}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="close" /></button>
         </div>
 
         <div className="modal-body" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 10 }}>{t('common.client', 'CLIENTE').toUpperCase()}</div>
+            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 10 }}>{t('common.client', 'CLIENTE').toUpperCase()}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div className="field-group">
                 <label className="field-label">{t('quotes.clientName', 'Nombre / Empresa *')}</label>
@@ -308,12 +310,12 @@ function CreateModal({ onSave, onClose }) {
           </div>
 
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 10 }}>{t('quotes.productsServices', 'PRODUCTOS / SERVICIOS')}</div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 10 }}>{t('quotes.productsServices', 'PRODUCTOS / SERVICIOS')}</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   {[t('common.description', 'Descripción'), t('quotes.qty', 'Cant.'), 'UOM', t('quotes.unitPrice', 'P. unitario'), t('common.discount', 'Desc %'), t('common.total', 'Total'), ''].map((h, i) => (
-                    <th key={i} style={{ padding: '4px 6px', textAlign: i >= 3 && i <= 4 ? 'center' : i === 5 ? 'right' : 'left', fontWeight: 600, color: 'var(--text-2)', fontSize: 11,
+                    <th key={i} style={{ padding: '4px 6px', textAlign: i>= 3 && i <= 4 ? 'center' : i === 5 ? 'right' : 'left', fontWeight: 500, color: 'var(--text-2)',
                       width: [undefined, 60, 60, 100, 60, 100, 28][i] }}>{h}</th>
                   ))}
                 </tr>
@@ -341,7 +343,7 @@ function CreateModal({ onSave, onClose }) {
                       <input className="field-input" type="number" min="0" max="100" style={{ padding: '3px 6px', textAlign: 'center', width: '100%' }}
                         value={item.discount} onChange={e => setItem(item.id, 'discount', Number(e.target.value))} />
                     </td>
-                    <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                    <td className="num" style={{ padding: '4px 6px' }}>
                       {Q(item.qty * item.unitPrice * (1 - item.discount / 100))}
                     </td>
                     <td style={{ padding: '4px 2px' }}>
@@ -353,18 +355,17 @@ function CreateModal({ onSave, onClose }) {
                 ))}
               </tbody>
             </table>
-            <button className="btn-ghost" style={{ marginTop: 8 }} onClick={addItem}>
-              <Icon name="plus" size={12} /> {t('quotes.addLine', 'Agregar línea')}
-            </button>
+            <Button icon="plus" variant="ghost" style={{ marginTop: 8 }} onClick={addItem}>{t('quotes.addLine', 'Agregar línea')}
+            </Button>
           </div>
 
           <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '12px 16px', alignSelf: 'flex-end', minWidth: 260 }}>
             {[[t('quotes.subtotalNoIva', 'Subtotal (sin IVA)'), Q(subtotal)], [t('common.iva', 'IVA') + ' (12%)', Q(iva)]].map(([l, v]) => (
-              <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 6, color: 'var(--text-2)' }}>
+              <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, color: 'var(--text-2)' }}>
                 <span>{l}</span><span className="mono">{v}</span>
               </div>
             ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 14, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, fontSize: 14, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
               <span>{t('common.total', 'TOTAL').toUpperCase()}</span><span className="mono">{Q(total)}</span>
             </div>
           </div>
@@ -377,8 +378,8 @@ function CreateModal({ onSave, onClose }) {
         </div>
 
         <div className="modal-foot">
-          <button className="btn-ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-          <button className="btn" disabled={!canSave} onClick={handleSave}>{t('quotes.createQuote', 'Crear cotización')}</button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+          <Button icon="check" variant="accent" disabled={!canSave} onClick={handleSave}>{t('quotes.createQuote', 'Crear cotización')}</Button>
         </div>
       </div>
     </div>
@@ -418,13 +419,13 @@ function CreateRFQModal({ onSave, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ width: 620, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
-          <span className="modal-title">{t('quotes.newRFQ', 'Nueva Solicitud de Cotización (RFQ)')}</span>
+          <h3>{t('quotes.newRFQ', 'Nueva Solicitud de Cotización (RFQ)')}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="close" /></button>
         </div>
 
         <div className="modal-body" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 10 }}>{t('common.supplier', 'PROVEEDOR').toUpperCase()}</div>
+            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 10 }}>{t('common.supplier', 'PROVEEDOR').toUpperCase()}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div className="field-group">
                 <label className="field-label">{t('quotes.supplierName', 'Nombre / Empresa *')}</label>
@@ -452,13 +453,13 @@ function CreateRFQModal({ onSave, onClose }) {
           </div>
 
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 10 }}>{t('quotes.requestedProducts', 'PRODUCTOS SOLICITADOS')}</div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 10 }}>{t('quotes.requestedProducts', 'PRODUCTOS SOLICITADOS')}</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  <th style={{ padding: '4px 6px', textAlign: 'left', fontWeight: 600, color: 'var(--text-2)', fontSize: 11 }}>{t('common.description', 'Descripción')}</th>
-                  <th style={{ padding: '4px 6px', textAlign: 'center', width: 80, fontWeight: 600, color: 'var(--text-2)', fontSize: 11 }}>{t('common.quantity', 'Cantidad')}</th>
-                  <th style={{ padding: '4px 6px', textAlign: 'center', width: 70, fontWeight: 600, color: 'var(--text-2)', fontSize: 11 }}>UOM</th>
+                  <th style={{ padding: '4px 6px', textAlign: 'left', fontWeight: 500, color: 'var(--text-2)' }}>{t('common.description', 'Descripción')}</th>
+                  <th style={{ padding: '4px 6px', textAlign: 'center', width: 80, fontWeight: 500, color: 'var(--text-2)' }}>{t('common.quantity', 'Cantidad')}</th>
+                  <th style={{ padding: '4px 6px', textAlign: 'center', width: 70, fontWeight: 500, color: 'var(--text-2)' }}>UOM</th>
                   <th style={{ width: 28 }}></th>
                 </tr>
               </thead>
@@ -486,9 +487,8 @@ function CreateRFQModal({ onSave, onClose }) {
                 ))}
               </tbody>
             </table>
-            <button className="btn-ghost" style={{ marginTop: 8 }} onClick={addItem}>
-              <Icon name="plus" size={12} /> {t('quotes.addProduct', 'Agregar producto')}
-            </button>
+            <Button icon="plus" variant="ghost" style={{ marginTop: 8 }} onClick={addItem}>{t('quotes.addProduct', 'Agregar producto')}
+            </Button>
           </div>
 
           <div className="field-group">
@@ -499,8 +499,8 @@ function CreateRFQModal({ onSave, onClose }) {
         </div>
 
         <div className="modal-foot">
-          <button className="btn-ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-          <button className="btn" disabled={!canSave} onClick={handleSave}>{t('quotes.createRequest', 'Crear solicitud')}</button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+          <Button icon="check" variant="accent" disabled={!canSave} onClick={handleSave}>{t('quotes.createRequest', 'Crear solicitud')}</Button>
         </div>
       </div>
     </div>
@@ -644,7 +644,7 @@ export default function Quotes({ pushToast }) {
           <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: 3, gap: 2 }}>
             {[['cliente', t('quotes.toClients', 'A clientes')], ['proveedor', t('quotes.toSuppliers', 'A proveedores')]].map(([val, lbl]) => (
               <button key={val} onClick={() => switchType(val)}
-                style={{ padding: '5px 14px', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit',
+                style={{ padding: '5px 14px', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500, fontFamily: 'inherit',
                   borderRadius: 'calc(var(--r-md) - 2px)',
                   background: quoteType === val ? 'var(--md-sys-color-secondary-container)' : 'transparent',
                   color: quoteType === val ? 'var(--md-sys-color-on-secondary-container)' : 'var(--text-2)',
@@ -655,13 +655,11 @@ export default function Quotes({ pushToast }) {
             ))}
           </div>
           {quoteType === 'cliente' ? (
-            <button className="btn" onClick={() => setShowCreate(true)}>
-              <Icon name="plus" size={12} /> {t('quotes.newQuote', 'Nueva cotización')}
-            </button>
+            <Button icon="plus" variant="accent" onClick={() => setShowCreate(true)}>{t('quotes.newQuote', 'Nueva cotización')}
+            </Button>
           ) : (
-            <button className="btn" onClick={() => setShowCreateRfq(true)}>
-              <Icon name="plus" size={12} /> {t('quotes.newRequest', 'Nueva solicitud')}
-            </button>
+            <Button icon="plus" variant="accent" onClick={() => setShowCreateRfq(true)}>{t('quotes.newRequest', 'Nueva solicitud')}
+            </Button>
           )}
         </div>
       </div>
@@ -670,26 +668,28 @@ export default function Quotes({ pushToast }) {
       {quoteType === 'cliente' && (
         <>
           <div className="stat-grid" style={{ marginBottom: 20 }}>
-            <div className="stat-card">
-              <div className="label">{t('quotes.inPipeline', 'En pipeline')}</div>
-              <div className="value">{pipeline.length}</div>
-              <div className="sub muted">{Q(pipelineAmt)} {t('quotes.inProcess', 'en proceso')}</div>
-            </div>
-            <div className="stat-card">
-              <div className="label">{t('common.approved', 'Aprobadas')}</div>
-              <div className="value success">{quotes.filter(q => q.status === 'aprobada').length}</div>
-              <div className="sub success">{Q(approvedAmt)} {t('quotes.readyToInvoice', 'listas para facturar')}</div>
-            </div>
-            <div className="stat-card">
-              <div className="label">{t('quotes.converted', 'Convertidas')}</div>
-              <div className="value">{quotes.filter(q => q.status === 'convertida').length}</div>
-              <div className="sub muted">{t('quotes.thisMonth', 'Este mes')}</div>
-            </div>
-            <div className="stat-card">
-              <div className="label">{t('quotes.expiredRejected', 'Vencidas / Rechazadas')}</div>
-              <div className="value danger">{quotes.filter(q => ['vencida', 'rechazada'].includes(q.status)).length}</div>
-              <div className="sub muted">{t('quotes.requireFollowup', 'Requieren seguimiento')}</div>
-            </div>
+            <StatCard
+              label={t('quotes.inPipeline', 'En pipeline')}
+              value={pipeline.length}
+              foot={<>{Q(pipelineAmt)} {t('quotes.inProcess', 'en proceso')}</>}
+            />
+            <StatCard
+              label={t('common.approved', 'Aprobadas')}
+              valueColor={'var(--success)'}
+              value={quotes.filter(q => q.status === 'aprobada').length}
+              foot={<>{Q(approvedAmt)} {t('quotes.readyToInvoice', 'listas para facturar')}</>}
+            />
+            <StatCard
+              label={t('quotes.converted', 'Convertidas')}
+              value={quotes.filter(q => q.status === 'convertida').length}
+              foot={t('quotes.thisMonth', 'Este mes')}
+            />
+            <StatCard
+              label={t('quotes.expiredRejected', 'Vencidas / Rechazadas')}
+              valueColor={'var(--danger)'}
+              value={quotes.filter(q => ['vencida', 'rechazada'].includes(q.status)).length}
+              foot={t('quotes.requireFollowup', 'Requieren seguimiento')}
+            />
           </div>
 
           <div className="filterbar" style={{ marginBottom: 12 }}>
@@ -724,17 +724,17 @@ export default function Quotes({ pushToast }) {
                     const isExpired  = q.validUntil < today && !['convertida', 'rechazada', 'vencida'].includes(q.status);
                     return (
                       <tr key={q.id} onClick={() => openDrawer(q)} style={{ cursor: 'pointer' }}>
-                        <td><span className="mono" style={{ fontWeight: 700, fontSize: 12 }}>{q.id}</span></td>
+                        <td><span className="mono" style={{ fontWeight: 500, fontSize: 12 }}>{q.id}</span></td>
                         <td>
                           <div style={{ fontWeight: 500 }}>{q.client.name}</div>
                           <div className="muted" style={{ fontSize: 11 }}>{q.client.contact}</div>
                         </td>
-                        <td className="muted" style={{ fontSize: 12.5 }}>{fmtDate(q.date)}</td>
-                        <td style={{ fontSize: 12.5, color: isExpired ? 'var(--danger)' : 'var(--text-2)' }}>{fmtDate(q.validUntil)}</td>
+                        <td className="muted">{fmtDate(q.date)}</td>
+                        <td style={{ color: isExpired ? 'var(--danger)' : 'var(--text-2)' }}>{fmtDate(q.validUntil)}</td>
                         <td style={{ textAlign: 'center' }}>{q.items.length}</td>
-                        <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{Q(total)}</td>
-                        <td><span className={`pill ${STATUS_CLASS[q.status]}`}>{STATUS_LABEL[q.status]}</span></td>
-                        <td><button className="btn-ghost" onClick={e => { e.stopPropagation(); openDrawer(q); }}>{t('common.view', 'Ver')}</button></td>
+                        <td className="num" style={{ fontWeight: 500 }}>{Q(total)}</td>
+                        <td><span className={`badge-m3 ${STATUS_CLASS[q.status]}`}>{STATUS_LABEL[q.status]}</span></td>
+                        <td><Button variant="ghost" onClick={e => { e.stopPropagation(); openDrawer(q); }}>{t('common.view', 'Ver')}</Button></td>
                       </tr>
                     );
                   })}
@@ -752,26 +752,28 @@ export default function Quotes({ pushToast }) {
       {quoteType === 'proveedor' && (
         <>
           <div className="stat-grid" style={{ marginBottom: 20 }}>
-            <div className="stat-card">
-              <div className="label">{t('quotes.rfqInProcess', 'En proceso')}</div>
-              <div className="value">{rfqInProcess.length}</div>
-              <div className="sub muted">{t('quotes.rfqRequestedReceived', 'Solicitadas + recibidas')}</div>
-            </div>
-            <div className="stat-card">
-              <div className="label">{t('quotes.rfqPendingResponse', 'Pendientes respuesta')}</div>
-              <div className="value warning">{rfqPending.length}</div>
-              <div className="sub muted">{t('quotes.rfqWaitingSupplier', 'Esperando al proveedor')}</div>
-            </div>
-            <div className="stat-card">
-              <div className="label">{t('common.approved', 'Aprobadas')}</div>
-              <div className="value success">{rfqApproved.length}</div>
-              <div className="sub muted">{t('quotes.rfqReadyForPO', 'Listas para generar OC')}</div>
-            </div>
-            <div className="stat-card">
-              <div className="label">{t('quotes.rfqConvertedToPO', 'Convertidas a OC')}</div>
-              <div className="value">{rfqs.filter(r => r.status === 'convertida').length}</div>
-              <div className="sub muted">{t('quotes.thisMonth', 'Este mes')}</div>
-            </div>
+            <StatCard
+              label={t('quotes.rfqInProcess', 'En proceso')}
+              value={rfqInProcess.length}
+              foot={t('quotes.rfqRequestedReceived', 'Solicitadas + recibidas')}
+            />
+            <StatCard
+              label={t('quotes.rfqPendingResponse', 'Pendientes respuesta')}
+              valueColor={'var(--warning)'}
+              value={rfqPending.length}
+              foot={t('quotes.rfqWaitingSupplier', 'Esperando al proveedor')}
+            />
+            <StatCard
+              label={t('common.approved', 'Aprobadas')}
+              valueColor={'var(--success)'}
+              value={rfqApproved.length}
+              foot={t('quotes.rfqReadyForPO', 'Listas para generar OC')}
+            />
+            <StatCard
+              label={t('quotes.rfqConvertedToPO', 'Convertidas a OC')}
+              value={rfqs.filter(r => r.status === 'convertida').length}
+              foot={t('quotes.thisMonth', 'Este mes')}
+            />
           </div>
 
           <div className="filterbar" style={{ marginBottom: 12 }}>
@@ -808,22 +810,22 @@ export default function Quotes({ pushToast }) {
                     const isOverdue   = r.deadline && r.deadline < today && ['solicitada', 'recibida'].includes(r.status);
                     return (
                       <tr key={r.id} onClick={() => openRfqDrawer(r)} style={{ cursor: 'pointer' }}>
-                        <td><span className="mono" style={{ fontWeight: 700, fontSize: 12 }}>{r.id}</span></td>
+                        <td><span className="mono" style={{ fontWeight: 500, fontSize: 12 }}>{r.id}</span></td>
                         <td>
                           <div style={{ fontWeight: 500 }}>{r.supplier.name}</div>
                           <div className="muted" style={{ fontSize: 11 }}>{r.supplier.contact}</div>
                         </td>
-                        <td className="muted" style={{ fontSize: 12.5 }}>{fmtDate(r.date)}</td>
-                        <td style={{ fontSize: 12.5, color: isOverdue ? 'var(--danger)' : 'var(--text-2)' }}>
+                        <td className="muted">{fmtDate(r.date)}</td>
+                        <td style={{ color: isOverdue ? 'var(--danger)' : 'var(--text-2)' }}>
                           {r.deadline ? fmtDate(r.deadline) : '—'}
                         </td>
-                        <td style={{ fontSize: 12.5 }}>{r.leadTime}</td>
-                        <td style={{ fontSize: 12.5 }}>{r.paymentTerms}</td>
-                        <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 600, color: hasPrices ? 'var(--text)' : 'var(--muted)' }}>
+                        <td>{r.leadTime}</td>
+                        <td>{r.paymentTerms}</td>
+                        <td className="num" style={{ fontWeight: 500, color: hasPrices ? 'var(--text)' : 'var(--muted)' }}>
                           {hasPrices ? Q(total) : t('quotes.pending', 'Pendiente')}
                         </td>
-                        <td><span className={`pill ${RFQ_CLASS[r.status]}`}>{RFQ_LABEL[r.status]}</span></td>
-                        <td><button className="btn-ghost" onClick={e => { e.stopPropagation(); openRfqDrawer(r); }}>{t('common.view', 'Ver')}</button></td>
+                        <td><span className={`badge-m3 ${RFQ_CLASS[r.status]}`}>{RFQ_LABEL[r.status]}</span></td>
+                        <td><Button variant="ghost" onClick={e => { e.stopPropagation(); openRfqDrawer(r); }}>{t('common.view', 'Ver')}</Button></td>
                       </tr>
                     );
                   })}
@@ -844,8 +846,8 @@ export default function Quotes({ pushToast }) {
             <div className="drawer-head">
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontWeight: 700, fontSize: 14 }}>{selQuote.id}</span>
-                  <span className={`pill ${STATUS_CLASS[selQuote.status]}`}>{STATUS_LABEL[selQuote.status]}</span>
+                  <span style={{ fontWeight: 500, fontSize: 14 }}>{selQuote.id}</span>
+                  <span className={`badge-m3 ${STATUS_CLASS[selQuote.status]}`}>{STATUS_LABEL[selQuote.status]}</span>
                 </div>
                 <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{selQuote.client.name} · {fmtDate(selQuote.date)}</div>
               </div>
@@ -873,12 +875,12 @@ export default function Quotes({ pushToast }) {
                       ].map(([l, v]) => (
                         <div className="detail-row" key={l}>
                           <span className="detail-label">{l}</span>
-                          <span style={{ fontSize: 12.5, textAlign: 'right' }}>{v}</span>
+                          <span style={{ fontSize: 12, textAlign: 'right' }}>{v}</span>
                         </div>
                       ))}
                     </div>
 
-                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 8 }}>{t('common.product', 'PRODUCTOS').toUpperCase()}</div>
+                    <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 8 }}>{t('common.product', 'PRODUCTOS').toUpperCase()}</div>
                     <table className="tbl" style={{ marginBottom: 4 }}>
                       <thead>
                         <tr>
@@ -893,14 +895,14 @@ export default function Quotes({ pushToast }) {
                       <tbody>
                         {lines.map(l => (
                           <tr key={l.id}>
-                            <td style={{ fontSize: 12.5 }}>{l.name}</td>
+                            <td>{l.name}</td>
                             <td style={{ textAlign: 'center' }}>{l.qty}</td>
-                            <td style={{ textAlign: 'center' }}><span className="pill">{l.uom}</span></td>
-                            <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{Q(l.unitPrice)}</td>
-                            <td style={{ textAlign: 'center', color: l.discount > 0 ? 'var(--success)' : 'var(--muted)' }}>
+                            <td style={{ textAlign: 'center' }}><span className="badge-m3">{l.uom}</span></td>
+                            <td className="num">{Q(l.unitPrice)}</td>
+                            <td style={{ textAlign: 'center', color: l.discount> 0 ? 'var(--success)' : 'var(--muted)' }}>
                               {l.discount > 0 ? `${l.discount}%` : '—'}
                             </td>
-                            <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600 }}>{Q(l.lineTotal)}</td>
+                            <td className="num" style={{ fontWeight: 500 }}>{Q(l.lineTotal)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -908,18 +910,18 @@ export default function Quotes({ pushToast }) {
 
                     <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginBottom: 14 }}>
                       {[[t('quotes.subtotalNoIva', 'Subtotal sin IVA'), Q(subtotal)], [t('common.iva', 'IVA') + ' (12%)', Q(iva)]].map(([l, v]) => (
-                        <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 5, color: 'var(--text-2)' }}>
+                        <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5, color: 'var(--text-2)' }}>
                           <span>{l}</span><span className="mono">{v}</span>
                         </div>
                       ))}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 14, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, fontSize: 14, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
                         <span>{t('common.total', 'TOTAL').toUpperCase()}</span><span className="mono">{Q(total)}</span>
                       </div>
                     </div>
 
                     {selQuote.notes && (
-                      <div style={{ fontSize: 12.5, color: 'var(--text-2)', background: 'var(--surface-2)', padding: '10px 14px', borderRadius: 'var(--r-md)', borderLeft: '3px solid var(--border)' }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', marginBottom: 4, letterSpacing: '0.05em' }}>{t('common.notes', 'NOTAS').toUpperCase()}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-2)', background: 'var(--surface-2)', padding: '10px 14px', borderRadius: 'var(--r-md)', borderLeft: '3px solid var(--border)' }}>
+                        <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)', marginBottom: 4, letterSpacing: '0.05em' }}>{t('common.notes', 'NOTAS').toUpperCase()}</div>
                         {selQuote.notes}
                       </div>
                     )}
@@ -936,8 +938,8 @@ export default function Quotes({ pushToast }) {
                         {idx < selQuote.history.length - 1 && <div style={{ width: 1, flex: 1, background: 'var(--border)' }} />}
                       </div>
                       <div style={{ flex: 1, paddingBottom: 4 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{h.action}</div>
-                        <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{h.user} · {h.ts}</div>
+                        <div style={{ fontSize: 14, fontWeight: 500 }}>{h.action}</div>
+                        <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{h.user} · {h.ts}</div>
                       </div>
                     </div>
                   ))}
@@ -946,35 +948,26 @@ export default function Quotes({ pushToast }) {
             </div>
 
             <div className="drawer-foot" style={{ flexWrap: 'wrap', gap: 8 }}>
-              <button className="btn-ghost" onClick={() => setSelected(null)}>{t('common.close', 'Cerrar')}</button>
+              <Button variant="ghost" onClick={() => setSelected(null)}>{t('common.close', 'Cerrar')}</Button>
               <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
                 {selQuote.status === 'borrador' && (
-                  <button className="btn-outline"
-                    onClick={() => { updateStatus(selQuote.id, 'enviada', 'Enviada al cliente por correo electrónico'); pushToast('Cotización enviada', 'success'); }}>
+                  <Button onClick={() => { updateStatus(selQuote.id, 'enviada', 'Enviada al cliente por correo electrónico'); pushToast('Cotización enviada', 'success'); }}>
                     {t('quotes.sendToClient', 'Enviar al cliente')}
-                  </button>
+                  </Button>
                 )}
                 {selQuote.status === 'enviada' && (
                   <>
-                    <button className="btn-outline" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                      onClick={() => { updateStatus(selQuote.id, 'rechazada', 'Rechazada'); pushToast('Cotización rechazada', 'danger'); }}>
+                    <Button style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => { updateStatus(selQuote.id, 'rechazada', 'Rechazada'); pushToast('Cotización rechazada', 'danger'); }}>
                       {t('quotes.reject', 'Rechazar')}
-                    </button>
-                    <button className="btn-outline"
-                      onClick={() => { updateStatus(selQuote.id, 'aprobada', 'Aprobada por el cliente'); pushToast('Cotización aprobada', 'success'); }}>
+                    </Button>
+                    <Button onClick={() => { updateStatus(selQuote.id, 'aprobada', 'Aprobada por el cliente'); pushToast('Cotización aprobada', 'success'); }}>
                       {t('quotes.markApproved', 'Marcar aprobada')}
-                    </button>
+                    </Button>
                   </>
                 )}
                 {selQuote.status === 'aprobada' && (
-                  <button className="btn"
-                    onClick={() => {
-                      const fid = `T-2026-0${Math.floor(Math.random() * 9000 + 1000)}`;
-                      updateStatus(selQuote.id, 'convertida', `Convertida a venta — Factura FEL ${fid}`);
-                      pushToast(`Factura FEL ${fid} generada`, 'success');
-                    }}>
-                    <Icon name="receipt" size={13} /> {t('quotes.convertToSale', 'Convertir a venta')}
-                  </button>
+                  <Button icon="receipt" onClick={() => { const fid = `T-2026-0${Math.floor(Math.random() * 9000 + 1000)}`; updateStatus(selQuote.id, 'convertida', `Convertida a venta — Factura FEL ${fid}`); pushToast(`Factura FEL ${fid} generada`, 'success'); }}>{t('quotes.convertToSale', 'Convertir a venta')}
+                  </Button>
                 )}
               </div>
             </div>
@@ -989,8 +982,8 @@ export default function Quotes({ pushToast }) {
             <div className="drawer-head">
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontWeight: 700, fontSize: 14 }}>{selRfq.id}</span>
-                  <span className={`pill ${RFQ_CLASS[selRfq.status]}`}>{RFQ_LABEL[selRfq.status]}</span>
+                  <span style={{ fontWeight: 500, fontSize: 14 }}>{selRfq.id}</span>
+                  <span className={`badge-m3 ${RFQ_CLASS[selRfq.status]}`}>{RFQ_LABEL[selRfq.status]}</span>
                 </div>
                 <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{selRfq.supplier.name} · {fmtDate(selRfq.date)}</div>
               </div>
@@ -1021,15 +1014,15 @@ export default function Quotes({ pushToast }) {
                       ].map(([l, v]) => (
                         <div className="detail-row" key={l}>
                           <span className="detail-label">{l}</span>
-                          <span style={{ fontSize: 12.5, textAlign: 'right' }}>{v}</span>
+                          <span style={{ fontSize: 12, textAlign: 'right' }}>{v}</span>
                         </div>
                       ))}
                     </div>
 
-                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 8 }}>{t('quotes.requestedProducts', 'PRODUCTOS SOLICITADOS')}</div>
+                    <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 8 }}>{t('quotes.requestedProducts', 'PRODUCTOS SOLICITADOS')}</div>
 
                     {!hasPrices && (
-                      <div style={{ fontSize: 12.5, color: 'var(--warning)', background: 'var(--surface-2)', padding: '8px 12px', borderRadius: 'var(--r-md)', borderLeft: '3px solid var(--warning)', marginBottom: 10 }}>
+                      <div style={{ fontSize: 12, color: 'var(--warning)', background: 'var(--surface-2)', padding: '8px 12px', borderRadius: 'var(--r-md)', borderLeft: '3px solid var(--warning)', marginBottom: 10 }}>
                         {t('quotes.waitingSupplierResponse', 'Esperando respuesta del proveedor — precios pendientes de confirmar')}
                       </div>
                     )}
@@ -1052,16 +1045,16 @@ export default function Quotes({ pushToast }) {
                       <tbody>
                         {lines.map(l => (
                           <tr key={l.id}>
-                            <td style={{ fontSize: 12.5 }}>{l.name}</td>
+                            <td>{l.name}</td>
                             <td style={{ textAlign: 'center' }}>{l.qty}</td>
-                            <td style={{ textAlign: 'center' }}><span className="pill">{l.uom}</span></td>
+                            <td style={{ textAlign: 'center' }}><span className="badge-m3">{l.uom}</span></td>
                             {hasPrices && (
                               <>
-                                <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{Q(l.unitPrice)}</td>
-                                <td style={{ textAlign: 'center', color: l.discount > 0 ? 'var(--success)' : 'var(--muted)' }}>
+                                <td className="num">{Q(l.unitPrice)}</td>
+                                <td style={{ textAlign: 'center', color: l.discount> 0 ? 'var(--success)' : 'var(--muted)' }}>
                                   {l.discount > 0 ? `${l.discount}%` : '—'}
                                 </td>
-                                <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600 }}>{Q(l.lineTotal)}</td>
+                                <td className="num" style={{ fontWeight: 500 }}>{Q(l.lineTotal)}</td>
                               </>
                             )}
                           </tr>
@@ -1072,19 +1065,19 @@ export default function Quotes({ pushToast }) {
                     {hasPrices && (
                       <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginBottom: 14 }}>
                         {[[t('quotes.subtotalNoIva', 'Subtotal sin IVA'), Q(subtotal)], [t('common.iva', 'IVA') + ' (12%)', Q(iva)]].map(([l, v]) => (
-                          <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 5, color: 'var(--text-2)' }}>
+                          <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5, color: 'var(--text-2)' }}>
                             <span>{l}</span><span className="mono">{v}</span>
                           </div>
                         ))}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 14, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, fontSize: 14, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
                           <span>{t('quotes.estimatedTotal', 'TOTAL ESTIMADO')}</span><span className="mono">{Q(total)}</span>
                         </div>
                       </div>
                     )}
 
                     {selRfq.notes && (
-                      <div style={{ fontSize: 12.5, color: 'var(--text-2)', background: 'var(--surface-2)', padding: '10px 14px', borderRadius: 'var(--r-md)', borderLeft: '3px solid var(--border)' }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', marginBottom: 4, letterSpacing: '0.05em' }}>{t('common.notes', 'NOTAS').toUpperCase()}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-2)', background: 'var(--surface-2)', padding: '10px 14px', borderRadius: 'var(--r-md)', borderLeft: '3px solid var(--border)' }}>
+                        <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)', marginBottom: 4, letterSpacing: '0.05em' }}>{t('common.notes', 'NOTAS').toUpperCase()}</div>
                         {selRfq.notes}
                       </div>
                     )}
@@ -1101,8 +1094,8 @@ export default function Quotes({ pushToast }) {
                         {idx < selRfq.history.length - 1 && <div style={{ width: 1, flex: 1, background: 'var(--border)' }} />}
                       </div>
                       <div style={{ flex: 1, paddingBottom: 4 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{h.action}</div>
-                        <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{h.user} · {h.ts}</div>
+                        <div style={{ fontSize: 14, fontWeight: 500 }}>{h.action}</div>
+                        <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{h.user} · {h.ts}</div>
                       </div>
                     </div>
                   ))}
@@ -1111,35 +1104,26 @@ export default function Quotes({ pushToast }) {
             </div>
 
             <div className="drawer-foot" style={{ flexWrap: 'wrap', gap: 8 }}>
-              <button className="btn-ghost" onClick={() => setSelectedRfq(null)}>{t('common.close', 'Cerrar')}</button>
+              <Button variant="ghost" onClick={() => setSelectedRfq(null)}>{t('common.close', 'Cerrar')}</Button>
               <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
                 {selRfq.status === 'solicitada' && (
-                  <button className="btn-outline"
-                    onClick={() => { updateRfqStatus(selRfq.id, 'recibida', 'Cotización recibida del proveedor'); pushToast('Respuesta registrada', 'success'); }}>
+                  <Button onClick={() => { updateRfqStatus(selRfq.id, 'recibida', 'Cotización recibida del proveedor'); pushToast('Respuesta registrada', 'success'); }}>
                     {t('quotes.registerResponse', 'Registrar respuesta')}
-                  </button>
+                  </Button>
                 )}
                 {selRfq.status === 'recibida' && (
                   <>
-                    <button className="btn-outline" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                      onClick={() => { updateRfqStatus(selRfq.id, 'rechazada', 'Cotización rechazada — condiciones no aceptadas'); pushToast('Cotización rechazada', 'danger'); }}>
+                    <Button style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => { updateRfqStatus(selRfq.id, 'rechazada', 'Cotización rechazada — condiciones no aceptadas'); pushToast('Cotización rechazada', 'danger'); }}>
                       {t('quotes.reject', 'Rechazar')}
-                    </button>
-                    <button className="btn-outline"
-                      onClick={() => { updateRfqStatus(selRfq.id, 'aprobada', 'Cotización aprobada — mejor precio y condiciones'); pushToast('Cotización aprobada', 'success'); }}>
+                    </Button>
+                    <Button onClick={() => { updateRfqStatus(selRfq.id, 'aprobada', 'Cotización aprobada — mejor precio y condiciones'); pushToast('Cotización aprobada', 'success'); }}>
                       {t('quotes.approve', 'Aprobar')}
-                    </button>
+                    </Button>
                   </>
                 )}
                 {selRfq.status === 'aprobada' && (
-                  <button className="btn"
-                    onClick={() => {
-                      const ocNum = `OC-2026-${String(Math.floor(Math.random() * 900 + 100)).padStart(5, '0')}`;
-                      updateRfqStatus(selRfq.id, 'convertida', `Convertida a orden de compra — ${ocNum}`);
-                      pushToast(`${ocNum} generada`, 'success');
-                    }}>
-                    <Icon name="truck" size={13} /> {t('quotes.convertToPO', 'Convertir a OC')}
-                  </button>
+                  <Button icon="truck" onClick={() => { const ocNum = `OC-2026-${String(Math.floor(Math.random() * 900 + 100)).padStart(5, '0')}`; updateRfqStatus(selRfq.id, 'convertida', `Convertida a orden de compra — ${ocNum}`); pushToast(`${ocNum} generada`, 'success'); }}>{t('quotes.convertToPO', 'Convertir a OC')}
+                  </Button>
                 )}
               </div>
             </div>

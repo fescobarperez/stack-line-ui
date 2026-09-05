@@ -1,6 +1,8 @@
 // Stackline — BillingModule (ES module)
 // Data-driven: /api/sales (tickets). Lectura + detalle con ítems reales.
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { Ticket } from './POS.jsx';
 import { useSales } from '../hooks/useOperations.js';
@@ -69,7 +71,7 @@ function BillingModule({ pushToast }) {
   // Columnas de la tabla de tickets (estándar <DataTable>).
   const columns = [
     { key: 'id', header: t('billing.headers.invoice', 'No. Factura'), sortable: true, mono: true,
-      render: (r) => <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{r.id}</span> },
+      render: (r) => <span style={{ fontWeight: 500, color: 'var(--accent)' }}>{r.id}</span> },
     { key: 'date', header: t('billing.headers.dateTime', 'Fecha & hora'), sortable: true, mono: true },
     { key: 'branch', header: t('billing.headers.branch', 'Sucursal'), sortable: true },
     { key: 'cashier', header: t('billing.headers.cashier', 'Cajero') },
@@ -78,41 +80,41 @@ function BillingModule({ pushToast }) {
       render: (r) => (
         <>
           <div>{r.fel?.receptorName || 'CF · Cliente Final'}</div>
-          <div className="muted code" style={{ fontSize: 10.5 }}>NIT {r.fel?.receptorNit || 'CF'}</div>
+          <div className="muted code" style={{ fontSize: 11 }}>NIT {r.fel?.receptorNit || 'CF'}</div>
         </>
       ) },
     { key: 'items', header: t('billing.headers.items', 'Items'), align: 'right', sortable: true },
     { key: 'pay', header: t('billing.headers.payment', 'Pago'), sortable: true,
       render: (r) => (
-        <span className="pill"><Icon name={payIcon(r.pay)} size={10} />{r.pay}</span>
+        <span className="badge-m3"><Icon name={payIcon(r.pay)} size={10} />{r.pay}</span>
       ) },
     { key: 'subtotal', header: t('billing.headers.subtotal', 'Subtotal'), align: 'right', sortable: true,
       sortValue: (r) => subOf(r), render: (r) => Q(subOf(r)) },
     { key: 'iva', header: t('billing.headers.iva', 'IVA'), align: 'right', sortable: true, className: 'muted',
       sortValue: (r) => ivaOf(r), render: (r) => Q(ivaOf(r)) },
     { key: 'total', header: t('billing.headers.total', 'Total'), align: 'right', sortable: true,
-      render: (r) => <span style={{ fontWeight: 600 }}>{Q(r.total)}</span> },
+      render: (r) => <span style={{ fontWeight: 500 }}>{Q(r.total)}</span> },
     { key: 'status', header: t('billing.headers.status', 'Estado'), sortable: true,
       render: (r) => (
         r.status === 'refunded'
-          ? <span className="pill danger"><span className="dot" />Anulada</span>
-          : <span className="pill success"><span className="dot" />Pagada</span>
+          ? <span className="badge-m3 danger"><span className="dot" />Anulada</span>
+          : <span className="badge-m3 success"><span className="dot" />Pagada</span>
       ) },
     // El estado FEL sale del DTE real: sin documento certificado no se afirma "OK".
     { key: 'fel', header: t('billing.headers.fel', 'FEL'),
       sortValue: (r) => r.fel?.status || '',
       render: (r) => {
         if (!r.fel) {
-          return <span className="pill neutral" title={t('billing.notCertified', 'Sin certificar en SAT')}>
+          return <span className="badge-m3 neutral" title={t('billing.notCertified', 'Sin certificar en SAT')}>
             <Icon name="alert" size={9} />{t('billing.pending', 'Pendiente')}
           </span>;
         }
         if (r.fel.status !== 'autorizado') {
-          return <span className="pill danger" title={r.fel.status}>
+          return <span className="badge-m3 danger" title={r.fel.status}>
             <Icon name="alert" size={9} />{r.fel.status}
           </span>;
         }
-        return <span className="pill info" title={t('billing.certified', 'Certificada SAT')}>
+        return <span className="badge-m3 info" title={t('billing.certified', 'Certificada SAT')}>
           <Icon name="shield" size={9} />OK
         </span>;
       } },
@@ -126,36 +128,39 @@ function BillingModule({ pushToast }) {
           <div className="page-subtitle">Documentos emitidos hoy · Facturas digitales SAT-FEL · Sucursales activas</div>
         </div>
         <div className="page-head-actions">
-          <button className="btn"><Icon name="download"/>{t('billing.exportIva', 'Exportar libro IVA')}</button>
-          <button className="btn"><Icon name="print"/>{t('billing.printBatch', 'Imprimir lote')}</button>
-          <button className="btn accent"><Icon name="receipt"/>Anular factura</button>
+          <Button icon="download">{t('billing.exportIva', 'Exportar libro IVA')}</Button>
+          <Button icon="print">{t('billing.printBatch', 'Imprimir lote')}</Button>
+          <Button icon="receipt" variant="accent">Anular factura</Button>
         </div>
       </div>
 
       <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="receipt" size={11}/>Facturas emitidas hoy</div>
-          <div className="val mono">{TICKETS.filter(ticket => ticket.status === 'paid').length}</div>
-          <div className="delta muted">{TICKETS.length} {t('billing.kpis.inTotal', 'en total')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="cash" size={11}/>Total facturado</div>
-          <div className="val mono">{Qs(totalDay)}</div>
-          <div className="delta up"><Icon name="arrowUp" size={11}/>{t('common.iva', 'IVA')} Q{Qs(totalDay*0.12/1.12)}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="return" size={11}/>Anuladas / Devoluciones</div>
-          <div className="val mono" style={{color:'var(--danger)'}}>−{Qs(totalRefund)}</div>
-          <div className="delta dn">{TICKETS.filter(ticket => ticket.status === 'refunded').length} {t('billing.kpis.refunded', 'documentos')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="shield" size={11}/>Estado SAT-FEL</div>
-          <div className="val mono" style={{color:'var(--success)', fontSize:16, marginTop:8}}>
-            <span style={{display:'inline-block', width:9, height:9, borderRadius:'50%', background:'var(--success)', marginRight:6, verticalAlign:'middle'}}/>
-            Conectado
-          </div>
-          <div className="delta muted">{t('billing.synced', 'Sincronizado · hace 12s')}</div>
-        </div>
+        <StatCard
+          icon="receipt" tone="pri"
+          label="Facturas emitidas hoy"
+          value={TICKETS.filter(ticket => ticket.status === 'paid').length}
+          foot={<>{TICKETS.length} {t('billing.kpis.inTotal', 'en total')}</>}
+        />
+        <StatCard
+          icon="cash" tone="ter"
+          label="Total facturado"
+          value={Qs(totalDay)}
+          trend={{ dir: 'up', label: <>{t('common.iva', 'IVA')} Q{Qs(totalDay*0.12/1.12)}</> }}
+        />
+        <StatCard
+          icon="return" tone="sec"
+          label="Anuladas / Devoluciones"
+          valueColor={'var(--danger)'}
+          value={<>−{Qs(totalRefund)}</>}
+          trend={{ dir: 'down', label: <>{TICKETS.filter(ticket => ticket.status === 'refunded').length} {t('billing.kpis.refunded', 'documentos')}</> }}
+        />
+        <StatCard
+          icon="shield" tone="err"
+          label="Estado SAT-FEL"
+          valueColor={'var(--success)'}
+          value={<><span style={{display:'inline-block', width:9, height:9, borderRadius:'50%', background:'var(--success)', marginRight:6, verticalAlign:'middle'}}/> Conectado</>}
+          foot={t('billing.synced', 'Sincronizado · hace 12s')}
+        />
       </div>
 
       <div className="filterbar">
@@ -178,7 +183,7 @@ function BillingModule({ pushToast }) {
           ))}
         </div>
         <div className="grow"></div>
-        <button className="btn sm"><Icon name="calendar" size={12}/>21 May 2026</button>
+        <Button icon="calendar" size="sm">21 May 2026</Button>
       </div>
 
       <DataTable
@@ -215,7 +220,7 @@ function BillingModule({ pushToast }) {
             <div className="drawer-head">
               <div>
                 <div className="code muted" style={{fontSize:11}}>FACTURA</div>
-                <h3 style={{margin:0, marginTop:2, fontSize:15, color:'var(--accent)'}}>{selected.id}</h3>
+                <h3 style={{margin:0, marginTop:2, fontSize: 16, color:'var(--accent)'}}>{selected.id}</h3>
               </div>
               <button className="icon-btn" onClick={() => setSelected(null)}><Icon name="x"/></button>
             </div>
@@ -251,8 +256,8 @@ function BillingModule({ pushToast }) {
                       <div className="muted">{t('common.status', 'Estado')}</div>
                       <div>
                         {selected.fel.status === 'autorizado'
-                          ? <span className="pill success"><span className="dot"/>{t('billing.certified', 'Certificada')}</span>
-                          : <span className="pill danger"><span className="dot"/>{selected.fel.status}</span>}
+                          ? <span className="badge-m3 success"><span className="dot"/>{t('billing.certified', 'Certificada')}</span>
+                          : <span className="badge-m3 danger"><span className="dot"/>{selected.fel.status}</span>}
                       </div>
                     </div>
                   ) : (
@@ -264,12 +269,12 @@ function BillingModule({ pushToast }) {
                   )}
                 </div>
                 <div className="row gap-6">
-                  <button className="btn primary" style={{flex:1}}><Icon name="print"/>{t('common.print', 'Reimprimir')}</button>
-                  <button className="btn" style={{flex:1}}><Icon name="download"/>{t('common.download', 'PDF')}</button>
+                  <Button icon="print" variant="tonal" style={{flex:1 }}>{t('common.print', 'Reimprimir')}</Button>
+                  <Button icon="download" style={{flex:1 }}>{t('common.download', 'PDF')}</Button>
                 </div>
                 <div className="row gap-6">
-                  <button className="btn" style={{flex:1}}><Icon name="transfer"/>{t('common.sendEmail', 'Enviar correo')}</button>
-                  <button className="btn danger" style={{flex:1}}><Icon name="x"/>Anular</button>
+                  <Button icon="transfer" style={{flex:1 }}>{t('common.sendEmail', 'Enviar correo')}</Button>
+                  <Button icon="x" variant="danger" style={{flex:1 }}>Anular</Button>
                 </div>
               </div>
             </div>

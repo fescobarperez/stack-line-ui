@@ -2,6 +2,7 @@
 // Data-driven con CRUD: sucursales/proveedores/categorías desde sus endpoints.
 // La pestaña Impuestos & SAT es configuración fiscal estática por ahora.
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { useBranches, useSuppliers } from '../hooks/useMasters.js';
 import { createBranch, updateBranch } from '../api/org.js';
@@ -104,7 +105,7 @@ function MaintenanceModule({ pushToast }) {
     { key: 'contact', header: t('maintenance.contact', 'Contacto'), render: (s) => s.contact || '—' },
     { key: 'phone', header: t('common.phone', 'Teléfono'), render: (s) => <span className="sku">{s.phone || '—'}</span> },
     { key: 'paymentTerms', header: t('maintenance.terms', 'Términos'), render: (s) => s.paymentTerms ? <span className="badge-m3">{s.paymentTerms}</span> : '—' },
-    { key: 'balance', header: t('maintenance.cxpBalance', 'Saldo CxP'), align: 'right', sortable: true, sortValue: (s) => Number(s.balance), render: (s) => <span className="num" style={{ fontWeight: 600, color: Number(s.balance) > 0 ? 'var(--warning)' : 'var(--muted)' }}>{Q(s.balance)}</span> },
+    { key: 'balance', header: t('maintenance.cxpBalance', 'Saldo CxP'), align: 'right', sortable: true, sortValue: (s) => Number(s.balance), render: (s) => <span className="num" style={{ fontWeight: 500, color: Number(s.balance) > 0 ? 'var(--warning)' : 'var(--muted)' }}>{Q(s.balance)}</span> },
   ];
 
   return (
@@ -126,9 +127,8 @@ function MaintenanceModule({ pushToast }) {
       {tab === 'sucursales' && (
         <>
           <div className="toolbar" style={{ justifyContent: 'flex-end', marginBottom: 12 }}>
-            <button className="btn accent" onClick={() => setModal({ type: 'sucursal', mode: 'new' })}>
-              <Icon name="plus" size={12} /> {t('maintenance.addBranch', 'Agregar sucursal')}
-            </button>
+            <Button icon="plus" variant="accent" onClick={() => setModal({ type: 'sucursal', mode: 'new' })}>{t('maintenance.addBranch', 'Agregar sucursal')}
+            </Button>
           </div>
           <DataTable
             rowKey={(b) => b.id}
@@ -145,9 +145,8 @@ function MaintenanceModule({ pushToast }) {
       {tab === 'proveedores' && (
         <>
           <div className="toolbar" style={{ justifyContent: 'flex-end', marginBottom: 12 }}>
-            <button className="btn accent" onClick={() => setModal({ type: 'proveedor', mode: 'new' })}>
-              <Icon name="plus" size={12} /> {t('maintenance.addSupplier', 'Agregar proveedor')}
-            </button>
+            <Button icon="plus" variant="accent" onClick={() => setModal({ type: 'proveedor', mode: 'new' })}>{t('maintenance.addSupplier', 'Agregar proveedor')}
+            </Button>
           </div>
           <DataTable
             rowKey={(s) => s.id}
@@ -164,9 +163,8 @@ function MaintenanceModule({ pushToast }) {
       {tab === 'categorias' && (
         <>
           <div className="toolbar" style={{ justifyContent: 'flex-end', marginBottom: 12 }}>
-            <button className="btn accent" onClick={() => setModal({ type: 'categoria', mode: 'new' })}>
-              <Icon name="plus" size={12} /> {t('maintenance.addCategory', 'Agregar categoría')}
-            </button>
+            <Button icon="plus" variant="accent" onClick={() => setModal({ type: 'categoria', mode: 'new' })}>{t('maintenance.addCategory', 'Agregar categoría')}
+            </Button>
           </div>
           <div className="grid-3">
             {catalogCategories.length === 0 && <div className="empty" style={{ padding: 20 }}>Sin categorías</div>}
@@ -175,7 +173,7 @@ function MaintenanceModule({ pushToast }) {
                 <div className="card-body" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ width: 42, height: 42, borderRadius: 'var(--r-md)', background: 'var(--surface-3)', display: 'grid', placeItems: 'center', fontSize: 22 }}>{c.icon || '📦'}</div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13.5 }}>{c.name}</div>
+                    <div style={{ fontWeight: 500, fontSize: 14 }}>{c.name}</div>
                     <div className="muted mono" style={{ fontSize: 11 }}>{String(c.id).toUpperCase()}</div>
                   </div>
                   <Icon name="edit" size={13} className="muted" />
@@ -190,7 +188,7 @@ function MaintenanceModule({ pushToast }) {
         <div className="grid-2">
           <div className="card">
             <div className="card-head"><h3>{t('maintenance.taxpayerData', 'Datos fiscales del contribuyente')}</h3></div>
-            <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 14px', fontSize: 12.5 }}>
+            <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 14px', fontSize: 12 }}>
               <div className="muted">{t('maintenance.regime', 'Régimen')}</div><div>General sobre Utilidades</div>
               <div className="muted">{t('maintenance.satCategory', 'Categoría SAT')}</div><div>Definitivo IVA</div>
               <div className="muted" style={{ gridColumn: '1 / -1', fontSize: 11, marginTop: 4 }}>
@@ -204,7 +202,7 @@ function MaintenanceModule({ pushToast }) {
               <table className="mtable">
                 <thead><tr><th>{t('common.code', 'Código')}</th><th>{t('common.name', 'Nombre')}</th><th className="r">{t('maintenance.rate', 'Tasa')}</th><th>{t('common.status', 'Estado')}</th></tr></thead>
                 <tbody>
-                  <tr><td><span className="sku">IVA</span></td><td>Impuesto al Valor Agregado</td><td className="r num" style={{ fontWeight: 600 }}>12 %</td><td><span className="badge-m3 success">{t('common.active', 'Activo')}</span></td></tr>
+                  <tr><td><span className="sku">IVA</span></td><td>Impuesto al Valor Agregado</td><td className="r num" style={{ fontWeight: 500 }}>12 %</td><td><span className="badge-m3 success">{t('common.active', 'Activo')}</span></td></tr>
                   <tr><td><span className="sku">IDP</span></td><td>Impuesto Distribución Petróleo</td><td className="r num">—</td><td><span className="badge-m3">N/A</span></td></tr>
                 </tbody>
               </table>
@@ -260,10 +258,9 @@ function CatalogModal({ spec, initial, isEdit, onClose, onSave }) {
           </div>
         </div>
         <div className="modal-foot">
-          <button className="btn ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-          <button className="btn accent" disabled={!valid || saving} onClick={submit}>
-            <Icon name="check" size={13} /> {t('common.save', 'Guardar')}
-          </button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+          <Button icon="check" variant="accent" disabled={!valid || saving} onClick={submit}>{t('common.save', 'Guardar')}
+          </Button>
         </div>
       </div>
     </div>

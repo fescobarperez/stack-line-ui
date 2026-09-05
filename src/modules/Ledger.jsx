@@ -3,6 +3,8 @@
 // fallback al mock (hooks useLedgerTrialBalance / useAccountLedger).
 import React, { useState, useEffect, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import { usePeriods, useLedgerTrialBalance, useAccountLedger } from '../hooks/useAccounting.js';
 import { useTranslation } from 'react-i18next';
 
@@ -47,7 +49,7 @@ export default function Ledger() {
           <h1 className="page-title">{t('ledger.title', 'Mayor General · Balance de Comprobación')}</h1>
           <div className="page-subtitle">
             {t('ledger.subtitle', 'Movimientos por cuenta · saldos · verificación contable')}
-            {source === 'mock' && <span className="pill" style={{ marginLeft: 8, fontSize: 10 }}>demo</span>}
+            {source === 'mock' && <span className="badge-m3" style={{ marginLeft: 8 }}>demo</span>}
           </div>
         </div>
         <div className="page-head-actions">
@@ -55,31 +57,34 @@ export default function Ledger() {
             <option value="">{t('financials.allPeriods', 'Todos los períodos')}</option>
             {periods.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <button className="btn"><Icon name="download" size={12} /> {t('common.export', 'Exportar')}</button>
+          <Button icon="download">{t('common.export', 'Exportar')}</Button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="receipt" size={11} />{t('ledger.period', 'Período')}</div>
-          <div className="val" style={{ fontSize: 18 }}>{period?.name || t('financials.allPeriods', 'Todos')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="chart" size={11} />{t('ledger.accountsWithMovs', 'Cuentas con movimiento')}</div>
-          <div className="val mono">{accountsWithMovs}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="check" size={11} />{t('ledger.tabs.trial', 'Balance de Comprobación')}</div>
-          <div className="val" style={{ fontSize: 16, color: balanced ? 'var(--success)' : 'var(--danger)' }}>
-            {balanced ? t('ledger.balanced', '✓ Cuadrado') : t('ledger.unbalanced', '✗ Descuadre')}
-          </div>
-          <div className="delta muted">{balanced ? t('ledger.debitsEqCredits', 'Débitos = Créditos') : `${t('ledger.difference', 'Diferencia')} ${Q(diff)}`}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="cash" size={11} />{t('ledger.totalMoved', 'Total movilizado')}</div>
-          <div className="val mono">{Q(totals.periodDebit)}</div>
-        </div>
+        <StatCard
+          icon="receipt" tone="pri"
+          label={t('ledger.period', 'Período')}
+          value={period?.name || t('financials.allPeriods', 'Todos')}
+        />
+        <StatCard
+          icon="chart" tone="ter"
+          label={t('ledger.accountsWithMovs', 'Cuentas con movimiento')}
+          value={accountsWithMovs}
+        />
+        <StatCard
+          icon="check" tone="sec"
+          label={t('ledger.tabs.trial', 'Balance de Comprobación')}
+          valueColor={balanced ? 'var(--success)' : 'var(--danger)'}
+          value={balanced ? t('ledger.balanced', '✓ Cuadrado') : t('ledger.unbalanced', '✗ Descuadre')}
+          foot={balanced ? t('ledger.debitsEqCredits', 'Débitos = Créditos') : `${t('ledger.difference', 'Diferencia')} ${Q(diff)}`}
+        />
+        <StatCard
+          icon="cash" tone="err"
+          label={t('ledger.totalMoved', 'Total movilizado')}
+          value={Q(totals.periodDebit)}
+        />
       </div>
 
       {/* Tabs */}
@@ -92,12 +97,12 @@ export default function Ledger() {
       {tab === 'trial' && (
         <>
           <div className="filterbar">
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
               <input type="checkbox" checked={showZero} onChange={(e) => setShowZero(e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
               {t('ledger.showZeroAccounts', 'Mostrar cuentas sin movimiento')}
             </label>
             <div style={{ marginLeft: 'auto' }}>
-              <span className={`pill ${balanced ? 'success' : 'danger'}`} style={{ fontSize: 10 }}>{balanced ? t('ledger.balanced', '✓ Balanceado') : t('ledger.unbalanced', '✗ Descuadre')}</span>
+              <span className={`badge-m3 ${balanced ? 'success' : 'danger'}`}>{balanced ? t('ledger.balanced', '✓ Balanceado') : t('ledger.unbalanced', '✗ Descuadre')}</span>
             </div>
           </div>
 
@@ -119,11 +124,11 @@ export default function Ledger() {
                 {tbLoading && <tr><td colSpan={8}><div className="empty" style={{ padding: 24 }}>{t('common.loading', 'Cargando…')}</div></td></tr>}
                 {!tbLoading && visibleRows.length === 0 && <tr><td colSpan={8}><div className="empty" style={{ padding: 24 }}>{t('ledger.noData', 'Sin movimientos en el período')}</div></td></tr>}
                 {visibleRows.map((r) => {
-                  const cell = (v, bold) => <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: bold && v > 0 ? 700 : 400 }}>{v > 0.005 ? Q(v) : <span className="muted">—</span>}</td>;
+                  const cell = (v, bold) => <td className="num" style={{ fontWeight: bold && v> 0 ? 700 : 400 }}>{v > 0.005 ? Q(v) : <span className="muted">—</span>}</td>;
                   return (
                     <tr key={r.accountId ?? r.code} style={{ cursor: 'pointer' }} onClick={() => { setSelectedAccountId(r.accountId); setTab('ledger'); }} title={t('ledger.viewInLedger', 'Ver en Mayor General')}>
                       <td><span className="mono" style={{ fontSize: 11, color: 'var(--muted)' }}>{r.code}</span></td>
-                      <td style={{ fontSize: 13 }}>{r.name}</td>
+                      <td>{r.name}</td>
                       {cell(r.openingDebit)}{cell(r.openingCredit)}{cell(r.periodDebit)}{cell(r.periodCredit)}{cell(r.closingDebit, true)}{cell(r.closingCredit, true)}
                     </tr>
                   );
@@ -131,9 +136,9 @@ export default function Ledger() {
               </tbody>
               <tfoot>
                 <tr style={{ background: 'var(--surface-2)', borderTop: '2px solid var(--border)' }}>
-                  <td colSpan={2} style={{ padding: '10px 12px', fontWeight: 700, fontSize: 12 }}>{t('ledger.totals', 'TOTALES')}</td>
+                  <td colSpan={2} style={{ padding: '10px 12px', fontWeight: 500 }}>{t('ledger.totals', 'TOTALES')}</td>
                   {[totals.openingDebit, totals.openingCredit, totals.periodDebit, totals.periodCredit, totals.closingDebit, totals.closingCredit].map((v, i) => (
-                    <td key={i} style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 12, padding: '10px 12px', color: i >= 4 ? (balanced ? 'var(--success)' : 'var(--danger)') : undefined }}>{Q(v)}</td>
+                    <td className="num" key={i} style={{ fontWeight: 500, padding: '10px 12px', color: i>= 4 ? (balanced ? 'var(--success)' : 'var(--danger)') : undefined }}>{Q(v)}</td>
                   ))}
                 </tr>
               </tfoot>
@@ -156,14 +161,14 @@ export default function Ledger() {
 
           <div className="card" style={{ padding: '14px 18px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>{acc?.name || '—'}</div>
+              <div style={{ fontWeight: 500, fontSize: 16 }}>{acc?.name || '—'}</div>
               <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
                 {t('common.code', 'Código')}: <span className="mono">{acc?.code || '—'}</span> · {period?.name || t('financials.allPeriods', 'Todos')}
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div className="muted" style={{ fontSize: 11 }}>{t('ledger.closingBalance', 'Saldo final')}</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 18 }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 400, fontSize: 22 }}>
                 {Q(acc?.closingBalance)} <span className="muted" style={{ fontSize: 11 }}>{(acc?.closingBalance ?? 0) >= 0 ? 'Db' : 'Cr'}</span>
               </div>
             </div>
@@ -183,22 +188,22 @@ export default function Ledger() {
               </thead>
               <tbody>
                 <tr style={{ background: 'var(--surface-2)' }}>
-                  <td colSpan={3} style={{ padding: '8px 12px', fontSize: 12, fontWeight: 600, color: 'var(--muted)', fontStyle: 'italic' }}>
+                  <td colSpan={3} style={{ padding: '8px 12px', fontWeight: 500, color: 'var(--muted)', fontStyle: 'italic' }}>
                     — {t('ledger.openingBalance', 'Saldo inicial')} —
                   </td>
-                  <td /><td />
-                  <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, padding: '8px 12px' }}>
-                    {Q(acc?.openingBalance)} <span style={{ fontSize: 10, fontWeight: 400 }}>{(acc?.openingBalance ?? 0) >= 0 ? 'Db' : 'Cr'}</span>
+                  <td /><td/>
+                  <td className="num" style={{ fontWeight: 500, padding: '8px 12px' }}>
+                    {Q(acc?.openingBalance)} <span style={{ fontSize: 11, fontWeight: 400 }}>{(acc?.openingBalance ?? 0) >= 0 ? 'Db' : 'Cr'}</span>
                   </td>
                 </tr>
                 {(acc?.movements ?? []).map((m, i) => (
                   <tr key={i}>
-                    <td className="mono" style={{ fontSize: 11 }}>{m.date}</td>
-                    <td className="muted" style={{ fontSize: 11 }}>{m.reference || '—'}</td>
-                    <td style={{ fontSize: 12.5 }}>{m.description}</td>
-                    <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{m.debit > 0 ? Q(m.debit) : <span className="muted">—</span>}</td>
-                    <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{m.credit > 0 ? Q(m.credit) : <span className="muted">—</span>}</td>
-                    <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600 }}>{Q(m.balance)}</td>
+                    <td className="mono">{m.date}</td>
+                    <td className="muted">{m.reference || '—'}</td>
+                    <td>{m.description}</td>
+                    <td className="num">{m.debit> 0 ? Q(m.debit) : <span className="muted">—</span>}</td>
+                    <td className="num">{m.credit> 0 ? Q(m.credit) : <span className="muted">—</span>}</td>
+                    <td className="num" style={{ fontWeight: 500 }}>{Q(m.balance)}</td>
                   </tr>
                 ))}
                 {(acc?.movements ?? []).length === 0 && (

@@ -1,5 +1,7 @@
 // Stackline — DashboardModule (ES module)
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import { useDashboard } from '../hooks/useDashboard.js';
 // Stackline — Dashboard module
 import React, { useState, useMemo } from 'react';
@@ -170,56 +172,38 @@ function DashboardModule() {
               </button>
             ))}
           </div>
-          <button className="btn btn-outlined"><Icon name="download"/>{t('common.export', 'Exportar')}</button>
+          <Button icon="download">{t('common.export', 'Exportar')}</Button>
         </div>
       </div>
 
       {/* KPI cards */}
       <div className="kpi-grid">
-        <div className="card card-elevated kpi">
-          <div className="kpi-top">
-            <div className="kpi-ic pri"><Icon name="cash" size={24}/></div>
-            <div className="kpi-label label-large">{t('dashboard.kpis.salesToday', 'Ventas del día')}</div>
-          </div>
-          <div className="kpi-val">{Qs(today.total)}</div>
-          <div className="kpi-foot body-small">
-            <span className={`trend ${deltaToday >= 0 ? 'up' : 'down'}`}>
-              <Icon name={deltaToday >= 0 ? 'arrowUp' : 'arrowDown'} size={16}/>{Math.abs(deltaToday)} %
-            </span>
-            <span>vs. ayer</span>
-          </div>
-        </div>
-        <div className="card card-elevated kpi">
-          <div className="kpi-top">
-            <div className="kpi-ic ter"><Icon name="receipt" size={24}/></div>
-            <div className="kpi-label label-large">{t('dashboard.kpis.transactions', 'Tickets emitidos')}</div>
-          </div>
-          <div className="kpi-val">{today.tickets}</div>
-          <div className="kpi-foot body-small">
-            <span>ticket prom. {Q(avgTicket)}</span>
-          </div>
-        </div>
-        <div className="card card-elevated kpi">
-          <div className="kpi-top">
-            <div className="kpi-ic sec"><Icon name="chart" size={24}/></div>
-            <div className="kpi-label label-large">{t('dashboard.kpis.avgTicket', 'Ticket promedio')}</div>
-          </div>
-          <div className="kpi-val">{Q(avgTicket)}</div>
-          <div className="kpi-foot body-small">
-            <span className="trend up"><Icon name="arrowUp" size={16}/>2.1 %</span>
-            <span>vs. sem. anterior</span>
-          </div>
-        </div>
-        <div className="card card-elevated kpi">
-          <div className="kpi-top">
-            <div className="kpi-ic err"><Icon name="alert" size={24}/></div>
-            <div className="kpi-label label-large">Alertas de stock</div>
-          </div>
-          <div className="kpi-val">{lowStock.length}</div>
-          <div className="kpi-foot body-small">
-            <span className="trend down"><Icon name="alert" size={16}/>{lowStock.length} bajo mínimo</span>
-          </div>
-        </div>
+        <StatCard
+          icon="cash" tone="pri" size="display"
+          label={t('dashboard.kpis.salesToday', 'Ventas del día')}
+          value={Qs(today.total)}
+          trend={{ dir: deltaToday >= 0 ? 'up' : 'down', icon: deltaToday >= 0 ? 'arrowUp' : 'arrowDown', label: `${Math.abs(deltaToday)} %` }}
+          foot="vs. ayer"
+        />
+        <StatCard
+          icon="receipt" tone="ter" size="display"
+          label={t('dashboard.kpis.transactions', 'Tickets emitidos')}
+          value={today.tickets}
+          foot={`ticket prom. ${Q(avgTicket)}`}
+        />
+        <StatCard
+          icon="chart" tone="sec" size="display"
+          label={t('dashboard.kpis.avgTicket', 'Ticket promedio')}
+          value={Q(avgTicket)}
+          trend={{ dir: 'up', icon: 'arrowUp', label: '2.1 %' }}
+          foot="vs. sem. anterior"
+        />
+        <StatCard
+          icon="alert" tone="err" size="display"
+          label="Alertas de stock"
+          value={lowStock.length}
+          trend={{ dir: 'down', icon: 'alert', label: `${lowStock.length} bajo mínimo` }}
+        />
       </div>
 
       {/* Row 1: Chart + Donut */}
@@ -230,7 +214,7 @@ function DashboardModule() {
               <h2 className="title-large">{t('dashboard.charts.salesByDay', 'Tendencia de ventas')}</h2>
               <p className="body-medium supporting">Últimos {daysFor[range] || 14} días · todas las sucursales</p>
             </div>
-            <button className="btn btn-text">Ver detalle</button>
+            <Button variant="ghost">Ver detalle</Button>
           </div>
           <div className="card-body">
             <AreaChart data={salesTrend} accent="var(--chart-1)"/>
@@ -268,7 +252,7 @@ function DashboardModule() {
               <h2 className="title-large">{t('dashboard.charts.topProducts', 'Productos más vendidos')}</h2>
               <p className="body-medium supporting">Por ingreso · hoy</p>
             </div>
-            <button className="btn btn-tonal"><Icon name="filter"/>Filtrar</button>
+            <Button icon="filter" variant="tonal">Filtrar</Button>
           </div>
           <div className="card-body flush">
             <table>
@@ -321,8 +305,8 @@ function DashboardModule() {
           </div>
           <div className="divider"/>
           <div style={{padding:'12px 16px', display:'flex', justifyContent:'flex-end', gap:8}}>
-            <button className="btn btn-text">Descartar todo</button>
-            <button className="btn btn-tonal">Ver todas</button>
+            <Button variant="ghost">Descartar todo</Button>
+            <Button variant="tonal">Ver todas</Button>
           </div>
         </div>
       </div>
@@ -360,7 +344,7 @@ function DashboardModule() {
               <h2 className="title-large">{t('dashboard.sections.recentTransactions', 'Tickets recientes')}</h2>
               <p className="body-medium supporting">Últimas transacciones</p>
             </div>
-            <button className="btn btn-text">Ver todos</button>
+            <Button variant="ghost">Ver todos</Button>
           </div>
           <div className="card-body flush">
             <table>

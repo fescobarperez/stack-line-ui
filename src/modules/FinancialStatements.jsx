@@ -2,7 +2,9 @@
 // Data-driven: consume /api/accounting/{balance-sheet,income-statement} con
 // fallback calculado del mock (hook useFinancialStatements).
 import React, { useState } from 'react';
+import StatCard from '../components/StatCard.jsx';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
 import { useFinancialStatements, usePeriods } from '../hooks/useAccounting.js';
 import { useTranslation } from 'react-i18next';
 
@@ -13,7 +15,7 @@ function SectionHdr({ label }) {
   return <tr className="fs-section-hdr"><td colSpan={2}>{label}</td></tr>;
 }
 function Spacer() {
-  return <tr><td colSpan={2} style={{ height: 10 }} /></tr>;
+  return <tr><td colSpan={2} style={{ height: 10 }}/></tr>;
 }
 
 function Row({ label, value, indent = 0, bold, total, grand }) {
@@ -49,7 +51,7 @@ export default function FinancialStatements() {
           <div className="page-title">{t('financials.title', 'Estados Financieros')}</div>
           <div className="page-sub">
             {period?.name || t('financials.allPeriods', 'Todos los períodos')}
-            {source === 'mock' && <span className="pill" style={{ marginLeft: 8, fontSize: 10 }}>demo</span>}
+            {source === 'mock' && <span className="badge-m3" style={{ marginLeft: 8 }}>demo</span>}
           </div>
         </div>
         <div className="page-head-actions">
@@ -57,38 +59,34 @@ export default function FinancialStatements() {
             <option value="">{t('financials.allPeriods', 'Todos los períodos')}</option>
             {periods.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <button className="btn-outline" onClick={() => window.print()}>
-            <Icon name="receipt" size={13} />{t('common.print', 'Imprimir')}
-          </button>
+          <Button icon="receipt" onClick={() => window.print()}>{t('common.print', 'Imprimir')}
+          </Button>
         </div>
       </div>
 
       {/* KPIs */}
       <div className="stat-grid" style={{ marginBottom: 20 }}>
-        <div className="stat-card">
-          <div className="label">{t('financials.periodRevenue', 'Ingresos del período')}</div>
-          <div className="value">{Q(inc?.totalIncome)}</div>
-          <div className="sub muted">{period?.name || '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="label">{t('financials.totalExpenses', 'Total Gastos')}</div>
-          <div className="value">{Q(inc?.totalExpenses)}</div>
-          <div className="sub muted">{t('financials.ofPeriod', 'del período')}</div>
-        </div>
-        <div className="stat-card">
-          <div className="label">{t('financials.netProfitLoss', 'Utilidad / Pérdida Neta')}</div>
-          <div className={`value ${(inc?.netIncome || 0) < 0 ? 'danger' : 'success'}`}>
-            {(inc?.netIncome || 0) < 0 ? '(' : ''}{Q(inc?.netIncome)}{(inc?.netIncome || 0) < 0 ? ')' : ''}
-          </div>
-          <div className="sub muted">{(inc?.netIncome || 0) < 0 ? t('financials.loss', 'Pérdida') : t('financials.profit', 'Utilidad')}</div>
-        </div>
-        <div className="stat-card">
-          <div className="label">{t('financials.totalAssets', 'Total Activo')}</div>
-          <div className="value">{Q(bs?.totalAssets)}</div>
-          <div className={`sub ${balanced ? 'success' : 'danger'}`}>
-            {balanced ? t('financials.balanceOk', '✓ Balance cuadra') : t('financials.balanceReview', '⚠ Revisar balance')}
-          </div>
-        </div>
+        <StatCard
+          label={t('financials.periodRevenue', 'Ingresos del período')}
+          value={Q(inc?.totalIncome)}
+          foot={period?.name || '—'}
+        />
+        <StatCard
+          label={t('financials.totalExpenses', 'Total Gastos')}
+          value={Q(inc?.totalExpenses)}
+          foot={t('financials.ofPeriod', 'del período')}
+        />
+        <StatCard
+          label={t('financials.netProfitLoss', 'Utilidad / Pérdida Neta')}
+          valueColor={(inc?.netIncome || 0) < 0 ? 'var(--danger)' : 'var(--success)'}
+          value={<>{(inc?.netIncome || 0) < 0 ? '(' : ''}{Q(inc?.netIncome)}{(inc?.netIncome || 0) < 0 ? ')' : ''}</>}
+          foot={(inc?.netIncome || 0) < 0 ? t('financials.loss', 'Pérdida') : t('financials.profit', 'Utilidad')}
+        />
+        <StatCard
+          label={t('financials.totalAssets', 'Total Activo')}
+          value={Q(bs?.totalAssets)}
+          foot={balanced ? t('financials.balanceOk', '✓ Balance cuadra') : t('financials.balanceReview', '⚠ Revisar balance')}
+        />
       </div>
 
       {/* Tabs */}
@@ -153,7 +151,7 @@ export default function FinancialStatements() {
                 <Row label={t('financials.totalLiabilitiesEquity', 'TOTAL PASIVO + CAPITAL')} value={bs.totalLiabilitiesAndEquity} grand />
                 {!balanced && (
                   <tr><td colSpan={2} style={{ paddingTop: 12 }}>
-                    <span className="pill danger">{t('financials.balanceReviewWarning', '⚠ El balance no cuadra — verificar partidas')}</span>
+                    <span className="badge-m3 danger">{t('financials.balanceReviewWarning', '⚠ El balance no cuadra — verificar partidas')}</span>
                   </td></tr>
                 )}
               </tbody>

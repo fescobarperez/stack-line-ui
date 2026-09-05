@@ -1,6 +1,8 @@
 // Stackline — Módulo de Transferencias entre Sucursales
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import { useTransfers } from '../hooks/useOperations.js';
 import { useBranches } from '../hooks/useMasters.js';
 import { useProducts } from '../hooks/useCatalog.js';
@@ -62,7 +64,7 @@ function NewTransferModal({ branches, products, onSave, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 620 }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
-          <div className="modal-title">{t('transfers.newTransfer', 'Nueva transferencia')}</div>
+          <h3>{t('transfers.newTransfer', 'Nueva transferencia')}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
         <form onSubmit={handleSubmit}>
@@ -92,7 +94,7 @@ function NewTransferModal({ branches, products, onSave, onClose }) {
               <input className="field-input" value={transporter} onChange={e => setTrans(e.target.value)} placeholder={t('inventory.transfer.carrierPlaceholder', 'Nombre del conductor o mensajero...')} />
             </div>
 
-            <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8 }}>Productos a transferir</div>
+            <div style={{ fontWeight: 500, fontSize: 12, marginBottom: 8 }}>Productos a transferir</div>
 
             <div style={{ position: 'relative', marginBottom: 12 }}>
               <div className="search-wrap">
@@ -102,7 +104,7 @@ function NewTransferModal({ branches, products, onSave, onClose }) {
               {matched.length > 0 && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--shape-sm)', boxShadow: 'var(--shadow-md)', zIndex: 50, maxHeight: 200, overflowY: 'auto' }}>
                   {matched.map(p => (
-                    <div key={p.sku} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 13 }}
+                    <div key={p.sku} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 14 }}
                       onClick={() => selectProduct(items.length - 1, p)}>
                       <span style={{ fontWeight: 500 }}>{p.name}</span>
                       <span className="mono muted" style={{ fontSize: 11, marginLeft: 8 }}>{p.sku}</span>
@@ -127,7 +129,7 @@ function NewTransferModal({ branches, products, onSave, onClose }) {
                     <td>
                       {item.name ? (
                         <div>
-                          <div style={{ fontWeight: 500, fontSize: 13 }}>{item.name}</div>
+                          <div style={{ fontWeight: 500, fontSize: 14 }}>{item.name}</div>
                           <div className="mono muted" style={{ fontSize: 11 }}>{item.sku}</div>
                         </div>
                       ) : (
@@ -150,15 +152,13 @@ function NewTransferModal({ branches, products, onSave, onClose }) {
                 ))}
               </tbody>
             </table>
-            <button type="button" className="btn" style={{ fontSize: 12 }} onClick={addItem}>
-              <Icon name="plus" size={11} />Agregar línea
-            </button>
+            <Button size="sm" icon="plus" type="button" onClick={addItem}>Agregar línea
+            </Button>
           </div>
-          <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-            <button type="submit" className="btn accent" disabled={!valid}>
-              <Icon name="check" size={12} />{t('inventory.transfer.create', 'Crear transferencia')}
-            </button>
+          <div className="modal-foot">
+            <Button type="button" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+            <Button icon="check" variant="accent" type="submit" disabled={!valid}>{t('inventory.transfer.create', 'Crear transferencia')}
+            </Button>
           </div>
         </form>
       </div>
@@ -181,8 +181,8 @@ function TransferDetail({ transfer, onClose, onDispatch, onReceive }) {
           <div className="muted" style={{ fontSize: 12 }}>{transfer.date} · {transfer.fromBranch} → {transfer.toBranch}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {canDispatch && <button className="btn accent" onClick={() => onDispatch(transfer)}><Icon name="truck" size={12} />Despachar</button>}
-          {canReceive  && <button className="btn accent" onClick={() => onReceive(transfer)}><Icon name="check" size={12} />Recibir</button>}
+          {canDispatch && <Button icon="truck" variant="accent" onClick={() => onDispatch(transfer)}>Despachar</Button>}
+          {canReceive  && <Button icon="check" variant="accent" onClick={() => onReceive(transfer)}>Recibir</Button>}
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
       </div>
@@ -198,7 +198,7 @@ function TransferDetail({ transfer, onClose, onDispatch, onReceive }) {
                     {i < currentStep ? <Icon name="check" size={12} style={{ color: 'var(--md-sys-color-on-primary)' }} /> :
                      i === currentStep ? <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--md-sys-color-on-primary)' }} /> : null}
                   </div>
-                  <div style={{ fontSize: 10, color: i <= currentStep ? 'var(--accent)' : 'var(--muted)', fontWeight: i === currentStep ? 600 : 400, textAlign: 'center' }}>
+                  <div style={{ fontSize: 11, color: i <= currentStep ? 'var(--accent)' : 'var(--muted)', fontWeight: i === currentStep ? 600 : 400, textAlign: 'center' }}>
                     {STATUS_LABEL[s]}
                   </div>
                 </div>
@@ -227,7 +227,7 @@ function TransferDetail({ transfer, onClose, onDispatch, onReceive }) {
           )}
           <div className="detail-row">
             <span className="detail-label">{t('common.status', 'Estado')}</span>
-            <span className={`pill ${STATUS_CLASS[transfer.status]}`} style={{ fontSize: 10 }}>{STATUS_LABEL[transfer.status]}</span>
+            <span className={`badge-m3 ${STATUS_CLASS[transfer.status]}`}>{STATUS_LABEL[transfer.status]}</span>
           </div>
         </div>
 
@@ -243,13 +243,13 @@ function TransferDetail({ transfer, onClose, onDispatch, onReceive }) {
             {transfer.items.map((item, idx) => (
               <tr key={idx}>
                 <td>
-                  <div style={{ fontWeight: 500, fontSize: 13 }}>{item.name}</div>
+                  <div style={{ fontWeight: 500, fontSize: 14 }}>{item.name}</div>
                   <div className="mono muted" style={{ fontSize: 11 }}>{item.sku}</div>
                 </td>
                 <td className="right mono">{item.qty}</td>
                 {transfer.status === 'completed' && (
                   <td className="right">
-                    <span className={`pill ${item.qtyReceived === item.qty ? 'success' : 'warning'}`} style={{ fontSize: 10 }}>
+                    <span className={`badge-m3 ${item.qtyReceived === item.qty ? 'success' : 'warning'}`}>
                       {item.qtyReceived}/{item.qty}
                     </span>
                   </td>
@@ -345,34 +345,38 @@ export default function Transfers({ pushToast }) {
           <div className="page-subtitle">{transfers.length} transferencias · {inTransit.length} en tránsito</div>
         </div>
         <div className="page-head-actions">
-          <button className="btn accent" onClick={() => setShowNew(true)}>
-            <Icon name="plus" size={12} />{t('transfers.newTransfer', 'Nueva transferencia')}
-          </button>
+          <Button icon="plus" variant="accent" onClick={() => setShowNew(true)}>{t('transfers.newTransfer', 'Nueva transferencia')}
+          </Button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="transfer" size={11} />Total transferencias</div>
-          <div className="val mono">{transfers.length}</div>
-          <div className="delta muted">{transfers.filter(t => t.status === 'completed').length} completadas</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="truck" size={11} />En tránsito</div>
-          <div className="val mono" style={{ color: inTransit.length > 0 ? 'var(--warning)' : undefined }}>{inTransit.length}</div>
-          <div className="delta muted">Pendiente de confirmación en destino</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="edit" size={11} />Borradores</div>
-          <div className="val mono">{drafts.length}</div>
-          <div className="delta muted">Sin despachar aún</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="branch" size={11} />Sucursales activas</div>
-          <div className="val mono">{BRANCHES.filter(b => b.status === 'active').length}</div>
-          <div className="delta muted">de {BRANCHES.length} totales</div>
-        </div>
+        <StatCard
+          icon="transfer" tone="pri"
+          label="Total transferencias"
+          value={transfers.length}
+          foot={<>{transfers.filter(t => t.status === 'completed').length} completadas</>}
+        />
+        <StatCard
+          icon="truck" tone="ter"
+          label="En tránsito"
+          valueColor={inTransit.length > 0 ? 'var(--warning)' : undefined}
+          value={inTransit.length}
+          foot="Pendiente de confirmación en destino"
+        />
+        <StatCard
+          icon="edit" tone="sec"
+          label="Borradores"
+          value={drafts.length}
+          foot="Sin despachar aún"
+        />
+        <StatCard
+          icon="branch" tone="err"
+          label="Sucursales activas"
+          value={BRANCHES.filter(b => b.status === 'active').length}
+          foot={<>de {BRANCHES.length} totales</>}
+        />
       </div>
 
       {/* Filtros */}
@@ -415,25 +419,21 @@ export default function Transfers({ pushToast }) {
               <tr><td colSpan={8} className="empty">{t('common.noResults', 'Sin resultados')}</td></tr>
             ) : filtered.map(t => (
               <tr key={t.id} className="clickable" onClick={() => setSelected(t)}>
-                <td className="mono" style={{ fontWeight: 600 }}>{t.id}</td>
+                <td className="mono" style={{ fontWeight: 500 }}>{t.id}</td>
                 <td className="mono muted">{t.date}</td>
                 <td>{t.fromBranch}</td>
                 <td>{t.toBranch}</td>
                 <td className="muted">{t.transporter || '—'}</td>
                 <td className="right mono">{t.items.length}</td>
-                <td><span className={`pill ${STATUS_CLASS[t.status]}`} style={{ fontSize: 10 }}>{STATUS_LABEL[t.status]}</span></td>
+                <td><span className={`badge-m3 ${STATUS_CLASS[t.status]}`}>{STATUS_LABEL[t.status]}</span></td>
                 <td>
                   {t.status === 'draft' && (
-                    <button className="btn" style={{ fontSize: 11, padding: '3px 10px' }}
-                      onClick={e => { e.stopPropagation(); setSelected(t); handleDispatch(t); }}>
-                      <Icon name="truck" size={11} />Despachar
-                    </button>
+                    <Button size="sm" icon="truck" onClick={e => { e.stopPropagation(); setSelected(t); handleDispatch(t); }}>Despachar
+                    </Button>
                   )}
                   {t.status === 'in_transit' && (
-                    <button className="btn accent" style={{ fontSize: 11, padding: '3px 10px' }}
-                      onClick={e => { e.stopPropagation(); setSelected(t); handleReceive(t); }}>
-                      <Icon name="check" size={11} />Recibir
-                    </button>
+                    <Button size="sm" icon="check" variant="accent" onClick={e => { e.stopPropagation(); setSelected(t); handleReceive(t); }}>Recibir
+                    </Button>
                   )}
                 </td>
               </tr>

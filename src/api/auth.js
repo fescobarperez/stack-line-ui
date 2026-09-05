@@ -44,6 +44,11 @@ export async function login({ companyCode, email, password }) {
   return toSession(res, code);
 }
 
+/** Usuario de la sesión activa. Lo usan el POS y Caja para saber de quién es el turno. */
+export function sessionUser() {
+  try { return JSON.parse(sessionStorage.getItem('maya_session'))?.user || null; } catch { return null; }
+}
+
 export function logout() {
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem('companyId');

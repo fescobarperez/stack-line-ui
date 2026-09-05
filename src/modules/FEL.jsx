@@ -3,6 +3,8 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { useFelDocuments } from '../hooks/useAccounting.js';
 import { useTranslation } from 'react-i18next';
@@ -130,7 +132,7 @@ export default function FEL({ pushToast }) {
     colCorrelativo,
     { key: 'tipo', header: t('common.type', 'Tipo'), sortable: true,
       sortValue: (d) => TIPOS[d.tipo]?.label,
-      render: (d) => <span className={`pill ${TIPOS[d.tipo].pill}`}>{TIPOS[d.tipo].label}</span> },
+      render: (d) => <span className={`badge-m3 ${TIPOS[d.tipo].pill}`}>{TIPOS[d.tipo].label}</span> },
     { key: 'fecha', header: t('common.date', 'Fecha'), sortable: true, mono: true },
     colReceptor,
     { key: 'nit', header: 'NIT', sortable: true, mono: true },
@@ -139,7 +141,7 @@ export default function FEL({ pushToast }) {
     colTotal,
     { key: 'estado', header: t('common.status', 'Estado'), sortable: true,
       sortValue: (d) => ESTADOS[d.estado]?.label,
-      render: (d) => <span className={`pill ${ESTADOS[d.estado].pill}`}>{ESTADOS[d.estado].label}</span> },
+      render: (d) => <span className={`badge-m3 ${ESTADOS[d.estado].pill}`}>{ESTADOS[d.estado].label}</span> },
   ];
 
   const anuladasColumns = [
@@ -150,7 +152,7 @@ export default function FEL({ pushToast }) {
       render: (d) => <span style={{ color: 'var(--md-sys-color-error)' }}>{Q(d.total)}</span> },
     { key: 'motivoAnul', header: 'Motivo', className: 'muted', render: (d) => d.motivoAnul ?? '—' },
     { key: 'estado', header: t('common.status', 'Estado'),
-      render: () => <span className="pill danger">Anulado</span> },
+      render: () => <span className="badge-m3 danger">Anulado</span> },
   ];
 
   const anulablesColumns = [
@@ -209,13 +211,12 @@ export default function FEL({ pushToast }) {
           </div>
         </div>
         <div className="row gap-8">
-          <span className={`pill ${CERTIFIER.online ? 'success' : 'danger'}`}>
+          <span className={`badge-m3 ${CERTIFIER.online ? 'success' : 'danger'}`}>
             <span className="dot"/>
             {CERTIFIER.online ? `En línea · ${CERTIFIER.pingMs}ms` : 'Sin conexión'}
           </span>
-          <button className="btn" onClick={() => pushToast?.('Sincronizando con SAT…', '')}>
-            <Icon name="transfer" size={13}/>Sincronizar
-          </button>
+          <Button icon="transfer" onClick={() => pushToast?.('Sincronizando con SAT…', '')}>Sincronizar
+          </Button>
         </div>
       </div>
 
@@ -236,28 +237,30 @@ export default function FEL({ pushToast }) {
       {tab === 'dtes' && (
         <div>
           <div className="stat-grid">
-            <div className="stat">
-              <div className="label">DTEs emitidos (mayo)</div>
-              <div className="val">{mesActual.length}</div>
-              <div className="delta up">{autorizados.length} autorizados</div>
-            </div>
-            <div className="stat">
-              <div className="label">Total facturado</div>
-              <div className="val mono">{Qs(totalFact)}</div>
-              <div className="delta up">Facturas autorizadas</div>
-            </div>
-            <div className="stat">
-              <div className="label">IVA generado</div>
-              <div className="val mono">{Qs(totalIVA)}</div>
-              <div className="delta">12% sobre afecto</div>
-            </div>
-            <div className="stat">
-              <div className="label">Anulados</div>
-              <div className="val">{totalAnul}</div>
-              <div className={`delta ${totalAnul > 0 ? 'dn' : ''}`}>
-                {totalAnul > 0 ? 'Requieren revisión' : 'Sin anulaciones'}
-              </div>
-            </div>
+            <StatCard
+              tone="pri"
+              label="DTEs emitidos (mayo)"
+              value={mesActual.length}
+              trend={{ dir: 'up', label: <>{autorizados.length} autorizados</> }}
+            />
+            <StatCard
+              tone="ter"
+              label="Total facturado"
+              value={Qs(totalFact)}
+              trend={{ dir: 'up', label: "Facturas autorizadas" }}
+            />
+            <StatCard
+              tone="sec"
+              label="IVA generado"
+              value={Qs(totalIVA)}
+              foot="12% sobre afecto"
+            />
+            <StatCard
+              tone="err"
+              label="Anulados"
+              value={totalAnul}
+              trend={{ dir: totalAnul > 0 ? 'down' : '', label: totalAnul > 0 ? 'Requieren revisión' : 'Sin anulaciones' }}
+            />
           </div>
 
           <div className="filterbar">
@@ -334,9 +337,9 @@ export default function FEL({ pushToast }) {
               empty="Sin DTEs anulables dentro del plazo"
               emptyIcon="clock"
               actions={(d) => (
-                <button className="btn sm danger" onClick={() => { setShowAnul(d); setMotivoAnul(''); }}>
+                <Button variant="danger" size="sm" onClick={() => { setShowAnul(d); setMotivoAnul(''); }}>
                   Anular
-                </button>
+                </Button>
               )}
             />
           </div>
@@ -357,9 +360,8 @@ export default function FEL({ pushToast }) {
                 <option>Abril 2026</option>
                 <option>Marzo 2026</option>
               </select>
-              <button className="btn" onClick={() => pushToast?.('Exportando libro de ventas…', '')}>
-                <Icon name="download" size={18}/>{t('common.export', 'Exportar')} Excel
-              </button>
+              <Button icon="download" onClick={() => pushToast?.('Exportando libro de ventas…', '')}>{t('common.export', 'Exportar')} Excel
+              </Button>
             </div>
           </div>
 
@@ -407,9 +409,8 @@ export default function FEL({ pushToast }) {
                 </div>
               ))}
             </div>
-            <button className="btn fel-block-btn" onClick={() => pushToast?.('Sincronizando…', '')}>
-              <Icon name="transfer" size={18}/>Forzar sincronización
-            </button>
+            <Button icon="transfer" full onClick={() => pushToast?.('Sincronizando…', '')}>Forzar sincronización
+            </Button>
             <div className="fel-divider">
               <div className="fel-kv compact">
                 {[
@@ -433,7 +434,7 @@ export default function FEL({ pushToast }) {
               const estado = ESTADOS[d.estado];
               return (
                 <div key={d.id} className="fel-log-row">
-                  <span className={`pill ${estado.pill}`}>{estado.label}</span>
+                  <span className={`badge-m3 ${estado.pill}`}>{estado.label}</span>
                   <div className="fel-log-main">
                     <div className="fel-log-ref">{d.serie}-{d.numero} · {d.tipo}</div>
                     <div className="fel-log-ts">{d.fecha} {d.certTs}</div>
@@ -448,9 +449,8 @@ export default function FEL({ pushToast }) {
           <div className="fel-card span-all">
             <div className="fel-panel-head">
               <div className="fel-panel-title">Datos del emisor (SAT)</div>
-              <button className="btn sm" onClick={() => navigate('/config')}>
-                <Icon name="settings" size={18}/>{t('fel.editInConfig', 'Editar en Configuración')}
-              </button>
+              <Button icon="settings" size="sm" onClick={() => navigate('/config')}>{t('fel.editInConfig', 'Editar en Configuración')}
+              </Button>
             </div>
             <div className="fel-kv cols">
               {[
@@ -480,9 +480,9 @@ export default function FEL({ pushToast }) {
                 rows={rechazados}
                 rowKey={(d) => d.id}
                 actions={() => (
-                  <button className="btn sm accent" onClick={() => pushToast?.('Reintentando certificación…', '')}>
+                  <Button variant="accent" size="sm" onClick={() => pushToast?.('Reintentando certificación…', '')}>
                     Reintentar
-                  </button>
+                  </Button>
                 )}
               />
             </div>
@@ -504,8 +504,8 @@ export default function FEL({ pushToast }) {
             </div>
             <div className="drawer-body" style={{padding:20}}>
               <div className="fel-pills">
-                <span className={`pill ${TIPOS[drawer.tipo].pill}`}>{TIPOS[drawer.tipo].label}</span>
-                <span className={`pill ${ESTADOS[drawer.estado].pill}`}>{ESTADOS[drawer.estado].label}</span>
+                <span className={`badge-m3 ${TIPOS[drawer.tipo].pill}`}>{TIPOS[drawer.tipo].label}</span>
+                <span className={`badge-m3 ${ESTADOS[drawer.estado].pill}`}>{ESTADOS[drawer.estado].label}</span>
               </div>
 
               <div className="fel-kv between">
@@ -542,17 +542,14 @@ export default function FEL({ pushToast }) {
               )}
 
               <div className="fel-actions">
-                <button className="btn" onClick={() => pushToast?.(`Descargando XML…`, '')}>
-                  <Icon name="download" size={18}/>XML
-                </button>
-                <button className="btn" onClick={() => pushToast?.(`DTE reenviado`, 'success')}>
-                  <Icon name="transfer" size={18}/>Reenviar
-                </button>
+                <Button icon="download" onClick={() => pushToast?.(`Descargando XML…`, '')}>XML
+                </Button>
+                <Button icon="transfer" onClick={() => pushToast?.(`DTE reenviado`, 'success')}>Reenviar
+                </Button>
                 {drawer.estado === 'autorizado' && drawer.tipo === 'FACT' && (
-                  <button className="btn fel-btn-danger"
-                    onClick={() => { setDrawer(null); setShowAnul(drawer); setMotivoAnul(''); }}>
+                  <Button variant="danger-outline" onClick={() => { setDrawer(null); setShowAnul(drawer); setMotivoAnul(''); }}>
                     Anular
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -593,14 +590,9 @@ export default function FEL({ pushToast }) {
               </div>
             </div>
             <div className="modal-foot">
-              <button className="btn" onClick={() => setShowAnul(null)}>{t('common.cancel', 'Cancelar')}</button>
-              <button
-                className="btn danger"
-                disabled={!motivoAnul.trim()}
-                onClick={() => { pushToast?.(`DTE ${showAnul.serie}-${showAnul.numero} anulado`, 'success'); setShowAnul(null); }}
-              >
-                <Icon name="check" size={18}/>{t('common.confirm', 'Confirmar')} anulación
-              </button>
+              <Button onClick={() => setShowAnul(null)}>{t('common.cancel', 'Cancelar')}</Button>
+              <Button icon="check" variant="danger" disabled={!motivoAnul.trim()} onClick={() => { pushToast?.(`DTE ${showAnul.serie}-${showAnul.numero} anulado`, 'success'); setShowAnul(null); }}>{t('common.confirm', 'Confirmar')} anulación
+              </Button>
             </div>
           </div>
         </div>

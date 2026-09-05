@@ -2,9 +2,11 @@
 // Data-driven: productos/categorías reales; el cobro crea una venta real
 // (POST /api/sales) contra la caja abierta y descuenta stock en el backend.
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
 import { applyPromotions } from '../data/promotions.js';
 import { useProducts, useCategories } from '../hooks/useCatalog.js';
 import { useCashRegisters } from '../hooks/useOperations.js';
+import { sessionUser } from '../api/auth.js';
 import { createSale } from '../api/pos.js';
 import React, { useState as useStatePOS, useMemo as useMemoPOS } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +20,15 @@ function POSModule({ pushToast }) {
   const rawCats = useCategories();
   const CATEGORIES = useMemoPOS(() => [{ id: 'todos', name: 'Todos', icon: '' }, ...rawCats], [rawCats]);
   const { items: registers } = useCashRegisters();
-  const openRegister = useMemoPOS(() => registers.find((r) => r.status === 'open'), [registers]);
+  // El turno del cajero que está usando el POS. Antes era `find(status==='open')`
+  // a secas: cogía cualquier turno abierto, incluido el que quedó de ayer, y las
+  // ventas de hoy se acumulaban en el arqueo de ese día.
+  const user  = useMemoPOS(() => sessionUser(), []);
+  const today = new Date().toISOString().slice(0, 10);
+  const openRegister = useMemoPOS(
+    () => registers.find((r) => r.status === 'open' && r.userId === user?.id && r.businessDate === today),
+    [registers, user, today],
+  );
 
   // ── Lógica de venta ──────────────────────────────────────────────────────
   const [cat, setCat]               = useStatePOS('todos');
@@ -142,15 +152,15 @@ function POSModule({ pushToast }) {
               autoFocus={!touchMode}
             />
           </div>
-          <button className="btn"><Icon name="barcode" size={14} />{t('pos.scan', 'Escanear')}</button>
-          <button
-            className={`btn${touchMode ? ' accent' : ''}`}
+          <Button icon="barcode">{t('pos.scan', 'Escanear')}</Button>
+          <Button
+            icon="pos"
+            variant={touchMode ? 'accent' : 'outlined'}
             title={touchMode ? t('pos.desktopMode', 'Modo escritorio') : t('pos.touchMode', 'Modo táctil')}
             onClick={toggleTouchMode}
           >
-            <Icon name="pos" size={14} />
             {touchMode ? t('pos.desktopMode', 'Escritorio') : t('pos.touchMode', 'Táctil')}
-          </button>
+          </Button>
         </div>
 
         <div className="pos-cats">
@@ -217,7 +227,7 @@ function POSModule({ pushToast }) {
             <option>{t('pos.clientTypes.wholesale', 'Mayorista')}</option>
             <option>{t('pos.clientTypes.exempt', 'Exento')}</option>
           </select>
-          <button className="btn sm ghost">{t('pos.changeClient', 'Cambiar')}</button>
+          <Button variant="ghost" size="sm">{t('pos.changeClient', 'Cambiar')}</Button>
         </div>
 
         {/* Items */}
@@ -401,7 +411,7 @@ function POSModule({ pushToast }) {
                     />
                     <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                       {[total, Math.ceil(total / 50) * 50, Math.ceil(total / 100) * 100, Math.ceil(total / 100) * 100 + 100].map((v, i) => (
-                        <button key={i} className="btn" style={{ flex: 1 }} onClick={() => setCashGiven(v.toFixed(2))}>{Q(v)}</button>
+                        <Button key={i} style={{ flex: 1 }} onClick={() => setCashGiven(v.toFixed(2))}>{Q(v)}</Button>
                       ))}
                     </div>
                     {cashGiven && parseFloat(cashGiven) >= total && (
@@ -441,14 +451,9 @@ function POSModule({ pushToast }) {
               )}
             </div>
             <div className="modal-foot">
-              <button className="btn" onClick={() => setShowCharge(false)}>{t('common.cancel', 'Cancelar')}</button>
-              <button
-                className="btn accent lg"
-                style={touchMode ? { fontSize: 16, padding: '14px 24px' } : {}}
-                onClick={handleCharge}
-              >
-                <Icon name="check" />{t('pos.confirmCharge', { amount: Q(total) })}
-              </button>
+              <Button onClick={() => setShowCharge(false)}>{t('common.cancel', 'Cancelar')}</Button>
+              <Button icon="check" variant="accent" size="lg" style={touchMode ? { fontSize: 16, padding: '14px 24px' } : {}} onClick={handleCharge}>{t('pos.confirmCharge', { amount: Q(total) })}
+              </Button>
             </div>
           </div>
         </div>
@@ -460,10 +465,10 @@ function POSModule({ pushToast }) {
           <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }} onClick={e => e.stopPropagation()}>
             <Ticket data={showReceipt} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 24 }}>
-              <button className="btn primary"><Icon name="print" />{t('common.print', 'Imprimir')}</button>
-              <button className="btn"><Icon name="download" />{t('common.download', 'Descargar PDF')}</button>
-              <button className="btn"><Icon name="transfer" />{t('common.sendEmail', 'Enviar por correo')}</button>
-              <button className="btn ghost" onClick={() => setShowReceipt(null)}><Icon name="x" />{t('common.close', 'Cerrar')}</button>
+              <Button icon="print" variant="tonal">{t('common.print', 'Imprimir')}</Button>
+              <Button icon="download">{t('common.download', 'Descargar PDF')}</Button>
+              <Button icon="transfer">{t('common.sendEmail', 'Enviar por correo')}</Button>
+              <Button icon="x" variant="ghost" onClick={() => setShowReceipt(null)}>{t('common.close', 'Cerrar')}</Button>
             </div>
           </div>
         </div>
@@ -507,9 +512,9 @@ function TouchNumpad({ value, onChange, total, Q }) {
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
         {quickAmounts.map((v, i) => (
-          <button key={i} className="btn" style={{ flex: 1, fontSize: 13 }} onClick={() => onChange(v.toFixed(2))}>
+          <Button size="sm" key={i} style={{ flex: 1 }} onClick={() => onChange(v.toFixed(2))}>
             Q{Number.isInteger(v) ? v : v.toFixed(2)}
-          </button>
+          </Button>
         ))}
       </div>
 

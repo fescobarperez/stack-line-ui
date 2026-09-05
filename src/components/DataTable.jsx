@@ -11,7 +11,7 @@
 //       { key: 'name',  header: 'Producto', sortable: true },
 //       { key: 'stock', header: 'Stock',    sortable: true, align: 'right' },
 //       { key: 'status', header: 'Estado', align: 'center',
-//         render: (r) => <span className="pill success">Activo</span> },
+//         render: (r) => <span className="badge-m3 success">Activo</span> },
 //     ]}
 //     rows={productos}
 //     selectable pageSize={20} density="compact"
@@ -206,7 +206,7 @@ export default function DataTable({
                   </th>
                 );
               })}
-              {rowActions && <th className="actions" aria-label="Acciones" />}
+              {rowActions && <th className="actions" aria-label="Acciones"/>}
             </tr>
           </thead>
 
@@ -214,11 +214,11 @@ export default function DataTable({
             <tbody>
               {Array.from({ length: skeletonRows }).map((_, i) => (
                 <tr key={i}>
-                  {selectable && <td className="check"><div className="tbl-skel" style={{ width: 18 }} /></td>}
+                  {selectable && <td className="check"><div className="tbl-skel" style={{ width: 18 }}/></td>}
                   {columns.map((col) => (
-                    <td key={col.key}><div className="tbl-skel" style={{ width: `${45 + ((col.key.length * 11) % 40)}%` }} /></td>
+                    <td key={col.key}><div className="tbl-skel" style={{ width: `${45 + ((col.key.length * 11) % 40)}%` }}/></td>
                   ))}
-                  {rowActions && <td className="actions" />}
+                  {rowActions && <td className="actions"/>}
                 </tr>
               ))}
             </tbody>
@@ -262,13 +262,13 @@ export default function DataTable({
           {totals && !loading && pageRows.length > 0 && (
             <tfoot>
               <tr>
-                {selectable && <td className="check" />}
+                {selectable && <td className="check"/>}
                 {columns.map((col) => (
                   <td key={col.key} className={alignClass(col.align)}>
                     {totals[col.key] != null ? totals[col.key] : ''}
                   </td>
                 ))}
-                {rowActions && <td className="actions" />}
+                {rowActions && <td className="actions"/>}
               </tr>
             </tfoot>
           )}

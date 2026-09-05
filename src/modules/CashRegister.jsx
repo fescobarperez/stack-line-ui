@@ -3,9 +3,12 @@
 // tarjeta/diferencia a partir de las ventas de la caja.
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
-import { useCashRegisters } from '../hooks/useOperations.js';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
+import { useCashRegisters, useCashPoints, usePendingRegisters } from '../hooks/useOperations.js';
 import { useBranches } from '../hooks/useMasters.js';
 import { openCashRegister, closeCashRegister } from '../api/pos.js';
+import { sessionUser } from '../api/auth.js';
 import { useTranslation } from 'react-i18next';
 
 function fmt(n) { return `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
@@ -17,18 +20,16 @@ function fmtDateTime(iso) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// Usuario de la sesión (para el userId de la caja y mostrar el cajero).
-function sessionUser() {
-  try { return JSON.parse(sessionStorage.getItem('maya_session'))?.user || null; } catch { return null; }
-}
-
 // Backend CashRegister.Response → forma de la UI.
 function mapRegister(r, user) {
-  const cashier = user && user.id === r.userId ? user.name : (r.userId ? `Usuario ${r.userId}` : '—');
+  // userName ya viene del backend; el fallback cubre turnos sin usuario asignado.
+  const cashier = r.userName || (user && user.id === r.userId ? user.name : (r.userId ? `Usuario ${r.userId}` : '—'));
   return {
     id: r.id,
     branchId: r.branchId,
     branch: r.branchName || '—',
+    cashPoint: r.cashPointCode ? `${r.cashPointCode} — ${r.cashPointName || ''}`.trim() : '—',
+    businessDate: r.businessDate || null,
     cashier,
     openedAt: fmtDateTime(r.openedAt) || '',
     closedAt: fmtDateTime(r.closedAt),
@@ -44,46 +45,67 @@ function mapRegister(r, user) {
 }
 
 // ── Modal: Apertura de caja ──────────────────────────────────────────────────
-function OpenModal({ branches, onSave, onClose }) {
+// Se elige la CAJA, no la sucursal: una sucursal tiene N cajas y cada una la
+// ocupa un cajero a la vez. Las tomadas (openSessionId) no se ofrecen.
+function OpenModal({ cashPoints, onSave, onClose }) {
   const { t } = useTranslation();
-  const [branchId, setBranchId]       = useState('');
+  const [cashPointId, setCashPointId] = useState('');
   const [openingAmount, setOpening]   = useState('500.00');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!branchId) return;
-    onSave({ branchId: Number(branchId), openingAmount: parseFloat(openingAmount) || 0 });
+    if (!cashPointId) return;
+    onSave({ cashPointId: Number(cashPointId), openingAmount: parseFloat(openingAmount) || 0 });
   };
 
-  const availableBranches = branches.filter(b => b.status !== 'paused');
+  const free  = cashPoints.filter(c => c.status === 'active' && !c.openSessionId);
+  const taken = cashPoints.filter(c => c.openSessionId);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
-          <div className="modal-title">{t('cash.open', 'Abrir caja')}</div>
+          <h3>{t('cash.open', 'Abrir caja')}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             <div className="field" style={{ marginBottom: 12 }}>
-              <label className="field-label">{t('common.branch', 'Sucursal')} *</label>
-              <select className="field-input" value={branchId} onChange={e => setBranchId(e.target.value)} required>
-                <option value="">{t('cash.selectBranch', 'Seleccionar sucursal…')}</option>
-                {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              <label className="field-label">{t('cash.cashPoint', 'Caja')} *</label>
+              <select className="field-input" value={cashPointId} onChange={e => setCashPointId(e.target.value)} required>
+                <option value="">{t('cash.selectCashPoint', 'Seleccionar caja…')}</option>
+                {free.map(c => (
+                  <option key={c.id} value={c.id}>{c.branchName} · {c.code} — {c.name}</option>
+                ))}
               </select>
+              {free.length === 0 && (
+                <div className="alert" style={{ marginTop: 8 }}>
+                  <Icon name="alert" size={16} />
+                  {t('cash.noFreeCashPoint', 'No hay cajas libres en este momento.')}
+                </div>
+              )}
             </div>
+            {taken.length > 0 && (
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label className="field-label">{t('cash.inUse', 'En uso ahora')}</label>
+                {taken.map(c => (
+                  <div key={c.id} className="detail-row">
+                    <span>{c.branchName} · {c.code}</span>
+                    <span className="muted">{c.openUserName || t('cash.otherUser', 'otro usuario')}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="field">
               <label className="field-label">{t('cash.openingAmount', 'Fondo inicial (Q)')}</label>
               <input className="field-input mono" type="number" min="0" step="0.01"
                 value={openingAmount} onChange={e => setOpening(e.target.value)} />
             </div>
           </div>
-          <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-            <button type="submit" className="btn accent">
-              <Icon name="cash" size={12} />{t('cash.open', 'Abrir caja')}
-            </button>
+          <div className="modal-foot">
+            <Button type="button" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+            <Button icon="cash" variant="accent" type="submit">{t('cash.open', 'Abrir caja')}
+            </Button>
           </div>
         </form>
       </div>
@@ -115,8 +137,8 @@ function CloseModal({ register, onSave, onClose }) {
       <div className="modal" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
           <div>
-            <div className="modal-title">{t('cash.close', 'Cerrar caja')}</div>
-            <div className="muted" style={{ fontSize: 12 }}>{register.branch} · {register.cashier}</div>
+            <h3>{t('cash.close', 'Cerrar caja')}</h3>
+            <div className="muted" style={{ fontSize: 12 }}>{register.branch} · {register.cashPoint} · {register.cashier}</div>
           </div>
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
@@ -124,16 +146,16 @@ function CloseModal({ register, onSave, onClose }) {
           <div className="modal-body">
             {/* Resumen del turno */}
             <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, marginBottom: 16 }}>
-              <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 10, color: 'var(--muted)' }}>{t('cash.shiftSummary', 'RESUMEN DEL TURNO')}</div>
+              <div style={{ fontWeight: 500, fontSize: 12, marginBottom: 10, color: 'var(--muted)' }}>{t('cash.shiftSummary', 'RESUMEN DEL TURNO')}</div>
               {METHOD_ROWS.map(row => (
                 <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, color: 'var(--text)' }}>{row.label}</span>
-                  <span className="mono" style={{ fontWeight: 600, color: row.color || 'var(--text)' }}>{fmt(Math.abs(row.val))}</span>
+                  <span style={{ fontSize: 14, color: 'var(--text)' }}>{row.label}</span>
+                  <span className="mono" style={{ fontWeight: 500, color: row.color || 'var(--text)' }}>{fmt(Math.abs(row.val))}</span>
                 </div>
               ))}
               <div style={{ borderTop: '1px solid var(--border)', marginTop: 10, paddingTop: 10, display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontWeight: 600 }}>{t('cash.totalSales', 'Total ventas')}</span>
-                <span className="mono" style={{ fontWeight: 700, fontSize: 16 }}>{fmt(register.salesTotal)}</span>
+                <span style={{ fontWeight: 500 }}>{t('cash.totalSales', 'Total ventas')}</span>
+                <span className="mono" style={{ fontWeight: 500, fontSize: 16 }}>{fmt(register.salesTotal)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
                 <span className="muted" style={{ fontSize: 12 }}>{t('cash.expectedCash', 'Efectivo esperado en caja')}</span>
@@ -146,13 +168,13 @@ function CloseModal({ register, onSave, onClose }) {
               <label className="field-label">{t('cash.countedCash', 'Efectivo contado (Q)')} *</label>
               <input className="field-input mono" type="number" min="0" step="0.01"
                 value={counted} onChange={e => setCounted(e.target.value)} required autoFocus
-                style={{ fontSize: 20, padding: '10px 12px' }} />
+                style={{ fontSize: 22, padding: '10px 12px' }} />
             </div>
 
             {/* Diferencia */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 8, background: diff === 0 ? 'var(--bg)' : diff > 0 ? 'rgba(var(--success-rgb,34,197,94),.08)' : 'rgba(var(--danger-rgb,239,68,68),.08)', border: '1px solid var(--border)' }}>
-              <span style={{ fontWeight: 600, fontSize: 13 }}>{t('cash.difference', 'Diferencia')}</span>
-              <span className="mono" style={{ fontWeight: 700, fontSize: 18, color: diff > 0 ? 'var(--success)' : diff < 0 ? 'var(--danger)' : 'var(--muted)' }}>
+              <span style={{ fontWeight: 500, fontSize: 14 }}>{t('cash.difference', 'Diferencia')}</span>
+              <span className="mono" style={{ fontWeight: 400, fontSize: 22, color: diff > 0 ? 'var(--success)' : diff < 0 ? 'var(--danger)' : 'var(--muted)' }}>
                 {diff >= 0 ? '+' : ''}{fmt(diff)}
               </span>
             </div>
@@ -164,11 +186,10 @@ function CloseModal({ register, onSave, onClose }) {
               </div>
             )}
           </div>
-          <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-            <button type="submit" className="btn accent">
-              <Icon name="check" size={12} />{t('cash.close', 'Cerrar caja')}
-            </button>
+          <div className="modal-foot">
+            <Button type="button" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+            <Button icon="check" variant="accent" type="submit">{t('cash.close', 'Cerrar caja')}
+            </Button>
           </div>
         </form>
       </div>
@@ -190,32 +211,31 @@ function CajaCard({ register, onClose }) {
     <div className="stat-card" style={{ position: 'relative' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>{register.branch}</div>
+          <div style={{ fontWeight: 500, fontSize: 16 }}>{register.branch} · {register.cashPoint}</div>
           <div className="muted" style={{ fontSize: 12 }}>{register.cashier} · {t('cash.since', 'desde')} {register.openedAt.split(' ')[1]}</div>
         </div>
-        <span className="pill success">{t('cash.open', 'Abierta')} · {elapsed}</span>
+        <span className="badge-m3 success">{t('cash.open', 'Abierta')} · {elapsed}</span>
       </div>
       <div style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
         <div>
-          <div className="label" style={{ fontSize: 10 }}>{t('cash.shiftSales', 'Ventas turno')}</div>
-          <div className="mono" style={{ fontWeight: 700, fontSize: 18 }}>{fmt(register.salesTotal)}</div>
+          <div className="label" style={{ fontSize: 11 }}>{t('cash.shiftSales', 'Ventas turno')}</div>
+          <div className="mono" style={{ fontWeight: 400, fontSize: 22 }}>{fmt(register.salesTotal)}</div>
         </div>
         <div>
-          <div className="label" style={{ fontSize: 10 }}>{t('cash.cash', 'Efectivo')}</div>
-          <div className="mono" style={{ fontSize: 15 }}>{fmt(register.salesCash)}</div>
+          <div className="label" style={{ fontSize: 11 }}>{t('cash.cash', 'Efectivo')}</div>
+          <div className="mono" style={{ fontSize: 16 }}>{fmt(register.salesCash)}</div>
         </div>
         <div>
-          <div className="label" style={{ fontSize: 10 }}>{t('cash.card', 'Tarjeta')}</div>
-          <div className="mono" style={{ fontSize: 15 }}>{fmt(register.salesCard)}</div>
+          <div className="label" style={{ fontSize: 11 }}>{t('cash.card', 'Tarjeta')}</div>
+          <div className="mono" style={{ fontSize: 16 }}>{fmt(register.salesCard)}</div>
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${Math.min(100, (register.salesTotal / 20000) * 100)}%`, background: 'var(--accent)', borderRadius: 2 }} />
         </div>
-        <button className="btn" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => onClose(register)}>
-          <Icon name="x" size={12} />{t('cash.close', 'Cerrar caja')}
-        </button>
+        <Button icon="x" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => onClose(register)}>{t('cash.close', 'Cerrar caja')}
+        </Button>
       </div>
     </div>
   );
@@ -225,6 +245,8 @@ function CajaCard({ register, onClose }) {
 export default function CashRegister({ pushToast }) {
   const { t } = useTranslation();
   const { items: registersRaw, reload } = useCashRegisters();
+  const { items: cashPoints, reload: reloadPoints } = useCashPoints();
+  const { items: pending, reload: reloadPending } = usePendingRegisters();
   const { items: BRANCHES } = useBranches();
   const user = useMemo(() => sessionUser(), []);
   const registers = useMemo(() => registersRaw.map((r) => mapRegister(r, user)), [registersRaw, user]);
@@ -238,20 +260,23 @@ export default function CashRegister({ pushToast }) {
     let c = registers.filter(r => r.status === 'closed');
     if (histSearch) {
       const q = histSearch.toLowerCase();
-      c = c.filter(r => r.branch.toLowerCase().includes(q) || r.cashier.toLowerCase().includes(q));
+      c = c.filter(r => r.branch.toLowerCase().includes(q) || r.cashier.toLowerCase().includes(q)
+        || (r.cashPoint || '').toLowerCase().includes(q));
     }
     return c.sort((a, b) => b.id - a.id);
   }, [registers, histSearch]);
 
-  const handleOpen = async ({ branchId, openingAmount }) => {
-    const br = BRANCHES.find(b => b.id === branchId);
+  const handleOpen = async ({ cashPointId, openingAmount }) => {
+    const cp = cashPoints.find(c => c.id === cashPointId);
     try {
-      await openCashRegister({ branchId, userId: user?.id ?? null, openingAmount });
-      await reload();
+      await openCashRegister({ cashPointId, userId: user?.id ?? null, openingAmount });
+      await Promise.all([reload(), reloadPoints(), reloadPending()]);
       setShowOpen(false);
-      pushToast?.(`Caja abierta en ${br?.name || ''}`, 'success');
+      pushToast?.(`Caja ${cp?.code || ''} abierta en ${cp?.branchName || ''}`, 'success');
     } catch (err) {
-      pushToast?.('No se pudo abrir la caja: ' + err.message, 'error');
+      // El backend devuelve 409 con el motivo: caja ocupada, turno de ayer
+      // sin cerrar, o el cajero ya tiene otra caja abierta.
+      pushToast?.(err.message, 'error');
     }
   };
 
@@ -274,41 +299,65 @@ export default function CashRegister({ pushToast }) {
         <div>
           <h1 className="page-title">{t('cash.title', 'Caja & Cortes')}</h1>
           <div className="page-subtitle">
-            {openRegisters.length} {t('cash.openRegistersLabel', 'caja{openRegisters.length !== 1 ? "s" : ""} abierta{openRegisters.length !== 1 ? "s" : ""}')}
-            {openRegisters.length !== 1 ? 's' : ''} {t('cash.openSuffix', 'abierta')}{openRegisters.length !== 1 ? 's' : ''} · {t('cash.activeShiftTotal', 'Total turno activo')} <span className="mono">{fmt(totalSalesOpen)}</span>
+            {openRegisters.length}{' '}
+            {openRegisters.length === 1
+              ? t('cash.openRegisterOne', 'caja abierta')
+              : t('cash.openRegisterMany', 'cajas abiertas')}
+            {' · '}{t('cash.activeShiftTotal', 'Total turno activo')}{' '}
+            <span className="mono">{fmt(totalSalesOpen)}</span>
           </div>
         </div>
         <div className="page-head-actions">
-          <button className="btn accent" onClick={() => setShowOpen(true)}>
-            <Icon name="plus" size={12} />{t('cash.open', 'Abrir caja')}
-          </button>
+          <Button icon="plus" variant="accent" onClick={() => setShowOpen(true)}>{t('cash.open', 'Abrir caja')}
+          </Button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="cash" size={11} />{t('cash.openRegisters', 'Cajas abiertas')}</div>
-          <div className="val mono">{openRegisters.length}</div>
-          <div className="delta muted">{t('cash.ofActiveBranches', 'de {{count}} sucursales activas', { count: BRANCHES.filter(b => b.status === 'active').length })}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="chart" size={11} />{t('cash.activeShiftSales', 'Ventas turno activo')}</div>
-          <div className="val mono">{fmt(totalSalesOpen)}</div>
-          <div className="delta muted">{openRegisters.reduce((s, r) => s + r.salesCash, 0) > 0 ? `${fmt(openRegisters.reduce((s, r) => s + r.salesCash, 0))} ${t('cash.cash', 'efectivo')}` : '—'}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="receipt" size={11} />{t('cash.closuresToday', 'Cortes hoy')}</div>
-          <div className="val mono">{closedRegisters.filter(r => r.closedAt?.startsWith(new Date().toISOString().slice(0, 10))).length}</div>
-          <div className="delta muted">{t('cash.dayClosures', 'Cierres del día')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="alert" size={11} />{t('cash.detectedDiffs', 'Diferencias detectadas')}</div>
-          <div className="val mono" style={{ color: closedRegisters.some(r => r.diff && r.diff !== 0) ? 'var(--warning)' : undefined }}>
-            {closedRegisters.filter(r => r.diff && r.diff !== 0).length}
+      {pending.length > 0 && (
+        <div className="alert" style={{ marginBottom: 16 }}>
+          <Icon name="alert" size={18} />
+          <div>
+            <strong>
+              {pending.length === 1
+                ? t('cash.pendingOne', 'Hay un turno de un día anterior sin cerrar')
+                : t('cash.pendingMany', 'Hay turnos de días anteriores sin cerrar')}
+            </strong>
+            <div className="body-small">
+              {pending.map(p => `${p.cashPointCode || '—'} · ${p.businessDate} · ${p.userName || '—'}`).join(' | ')}
+              {' — '}
+              {t('cash.pendingHint', 'Esas cajas no se pueden reabrir hasta cuadrar el arqueo de su día.')}
+            </div>
           </div>
-          <div className="delta muted">{t('cash.inLastClosures', 'En los últimos cortes')}</div>
         </div>
+      )}
+
+      <div className="stat-grid">
+        <StatCard
+          icon="cash" tone="pri"
+          label={t('cash.openRegisters', 'Cajas abiertas')}
+          value={openRegisters.length}
+          foot={t('cash.ofActiveBranches', 'de {{count}} sucursales activas', { count: BRANCHES.filter(b => b.status === 'active').length })}
+        />
+        <StatCard
+          icon="chart" tone="ter"
+          label={t('cash.activeShiftSales', 'Ventas turno activo')}
+          value={fmt(totalSalesOpen)}
+          foot={openRegisters.reduce((s, r) => s + r.salesCash, 0) > 0 ? `${fmt(openRegisters.reduce((s, r) => s + r.salesCash, 0))} ${t('cash.cash', 'efectivo')}` : '—'}
+        />
+        <StatCard
+          icon="receipt" tone="sec"
+          label={t('cash.closuresToday', 'Cortes hoy')}
+          value={closedRegisters.filter(r => r.closedAt?.startsWith(new Date().toISOString().slice(0, 10))).length}
+          foot={t('cash.dayClosures', 'Cierres del día')}
+        />
+        <StatCard
+          icon="alert" tone="err"
+          label={t('cash.detectedDiffs', 'Diferencias detectadas')}
+          valueColor={closedRegisters.some(r => r.diff && r.diff !== 0) ? 'var(--warning)' : undefined}
+          value={closedRegisters.filter(r => r.diff && r.diff !== 0).length}
+          foot={t('cash.inLastClosures', 'En los últimos cortes')}
+        />
       </div>
 
       {/* Tabs */}
@@ -326,11 +375,10 @@ export default function CashRegister({ pushToast }) {
           {openRegisters.length === 0 ? (
             <div className="empty" style={{ padding: '60px 20px' }}>
               <Icon name="cash" size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('cash.noOpenRegisters', 'No hay cajas abiertas')}</div>
-              <div className="muted" style={{ fontSize: 13, marginBottom: 20 }}>{t('cash.noOpenRegistersHint', 'Abre una caja para comenzar a registrar ventas')}</div>
-              <button className="btn accent" onClick={() => setShowOpen(true)}>
-                <Icon name="plus" size={12} />{t('cash.open', 'Abrir caja')}
-              </button>
+              <div style={{ fontWeight: 500, marginBottom: 4 }}>{t('cash.noOpenRegisters', 'No hay cajas abiertas')}</div>
+              <div className="muted" style={{ fontSize: 14, marginBottom: 20 }}>{t('cash.noOpenRegistersHint', 'Abre una caja para comenzar a registrar ventas')}</div>
+              <Button icon="plus" variant="accent" onClick={() => setShowOpen(true)}>{t('cash.open', 'Abrir caja')}
+              </Button>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
@@ -357,6 +405,7 @@ export default function CashRegister({ pushToast }) {
               <thead>
                 <tr>
                   <th>{t('common.branch', 'Sucursal')}</th>
+                  <th>{t('cash.cashPoint', 'Caja')}</th>
                   <th>{t('cash.cashier', 'Cajero')}</th>
                   <th>{t('cash.opening', 'Apertura')}</th>
                   <th>{t('cash.closing', 'Cierre')}</th>
@@ -372,6 +421,7 @@ export default function CashRegister({ pushToast }) {
                 ) : closedRegisters.map(r => (
                   <tr key={r.id}>
                     <td style={{ fontWeight: 500 }}>{r.branch}</td>
+                    <td>{r.cashPoint}</td>
                     <td className="muted">{r.cashier}</td>
                     <td className="mono muted">{r.openedAt}</td>
                     <td className="mono muted">{r.closedAt || '—'}</td>
@@ -380,7 +430,7 @@ export default function CashRegister({ pushToast }) {
                     <td className="right mono">{r.closingAmount != null ? fmt(r.closingAmount) : '—'}</td>
                     <td className="right">
                       {r.diff != null ? (
-                        <span className="mono" style={{ color: r.diff > 0 ? 'var(--success)' : r.diff < 0 ? 'var(--danger)' : 'var(--muted)', fontWeight: 600 }}>
+                        <span className="mono" style={{ color: r.diff > 0 ? 'var(--success)' : r.diff < 0 ? 'var(--danger)' : 'var(--muted)', fontWeight: 500 }}>
                           {r.diff >= 0 ? '+' : ''}{fmt(r.diff)}
                         </span>
                       ) : '—'}
@@ -394,7 +444,7 @@ export default function CashRegister({ pushToast }) {
       )}
 
       {showOpen && (
-        <OpenModal branches={BRANCHES} onSave={handleOpen} onClose={() => setShowOpen(false)} />
+        <OpenModal cashPoints={cashPoints} onSave={handleOpen} onClose={() => setShowOpen(false)} />
       )}
 
       {closing && (

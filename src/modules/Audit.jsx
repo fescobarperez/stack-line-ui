@@ -1,6 +1,7 @@
 // Stackline — Auditoría · Log de actividad
 import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
+import StatCard from '../components/StatCard.jsx';
 import { listAuditLog } from '../api/wave2.js';
 import { useTranslation } from 'react-i18next';
 
@@ -111,26 +112,31 @@ export default function Audit() {
 
       {/* Stats */}
       <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="clock" size={11} />{t('audit.actionsToday', 'Acciones hoy')}</div>
-          <div className="val mono">{todayCount}</div>
-          <div className="delta muted">{weekCount} {t('audit.thisWeek', 'esta semana')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="users" size={11} />{t('audit.activeUsers', 'Usuarios activos')}</div>
-          <div className="val mono">{activeUsers}</div>
-          <div className="delta muted">{t('audit.uniqueSessions', 'Sesiones únicas hoy')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="alert" size={11} />{t('audit.alertsCritical', 'Alertas / críticos')}</div>
-          <div className="val mono" style={{ color: alertCount > 0 ? 'var(--danger)' : undefined }}>{alertCount}</div>
-          <div className="delta muted">{t('audit.criticalActionsWeek', 'Acciones críticas esta semana')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="dashboard" size={11} />{t('audit.mostActiveModule', 'Módulo más activo')}</div>
-          <div className="val" style={{ fontSize: 20 }}>{MODULE_LABEL[moduleFreq] || '—'}</div>
-          <div className="delta muted">{t('audit.mostActivityToday', 'Mayor actividad hoy')}</div>
-        </div>
+        <StatCard
+          icon="clock" tone="pri"
+          label={t('audit.actionsToday', 'Acciones hoy')}
+          value={todayCount}
+          foot={<>{weekCount} {t('audit.thisWeek', 'esta semana')}</>}
+        />
+        <StatCard
+          icon="users" tone="ter"
+          label={t('audit.activeUsers', 'Usuarios activos')}
+          value={activeUsers}
+          foot={t('audit.uniqueSessions', 'Sesiones únicas hoy')}
+        />
+        <StatCard
+          icon="alert" tone="sec"
+          label={t('audit.alertsCritical', 'Alertas / críticos')}
+          valueColor={alertCount > 0 ? 'var(--danger)' : undefined}
+          value={alertCount}
+          foot={t('audit.criticalActionsWeek', 'Acciones críticas esta semana')}
+        />
+        <StatCard
+          icon="dashboard" tone="err"
+          label={t('audit.mostActiveModule', 'Módulo más activo')}
+          value={MODULE_LABEL[moduleFreq] || '—'}
+          foot={t('audit.mostActivityToday', 'Mayor actividad hoy')}
+        />
       </div>
 
       {/* Filtros */}

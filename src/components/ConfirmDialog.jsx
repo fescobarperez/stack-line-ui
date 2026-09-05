@@ -8,6 +8,7 @@
 // Requiere envolver la app con <ConfirmProvider> (ver main.jsx).
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
+import Button from './Button.jsx';
 
 const ConfirmContext = createContext(null);
 
@@ -74,10 +75,10 @@ export function ConfirmDialog({
         </div>
         {message && <div className="confirm-message">{message}</div>}
         <div className="confirm-actions">
-          <button className="btn btn-text" onClick={onCancel}>{cancelLabel}</button>
-          <button className={`btn ${danger ? 'filled-error' : 'accent'}`} onClick={onConfirm} autoFocus>
+          <Button variant="ghost" onClick={onCancel}>{cancelLabel}</Button>
+          <Button variant={danger ? 'error' : 'accent'} onClick={onConfirm} autoFocus>
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

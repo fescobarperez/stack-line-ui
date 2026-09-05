@@ -81,12 +81,12 @@
 
   "nav": {
     "sections": {
-      "OPERACIÓN": "OPERACIÓN",
-      "INVENTARIO": "INVENTARIO",
-      "ANÁLISIS": "ANÁLISIS",
+      "OPERACIÓN": "Operación",
+      "INVENTARIO": "Inventario",
+      "ANÁLISIS": "Análisis",
       "CRM": "CRM",
-      "CONTABILIDAD": "CONTABILIDAD",
-      "ADMINISTRACIÓN": "ADMINISTRACIÓN"
+      "CONTABILIDAD": "Contabilidad",
+      "ADMINISTRACIÓN": "Administración"
     },
     "dashboard": "Dashboard",
     "pos": "Punto de venta",

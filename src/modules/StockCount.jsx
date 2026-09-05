@@ -1,6 +1,8 @@
 // Stackline — Conteo Físico de Inventario
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
 import { useStockCounts, mapSession } from '../hooks/useStockCount.js';
 import { useBranches } from '../hooks/useMasters.js';
@@ -177,34 +179,39 @@ export default function StockCount({ pushToast }) {
           <div className="page-subtitle">Sesiones de conteo · verificación de stock · ajustes por diferencia</div>
         </div>
         <div className="page-head-actions">
-          <button className="btn accent" onClick={() => setNewModal(true)}>
-            <Icon name="plus" size={12} /> {t('stockcount.newCount', 'Nueva sesión')}
-          </button>
+          <Button icon="plus" variant="accent" onClick={() => setNewModal(true)}>{t('stockcount.newCount', 'Nueva sesión')}
+          </Button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="box" size={11} />Sesiones activas</div>
-          <div className="val mono">{active.length}</div>
-          <div className="delta muted">{completed.length} completadas</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="clock" size={11} />Productos pendientes</div>
-          <div className="val mono" style={{ color: pending > 0 ? 'var(--warning)' : undefined }}>{pending}</div>
-          <div className="delta muted">En sesiones en progreso</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="alert" size={11} />Discrepancias activas</div>
-          <div className="val mono" style={{ color: totalDisc > 0 ? 'var(--danger)' : undefined }}>{totalDisc}</div>
-          <div className="delta muted">Productos con diferencia</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="check" size={11} />Último conteo completo</div>
-          <div className="val" style={{ fontSize: 18 }}>30 abr</div>
-          <div className="delta muted">CNT-2026-001 · Zona 10</div>
-        </div>
+        <StatCard
+          icon="box" tone="pri"
+          label="Sesiones activas"
+          value={active.length}
+          foot={<>{completed.length} completadas</>}
+        />
+        <StatCard
+          icon="clock" tone="ter"
+          label="Productos pendientes"
+          valueColor={pending > 0 ? 'var(--warning)' : undefined}
+          value={pending}
+          foot="En sesiones en progreso"
+        />
+        <StatCard
+          icon="alert" tone="sec"
+          label="Discrepancias activas"
+          valueColor={totalDisc > 0 ? 'var(--danger)' : undefined}
+          value={totalDisc}
+          foot="Productos con diferencia"
+        />
+        <StatCard
+          icon="check" tone="err"
+          label="Último conteo completo"
+          value="30 abr"
+          foot="CNT-2026-001 · Zona 10"
+        />
       </div>
 
       {/* Tabs */}
@@ -221,9 +228,9 @@ export default function StockCount({ pushToast }) {
         activeSessions.length === 0 ? (
           <div className="card" style={{ padding: '48px 16px', textAlign: 'center' }}>
             <Icon name="box" size={28} style={{ color: 'var(--muted)', marginBottom: 12 }} />
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Sin sesiones activas</div>
-            <div className="muted" style={{ fontSize: 13, marginBottom: 16 }}>Crea una nueva sesión para iniciar un conteo físico</div>
-            <button className="btn accent" onClick={() => setNewModal(true)}><Icon name="plus" size={12} /> {t('stockcount.newCount', 'Nueva sesión')}</button>
+            <div style={{ fontWeight: 500, marginBottom: 4 }}>Sin sesiones activas</div>
+            <div className="muted" style={{ fontSize: 14, marginBottom: 16 }}>Crea una nueva sesión para iniciar un conteo físico</div>
+            <Button icon="plus" variant="accent" onClick={() => setNewModal(true)}>{t('stockcount.newCount', 'Nueva sesión')}</Button>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -235,15 +242,15 @@ export default function StockCount({ pushToast }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                        <span className="mono" style={{ fontWeight: 700, fontSize: 14 }}>{s.id}</span>
-                        <span className={`pill ${STATUS_CLASS[s.status]}`} style={{ fontSize: 9 }}>{STATUS_LABEL[s.status]}</span>
+                        <span className="mono" style={{ fontWeight: 500, fontSize: 14 }}>{s.id}</span>
+                        <span className={`badge-m3 ${STATUS_CLASS[s.status]}`}>{STATUS_LABEL[s.status]}</span>
                       </div>
-                      <div style={{ fontSize: 13 }}>{s.branch} · {s.categoryLabel}</div>
+                      <div style={{ fontSize: 14 }}>{s.branch} · {s.categoryLabel}</div>
                       <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{s.responsible} · {s.date}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-                        {prog.done}<span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>/{prog.total}</span>
+                      <div style={{ fontSize: 22, fontWeight: 400, fontFamily: 'var(--font-mono)' }}>
+                        {prog.done}<span className="muted" style={{ fontSize: 14, fontWeight: 400 }}>/{prog.total}</span>
                       </div>
                       <div className="muted" style={{ fontSize: 11 }}>productos contados</div>
                     </div>
@@ -290,17 +297,17 @@ export default function StockCount({ pushToast }) {
                 <tr><td colSpan={9} className="empty">Sin conteos completados aún</td></tr>
               ) : historySessions.map(s => (
                 <tr key={s.id}>
-                  <td><span className="mono" style={{ fontWeight: 600, fontSize: 12 }}>{s.id}</span></td>
-                  <td style={{ fontSize: 13 }}>{s.branch}</td>
-                  <td style={{ fontSize: 12 }}>{s.categoryLabel}</td>
-                  <td className="muted" style={{ fontSize: 12 }}>{s.responsible}</td>
-                  <td className="muted" style={{ fontSize: 12 }}>{s.date}</td>
-                  <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 13 }}>{s.lines.length || '35'}</td>
-                  <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 13, color: (s.discrepancies || 0) > 0 ? 'var(--danger)' : undefined }}>
+                  <td><span className="mono" style={{ fontWeight: 500, fontSize: 12 }}>{s.id}</span></td>
+                  <td>{s.branch}</td>
+                  <td>{s.categoryLabel}</td>
+                  <td className="muted">{s.responsible}</td>
+                  <td className="muted">{s.date}</td>
+                  <td className="num">{s.lines.length || '35'}</td>
+                  <td className="num" style={{ color: (s.discrepancies || 0)> 0 ? 'var(--danger)' : undefined }}>
                     {s.discrepancies ?? 0}
                   </td>
-                  <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 13 }}>{s.adjustedQty ?? 0}</td>
-                  <td><span className={`pill ${STATUS_CLASS[s.status]}`} style={{ fontSize: 9 }}>{STATUS_LABEL[s.status]}</span></td>
+                  <td className="num">{s.adjustedQty ?? 0}</td>
+                  <td><span className={`badge-m3 ${STATUS_CLASS[s.status]}`}>{STATUS_LABEL[s.status]}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -316,7 +323,7 @@ export default function StockCount({ pushToast }) {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div className="drawer-title">{selected.id}</div>
-                  <span className={`pill ${STATUS_CLASS[selected.status]}`} style={{ fontSize: 9 }}>{STATUS_LABEL[selected.status]}</span>
+                  <span className={`badge-m3 ${STATUS_CLASS[selected.status]}`}>{STATUS_LABEL[selected.status]}</span>
                 </div>
                 <div className="muted" style={{ fontSize: 12 }}>{selected.branch} · {selected.categoryLabel} · {selected.responsible}</div>
               </div>
@@ -352,11 +359,11 @@ export default function StockCount({ pushToast }) {
 
               {/* Tabla de líneas */}
               <div style={{ flex: 1, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: 'var(--surface-2)', position: 'sticky', top: 0 }}>
                       {[t('common.product', 'Producto'), 'Cat.', 'Sistema', 'Contado', 'Diferencia', t('common.notes', 'Notas')].map((h, i) => (
-                        <th key={h} style={{ padding: '7px 10px', textAlign: i >= 2 && i <= 4 ? 'center' : 'left', fontSize: 10, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
+                        <th key={h} style={{ padding: '7px 10px', textAlign: i>= 2 && i <= 4 ? 'center' : 'left', fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -370,12 +377,12 @@ export default function StockCount({ pushToast }) {
                         <tr key={line.sku} style={{ borderBottom: '1px solid var(--border)', background: hasDiff ? (diff < 0 ? 'rgba(185,28,28,.04)' : 'rgba(21,128,61,.04)') : undefined }}>
                           <td style={{ padding: '8px 10px' }}>
                             <div style={{ fontWeight: 500 }}>{line.name}</div>
-                            <div className="mono muted" style={{ fontSize: 10 }}>{line.sku}</div>
+                            <div className="mono muted" style={{ fontSize: 11 }}>{line.sku}</div>
                           </td>
                           <td style={{ padding: '8px 10px' }}>
-                            <span className="pill info" style={{ fontSize: 9, textTransform: 'capitalize' }}>{line.cat}</span>
+                            <span className="badge-m3 info" style={{ textTransform: 'capitalize' }}>{line.cat}</span>
                           </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                          <td className="mono center" style={{ padding: '8px 10px', fontWeight: 500 }}>
                             {line.systemQty}
                           </td>
                           <td style={{ padding: '6px 10px', textAlign: 'center' }}>
@@ -390,12 +397,12 @@ export default function StockCount({ pushToast }) {
                                   width: 68, textAlign: 'center',
                                   border: `1px solid ${hasDiff ? (diff < 0 ? 'var(--danger)' : 'var(--success)') : 'var(--border)'}`,
                                   borderRadius: 'var(--r-sm)', padding: '4px 6px',
-                                  fontFamily: 'var(--font-mono)', fontSize: 12.5,
+                                  fontFamily: 'var(--font-mono)', fontSize: 12,
                                   background: 'var(--surface)', color: 'var(--text)', outline: 'none',
                                 }}
                               />
                             ) : (
-                              <span className="mono" style={{ fontWeight: 600 }}>{line.countedQty ?? '—'}</span>
+                              <span className="mono" style={{ fontWeight: 500 }}>{line.countedQty ?? '—'}</span>
                             )}
                           </td>
                           <td style={{ padding: '8px 10px', textAlign: 'center' }}>
@@ -404,7 +411,7 @@ export default function StockCount({ pushToast }) {
                             ) : diff === 0 ? (
                               <span style={{ color: 'var(--success)', fontFamily: 'var(--font-mono)' }}>✓</span>
                             ) : (
-                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: diff < 0 ? 'var(--danger)' : 'var(--success)' }}>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, color: diff < 0 ? 'var(--danger)' : 'var(--success)' }}>
                                 {diff > 0 ? '+' : ''}{diff}
                               </span>
                             )}
@@ -418,7 +425,7 @@ export default function StockCount({ pushToast }) {
                                 style={{
                                   width: '100%', border: '1px solid var(--border)',
                                   borderRadius: 'var(--r-sm)', padding: '4px 8px',
-                                  fontSize: 11.5, background: 'var(--surface)',
+                                  fontSize: 12, background: 'var(--surface)',
                                   color: 'var(--text)', outline: 'none',
                                 }}
                               />
@@ -439,21 +446,21 @@ export default function StockCount({ pushToast }) {
                 const impactQ = disc.reduce((s, l) => s + Math.abs(l.countedQty - l.systemQty) * l.cost, 0);
                 return (
                   <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '12px 16px' }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Resumen de ajustes</div>
-                    <div style={{ display: 'flex', gap: 24, fontSize: 13 }}>
+                    <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 8 }}>Resumen de ajustes</div>
+                    <div style={{ display: 'flex', gap: 24, fontSize: 14 }}>
                       <div>
                         <span className="muted" style={{ fontSize: 11, display: 'block' }}>Productos con diferencia</span>
-                        <span style={{ fontWeight: 700, color: 'var(--danger)' }}>{disc.length}</span>
+                        <span style={{ fontWeight: 500, color: 'var(--danger)' }}>{disc.length}</span>
                       </div>
                       <div>
                         <span className="muted" style={{ fontSize: 11, display: 'block' }}>Unidades a ajustar</span>
-                        <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                        <span style={{ fontWeight: 500, fontFamily: 'var(--font-mono)' }}>
                           {disc.reduce((s, l) => s + Math.abs(l.countedQty - l.systemQty), 0)}
                         </span>
                       </div>
                       <div>
                         <span className="muted" style={{ fontSize: 11, display: 'block' }}>Impacto en inventario</span>
-                        <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--danger)' }}>
+                        <span style={{ fontWeight: 500, fontFamily: 'var(--font-mono)', color: 'var(--danger)' }}>
                           {Q(impactQ)}
                         </span>
                       </div>
@@ -471,21 +478,15 @@ export default function StockCount({ pushToast }) {
                     <span className="muted" style={{ fontSize: 12 }}>
                       {sessionProgress(selected).total - sessionProgress(selected).done} productos sin contar
                     </span>
-                    <button
-                      className="btn accent"
-                      disabled={sessionProgress(selected).pct < 100}
-                      onClick={() => finalizeCount(selected)}
-                    >
-                      <Icon name="check" size={13} /> Finalizar conteo
-                    </button>
+                    <Button icon="check" variant="accent" disabled={sessionProgress(selected).pct < 100} onClick={() => finalizeCount(selected)}>Finalizar conteo
+                    </Button>
                   </>
                 )}
                 {selected.status === 'review' && (
                   <>
-                    <button className="btn ghost" onClick={() => setSelected(null)}>{t('common.cancel', 'Cancelar')}</button>
-                    <button className="btn accent" onClick={() => applyAdjustments(selected)}>
-                      <Icon name="check" size={13} /> Aplicar ajustes al inventario
-                    </button>
+                    <Button variant="ghost" onClick={() => setSelected(null)}>{t('common.cancel', 'Cancelar')}</Button>
+                    <Button icon="check" variant="accent" onClick={() => applyAdjustments(selected)}>Aplicar ajustes al inventario
+                    </Button>
                   </>
                 )}
               </div>
@@ -557,11 +558,9 @@ function NewSessionModal({ branches = [], onClose, onSave }) {
           </div>
         </div>
         <div className="modal-foot">
-          <button className="btn ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-          <button className="btn accent" disabled={!valid}
-            onClick={() => onSave({ date, branchId: Number(branchId), category, categoryLabel: CAT_LABEL[category], responsible, notes })}>
-            <Icon name="check" size={13} /> Iniciar sesión
-          </button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+          <Button icon="check" variant="accent" disabled={!valid} onClick={() => onSave({ date, branchId: Number(branchId), category, categoryLabel: CAT_LABEL[category], responsible, notes })}>Iniciar sesión
+          </Button>
         </div>
       </div>
     </div>

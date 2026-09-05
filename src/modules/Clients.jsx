@@ -1,6 +1,8 @@
 // Stackline — Módulo de Clientes (CRM básico)
 import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
 import { useClients } from '../hooks/useMasters.js';
 import { usePayments } from '../hooks/useOperations.js';
@@ -85,9 +87,9 @@ function ClientForm({ initial = {}, onSave, onCancel }) {
           <textarea className="field-input" rows={3} value={form.notes} onChange={e => set('notes', e.target.value)} />
         </div>
       </div>
-      <div className="drawer-footer">
-        <button type="button" className="btn" onClick={onCancel}>{t('common.cancel', 'Cancelar')}</button>
-        <button type="submit" className="btn accent"><Icon name="check" size={12} />{t('common.save', 'Guardar')}</button>
+      <div className="drawer-foot">
+        <Button type="button" onClick={onCancel}>{t('common.cancel', 'Cancelar')}</Button>
+        <Button icon="check" variant="accent" type="submit">{t('common.save', 'Guardar')}</Button>
       </div>
     </form>
   );
@@ -110,7 +112,7 @@ function PaymentModal({ client, onSave, onClose }) {
       <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
           <div>
-            <div className="modal-title">{t('clients.payment.title', 'Registrar pago')}</div>
+            <h3>{t('clients.payment.title', 'Registrar pago')}</h3>
             <div className="muted" style={{ fontSize: 12 }}>{client.name}</div>
           </div>
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
@@ -119,7 +121,7 @@ function PaymentModal({ client, onSave, onClose }) {
           <div className="modal-body">
             <div className="info-row" style={{ marginBottom: 16 }}>
               <span className="muted">{t('clients.payment.pendingBalance', 'Saldo pendiente')}</span>
-              <span className="mono" style={{ color: 'var(--danger)', fontWeight: 600 }}>{fmt(client.balance)}</span>
+              <span className="mono" style={{ color: 'var(--danger)', fontWeight: 500 }}>{fmt(client.balance)}</span>
             </div>
             <div className="field" style={{ marginBottom: 12 }}>
               <label className="field-label">{t('clients.payment.amount', 'Monto del pago (Q) *')}</label>
@@ -144,9 +146,9 @@ function PaymentModal({ client, onSave, onClose }) {
               <input className="field-input" value={form.notes} onChange={e => set('notes', e.target.value)} />
             </div>
           </div>
-          <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-            <button type="submit" className="btn accent"><Icon name="cash" size={12} />{t('clients.payment.submit', 'Registrar pago')}</button>
+          <div className="modal-foot">
+            <Button type="button" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+            <Button icon="cash" variant="accent" type="submit">{t('clients.payment.submit', 'Registrar pago')}</Button>
           </div>
         </form>
       </div>
@@ -166,23 +168,22 @@ function ClientDetail({ client, payments, onClose, onEdit, onPayment }) {
     <div className="drawer">
       <div className="drawer-head">
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <div className="avatar" style={{ width: 40, height: 40, fontSize: 15, flexShrink: 0 }}>
+          <div className="avatar" style={{ width: 40, height: 40, fontSize: 16, flexShrink: 0 }}>
             {initials(client.name)}
           </div>
           <div>
             <div className="drawer-title">{client.name}</div>
             <div className="muted mono" style={{ fontSize: 11 }}>
-              NIT {client.nit} · <span className={`pill ${STATUS_CLASS[client.status]}`} style={{ fontSize: 10 }}>{STATUS_LABEL[client.status]}</span>
+              NIT {client.nit} · <span className={`badge-m3 ${STATUS_CLASS[client.status]}`}>{STATUS_LABEL[client.status]}</span>
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {client.balance > 0 && (
-            <button className="btn" onClick={onPayment}>
-              <Icon name="cash" size={12} />{t('clients.payment.title', 'Pago')}
-            </button>
+            <Button icon="cash" onClick={onPayment}>{t('clients.payment.title', 'Pago')}
+            </Button>
           )}
-          <button className="btn" onClick={onEdit}><Icon name="edit" size={12} />{t('common.edit', 'Editar')}</button>
+          <Button icon="edit" onClick={onEdit}>{t('common.edit', 'Editar')}</Button>
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
       </div>
@@ -200,13 +201,13 @@ function ClientDetail({ client, payments, onClose, onEdit, onPayment }) {
           {client.clientType !== 'CF' && (
             <div className="stat-card" style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span className="label"><Icon name="card" size={11} />{t('clients.drawer.availableCredit', 'Crédito disponible')}</span>
-                <span className={`pill ${usedPct > 90 ? 'danger' : usedPct > 70 ? 'warning' : 'success'}`} style={{ fontSize: 10 }}>
+                <span className="label"><Icon name="card" size={18} />{t('clients.drawer.availableCredit', 'Crédito disponible')}</span>
+                <span className={`badge-m3 ${usedPct > 90 ? 'danger' : usedPct > 70 ? 'warning' : 'success'}`}>
                   {usedPct.toFixed(0)}% usado
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span className="mono" style={{ fontSize: 20, fontWeight: 700 }}>{fmt(available)}</span>
+                <span className="mono" style={{ fontSize: 22, fontWeight: 400 }}>{fmt(available)}</span>
                 <span className="muted mono" style={{ fontSize: 12 }}>de {fmt(client.creditLimit)}</span>
               </div>
               <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
@@ -243,7 +244,7 @@ function ClientDetail({ client, payments, onClose, onEdit, onPayment }) {
             </div>
             <div className="detail-row">
               <span className="detail-label">{t('clients.drawer.labels.pendingBalance', 'Saldo pendiente')}</span>
-              <span className="mono" style={{ color: client.balance > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>
+              <span className="mono" style={{ color: client.balance > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 500 }}>
                 {fmt(client.balance)}
               </span>
             </div>
@@ -278,7 +279,7 @@ function ClientDetail({ client, payments, onClose, onEdit, onPayment }) {
                     <td className="mono muted">{p.date}</td>
                     <td>{METHOD_LABEL[p.paymentMethod] || p.paymentMethod}</td>
                     <td className="mono muted">{p.reference || '—'}</td>
-                    <td className="right mono" style={{ color: 'var(--success)', fontWeight: 600 }}>+{fmt(p.amount)}</td>
+                    <td className="right mono" style={{ color: 'var(--success)', fontWeight: 500 }}>+{fmt(p.amount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -367,36 +368,39 @@ export default function Clients({ pushToast }) {
           <div className="page-subtitle">{t('clients.subtitle', '{{count}} clientes registrados · CxC total', { count: clients.length })} <span className="mono">{fmt(totalBalance)}</span></div>
         </div>
         <div className="page-head-actions">
-          <button className="btn accent" onClick={() => setShowNew(true)}>
-            <Icon name="plus" size={12} />{t('clients.newClient', 'Nuevo cliente')}
-          </button>
+          <Button icon="plus" variant="accent" onClick={() => setShowNew(true)}>{t('clients.newClient', 'Nuevo cliente')}
+          </Button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="users" size={11} />{t('clients.kpis.total', 'Total clientes')}</div>
-          <div className="val mono">{clients.length}</div>
-          <div className="delta muted">{clients.filter(c => c.status === 'active').length} {t('common.active', 'activos').toLowerCase()}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="card" size={11} />{t('clients.kpis.balance', 'Saldo CxC total')}</div>
-          <div className="val mono" style={{ color: totalBalance > 0 ? 'var(--danger)' : undefined }}>{fmt(totalBalance)}</div>
-          <div className="delta muted">{cxcClients.length} clientes con saldo</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="chart" size={11} />Crédito otorgado</div>
-          <div className="val mono">{fmt(totalCreditLimit)}</div>
-          <div className="delta muted">Entre {clients.filter(c => c.creditLimit > 0).length} clientes</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="alert" size={11} />Clientes bloqueados</div>
-          <div className="val mono" style={{ color: clients.filter(c => c.status === 'blocked').length > 0 ? 'var(--danger)' : undefined }}>
-            {clients.filter(c => c.status === 'blocked').length}
-          </div>
-          <div className="delta muted">{clients.filter(c => c.status === 'inactive').length} {t('common.inactive', 'inactivos').toLowerCase()}</div>
-        </div>
+        <StatCard
+          icon="users" tone="pri"
+          label={t('clients.kpis.total', 'Total clientes')}
+          value={clients.length}
+          foot={<>{clients.filter(c => c.status === 'active').length} {t('common.active', 'activos').toLowerCase()}</>}
+        />
+        <StatCard
+          icon="card" tone="ter"
+          label={t('clients.kpis.balance', 'Saldo CxC total')}
+          valueColor={totalBalance > 0 ? 'var(--danger)' : undefined}
+          value={fmt(totalBalance)}
+          foot={<>{cxcClients.length} clientes con saldo</>}
+        />
+        <StatCard
+          icon="chart" tone="sec"
+          label="Crédito otorgado"
+          value={fmt(totalCreditLimit)}
+          foot={<>Entre {clients.filter(c => c.creditLimit > 0).length} clientes</>}
+        />
+        <StatCard
+          icon="alert" tone="err"
+          label="Clientes bloqueados"
+          valueColor={clients.filter(c => c.status === 'blocked').length > 0 ? 'var(--danger)' : undefined}
+          value={clients.filter(c => c.status === 'blocked').length}
+          foot={<>{clients.filter(c => c.status === 'inactive').length} {t('common.inactive', 'inactivos').toLowerCase()}</>}
+        />
       </div>
 
       {/* Tabs */}
@@ -463,13 +467,13 @@ export default function Clients({ pushToast }) {
                       </div>
                     </td>
                     <td className="mono muted">{c.nit}</td>
-                    <td><span className="pill neutral" style={{ fontSize: 10 }}>{TYPE_LABEL[c.clientType]}</span></td>
-                    <td className="muted" style={{ fontSize: 12 }}>{c.phone || c.email || '—'}</td>
-                    <td className="right mono muted">{c.creditLimit > 0 ? fmt(c.creditLimit) : '—'}</td>
-                    <td className="right mono" style={{ color: c.balance > 0 ? 'var(--danger)' : 'var(--muted)', fontWeight: c.balance > 0 ? 600 : 400 }}>
+                    <td><span className="badge-m3 neutral">{TYPE_LABEL[c.clientType]}</span></td>
+                    <td className="muted">{c.phone || c.email || '—'}</td>
+                    <td className="right mono muted">{c.creditLimit> 0 ? fmt(c.creditLimit) : '—'}</td>
+                    <td className="right mono" style={{ color: c.balance> 0 ? 'var(--danger)' : 'var(--muted)', fontWeight: c.balance > 0 ? 600 : 400 }}>
                       {fmt(c.balance)}
                     </td>
-                    <td><span className={`pill ${STATUS_CLASS[c.status]}`} style={{ fontSize: 10 }}>{STATUS_LABEL[c.status]}</span></td>
+                    <td><span className={`badge-m3 ${STATUS_CLASS[c.status]}`}>{STATUS_LABEL[c.status]}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -505,20 +509,18 @@ export default function Clients({ pushToast }) {
                         <span style={{ fontWeight: 500 }}>{c.name}</span>
                       </div>
                     </td>
-                    <td><span className="pill neutral" style={{ fontSize: 10 }}>{TYPE_LABEL[c.clientType]}</span></td>
-                    <td className="right mono muted">{c.creditLimit > 0 ? fmt(c.creditLimit) : '—'}</td>
-                    <td className="right mono" style={{ color: 'var(--danger)', fontWeight: 600 }}>{fmt(c.balance)}</td>
+                    <td><span className="badge-m3 neutral">{TYPE_LABEL[c.clientType]}</span></td>
+                    <td className="right mono muted">{c.creditLimit> 0 ? fmt(c.creditLimit) : '—'}</td>
+                    <td className="right mono" style={{ color: 'var(--danger)', fontWeight: 500 }}>{fmt(c.balance)}</td>
                     <td className="right">
-                      <span className={`pill ${pct > 90 ? 'danger' : pct > 70 ? 'warning' : 'success'}`} style={{ fontSize: 10 }}>
+                      <span className={`badge-m3 ${pct > 90 ? 'danger' : pct > 70 ? 'warning' : 'success'}`}>
                         {pct.toFixed(0)}%
                       </span>
                     </td>
-                    <td className="muted">{c.paymentTerms > 0 ? `${c.paymentTerms} días` : 'Contado'}</td>
+                    <td className="muted">{c.paymentTerms> 0 ? `${c.paymentTerms} días` : 'Contado'}</td>
                     <td>
-                      <button className="btn" style={{ fontSize: 11, padding: '3px 10px' }}
-                        onClick={e => { e.stopPropagation(); setSelected(c); setShowPayment(true); }}>
-                        <Icon name="cash" size={11} />{t('clients.payment.title', 'Pago')}
-                      </button>
+                      <Button size="sm" icon="cash" onClick={e => { e.stopPropagation(); setSelected(c); setShowPayment(true); }}>{t('clients.payment.title', 'Pago')}
+                      </Button>
                     </td>
                   </tr>
                 );
@@ -562,7 +564,7 @@ export default function Clients({ pushToast }) {
         <div className="modal-backdrop" onClick={() => setShowNew(false)}>
           <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
             <div className="modal-head">
-              <div className="modal-title">{t('clients.newClient', 'Nuevo cliente')}</div>
+              <h3>{t('clients.newClient', 'Nuevo cliente')}</h3>
               <button className="icon-btn" onClick={() => setShowNew(false)}><Icon name="x" /></button>
             </div>
             <ClientForm onSave={handleSaveNew} onCancel={() => setShowNew(false)} />

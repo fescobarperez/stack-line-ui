@@ -2,15 +2,19 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import { useAccounts, useJournalEntries, usePeriods } from '../hooks/useAccounting.js';
 
 const LEVEL_INDENT = { 1: 0, 2: 16, 3: 32, 4: 48, 5: 64 };
+// Jerarquía del árbol de cuentas sobre la escala M3: con solo dos pesos (400/500)
+// los 5 niveles se separan por peso, luego por tamaño y al final por color.
 const LEVEL_STYLE  = {
-  1: { fontWeight: 800, fontSize: 13, textTransform: 'uppercase', color: 'var(--text)' },
-  2: { fontWeight: 700, fontSize: 12.5, color: 'var(--text)' },
-  3: { fontWeight: 600, fontSize: 12, color: 'var(--text)' },
+  1: { fontWeight: 500, fontSize: 14, textTransform: 'uppercase', color: 'var(--text)' },
+  2: { fontWeight: 500, fontSize: 14, color: 'var(--text)' },
+  3: { fontWeight: 400, fontSize: 14, color: 'var(--text)' },
   4: { fontWeight: 400, fontSize: 12, color: 'var(--text)' },
-  5: { fontWeight: 400, fontSize: 11.5, color: 'var(--muted)' },
+  5: { fontWeight: 400, fontSize: 12, color: 'var(--muted)' },
 };
 const PERIOD_STATUS = { open: 'success', closed: 'neutral', locked: 'danger' };
 const ENTRY_STATUS  = { posted: 'success', draft: 'warning', reversed: 'neutral' };
@@ -35,7 +39,7 @@ function NewAccountModal({ accounts, onSave, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
-          <div className="modal-title">{t('accounting.newAccountTitle', 'Nueva cuenta contable')}</div>
+          <h3>{t('accounting.newAccountTitle', 'Nueva cuenta contable')}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
         <form onSubmit={handleSubmit}>
@@ -75,16 +79,16 @@ function NewAccountModal({ accounts, onSave, onClose }) {
                 </select>
               </div>
               <div className="field span-2">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
                   <input type="checkbox" checked={form.allowsEntries} onChange={e => set('allowsEntries', e.target.checked)} />
                   {t('accounting.allowsEntries', 'Permite registrar partidas directamente (cuenta de detalle)')}
                 </label>
               </div>
             </div>
           </div>
-          <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-            <button type="submit" className="btn accent"><Icon name="check" size={12} />{t('accounting.createAccount', 'Crear cuenta')}</button>
+          <div className="modal-foot">
+            <Button type="button" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+            <Button icon="check" variant="accent" type="submit">{t('accounting.createAccount', 'Crear cuenta')}</Button>
           </div>
         </form>
       </div>
@@ -122,7 +126,7 @@ function NewEntryModal({ accounts, periods, onSave, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 760 }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
-          <div className="modal-title">{t('accounting.newEntryTitle', 'Nueva partida de diario (manual)')}</div>
+          <h3>{t('accounting.newEntryTitle', 'Nueva partida de diario (manual)')}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
         <form onSubmit={handleSubmit}>
@@ -169,11 +173,11 @@ function NewEntryModal({ accounts, periods, onSave, onClose }) {
                       </select>
                     </td>
                     <td>
-                      <input type="number" min="0" step="0.01" className="field-input mono" style={{ textAlign: 'right', padding: '4px 8px', fontSize: 13 }}
+                      <input type="number" min="0" step="0.01" className="field-input mono" style={{ textAlign: 'right', padding: '4px 8px', fontSize: 14 }}
                         value={line.debit} onChange={e => setLine(idx, 'debit', e.target.value)} placeholder="0.00" />
                     </td>
                     <td>
-                      <input type="number" min="0" step="0.01" className="field-input mono" style={{ textAlign: 'right', padding: '4px 8px', fontSize: 13 }}
+                      <input type="number" min="0" step="0.01" className="field-input mono" style={{ textAlign: 'right', padding: '4px 8px', fontSize: 14 }}
                         value={line.credit} onChange={e => setLine(idx, 'credit', e.target.value)} placeholder="0.00" />
                     </td>
                     <td>
@@ -192,12 +196,12 @@ function NewEntryModal({ accounts, periods, onSave, onClose }) {
               </tbody>
               <tfoot>
                 <tr>
-                  <td style={{ padding: '8px 12px', fontWeight: 600, fontSize: 12, color: 'var(--muted)' }}>{t('accounting.totals', 'TOTALES')}</td>
-                  <td className="right mono" style={{ fontWeight: 700, padding: '8px 12px', color: totalDebit > 0 ? 'var(--text)' : 'var(--muted)' }}>{fmt(totalDebit)}</td>
-                  <td className="right mono" style={{ fontWeight: 700, padding: '8px 12px', color: totalCredit > 0 ? 'var(--text)' : 'var(--muted)' }}>{fmt(totalCredit)}</td>
+                  <td style={{ padding: '8px 12px', fontWeight: 500, color: 'var(--muted)' }}>{t('accounting.totals', 'TOTALES')}</td>
+                  <td className="right mono" style={{ fontWeight: 500, padding: '8px 12px', color: totalDebit> 0 ? 'var(--text)' : 'var(--muted)' }}>{fmt(totalDebit)}</td>
+                  <td className="right mono" style={{ fontWeight: 500, padding: '8px 12px', color: totalCredit> 0 ? 'var(--text)' : 'var(--muted)' }}>{fmt(totalCredit)}</td>
                   <td colSpan={2}>
                     {totalDebit > 0 && (
-                      <span className={`pill ${balanced ? 'success' : 'danger'}`} style={{ fontSize: 10 }}>
+                      <span className={`badge-m3 ${balanced ? 'success' : 'danger'}`}>
                         {balanced ? t('accounting.balanced', 'Balanceada') : `${t('accounting.difference', 'Diferencia')}: ${fmt(Math.abs(totalDebit - totalCredit))}`}
                       </span>
                     )}
@@ -205,15 +209,13 @@ function NewEntryModal({ accounts, periods, onSave, onClose }) {
                 </tr>
               </tfoot>
             </table>
-            <button type="button" className="btn" style={{ fontSize: 12 }} onClick={addLine}>
-              <Icon name="plus" size={11} />{t('accounting.addLine', 'Agregar línea')}
-            </button>
+            <Button size="sm" icon="plus" type="button" onClick={addLine}>{t('accounting.addLine', 'Agregar línea')}
+            </Button>
           </div>
-          <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-            <button type="submit" className="btn accent" disabled={!balanced}>
-              <Icon name="check" size={12} />{t('accounting.registerEntry', 'Registrar partida')}
-            </button>
+          <div className="modal-foot">
+            <Button type="button" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+            <Button icon="check" variant="accent" type="submit" disabled={!balanced}>{t('accounting.registerEntry', 'Registrar partida')}
+            </Button>
           </div>
         </form>
       </div>
@@ -233,7 +235,7 @@ function EntryDetail({ entry, onClose, onReverse }) {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {entry.status === 'posted' && (
-            <button className="btn" style={{ color: 'var(--danger)' }} onClick={() => onReverse(entry)}>{t('accounting.reverse', 'Revertir')}</button>
+            <Button style={{ color: 'var(--danger)' }} onClick={() => onReverse(entry)}>{t('accounting.reverse', 'Revertir')}</Button>
           )}
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
@@ -253,11 +255,11 @@ function EntryDetail({ entry, onClose, onReverse }) {
           )}
           <div className="detail-row">
             <span className="detail-label">{t('common.status', 'Estado')}</span>
-            <span className={`pill ${ENTRY_STATUS[entry.status]}`} style={{ fontSize: 10 }}>{entry.status}</span>
+            <span className={`badge-m3 ${ENTRY_STATUS[entry.status]}`}>{entry.status}</span>
           </div>
           <div className="detail-row">
             <span className="detail-label">{t('accounting.totalDebit', 'Total débito')}</span>
-            <span className="mono" style={{ fontWeight: 600 }}>{fmt(entry.totalDebit)}</span>
+            <span className="mono" style={{ fontWeight: 500 }}>{fmt(entry.totalDebit)}</span>
           </div>
         </div>
 
@@ -273,22 +275,22 @@ function EntryDetail({ entry, onClose, onReverse }) {
           <tbody>
             {entry.lines.map((line, idx) => (
               <tr key={idx}>
-                <td className="mono" style={{ fontSize: 11 }}>{line.accountCode}</td>
-                <td style={{ fontSize: 13 }}>{line.name}</td>
+                <td className="mono">{line.accountCode}</td>
+                <td>{line.name}</td>
                 <td className="right mono">
-                  {line.debit > 0 ? <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{fmt(line.debit)}</span> : <span className="muted">—</span>}
+                  {line.debit > 0 ? <span style={{ color: 'var(--accent)', fontWeight: 500 }}>{fmt(line.debit)}</span> : <span className="muted">—</span>}
                 </td>
                 <td className="right mono">
-                  {line.credit > 0 ? <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{fmt(line.credit)}</span> : <span className="muted">—</span>}
+                  {line.credit > 0 ? <span style={{ color: 'var(--danger)', fontWeight: 500 }}>{fmt(line.credit)}</span> : <span className="muted">—</span>}
                 </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={2} style={{ padding: '8px 12px', fontWeight: 600, fontSize: 12, color: 'var(--muted)', textAlign: 'right' }}>{t('accounting.totals', 'TOTALES')}</td>
-              <td className="right mono" style={{ fontWeight: 700 }}>{fmt(entry.totalDebit)}</td>
-              <td className="right mono" style={{ fontWeight: 700 }}>{fmt(entry.totalCredit)}</td>
+              <td colSpan={2} style={{ padding: '8px 12px', fontWeight: 500, color: 'var(--muted)', textAlign: 'right' }}>{t('accounting.totals', 'TOTALES')}</td>
+              <td className="right mono" style={{ fontWeight: 500 }}>{fmt(entry.totalDebit)}</td>
+              <td className="right mono" style={{ fontWeight: 500 }}>{fmt(entry.totalCredit)}</td>
             </tr>
           </tfoot>
         </table>
@@ -386,40 +388,42 @@ export default function Accounting({ pushToast }) {
         </div>
         <div className="page-head-actions">
           {tab === 'plan' && (
-            <button className="btn accent" onClick={() => setShowNewAccount(true)}>
-              <Icon name="plus" size={12} />{t('accounting.newAccount', 'Nueva cuenta')}
-            </button>
+            <Button icon="plus" variant="accent" onClick={() => setShowNewAccount(true)}>{t('accounting.newAccount', 'Nueva cuenta')}
+            </Button>
           )}
           {tab === 'partidas' && (
-            <button className="btn accent" onClick={() => setShowNewEntry(true)}>
-              <Icon name="plus" size={12} />{t('accounting.newEntry', 'Nueva partida')}
-            </button>
+            <Button icon="plus" variant="accent" onClick={() => setShowNewEntry(true)}>{t('accounting.newEntry', 'Nueva partida')}
+            </Button>
           )}
         </div>
       </div>
 
       {/* Stats */}
       <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="receipt" size={11} />{t('accounting.statVouchers', 'Comprobantes (período)')}</div>
-          <div className="val mono">{entries.length}</div>
-          <div className="delta muted">{entries.filter(e => e.type === 'auto').length} {t('accounting.automatic', 'automáticas')} · {entries.filter(e => e.type === 'manual').length} {t('accounting.manual', 'manuales')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="cash" size={11} />{t('accounting.statDebits', 'Total débitos registrados')}</div>
-          <div className="val mono">{`Q ${(totalAutoDebits / 1000).toFixed(0)}k`}</div>
-          <div className="delta muted">{t('accounting.automaticEntries', 'Partidas automáticas')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="tag" size={11} />{t('accounting.statAccounts', 'Cuentas en el catálogo')}</div>
-          <div className="val mono">{accounts.length}</div>
-          <div className="delta muted">{accounts.filter(a => a.allowsEntries).length} {t('accounting.detailAccounts', 'cuentas de detalle')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="calendar" size={11} />{t('accounting.statCurrentPeriod', 'Período actual')}</div>
-          <div className="val" style={{ fontSize: 15 }}>{openPeriod?.name || '—'}</div>
-          <div className="delta muted">{periods.filter(p => p.status === 'closed').length} {t('accounting.closedPeriods', 'períodos cerrados')}</div>
-        </div>
+        <StatCard
+          icon="receipt" tone="pri"
+          label={t('accounting.statVouchers', 'Comprobantes (período)')}
+          value={entries.length}
+          foot={`${entries.filter(e => e.type === 'auto').length} ${t('accounting.automatic', 'automáticas')} · ${entries.filter(e => e.type === 'manual').length} ${t('accounting.manual', 'manuales')}`}
+        />
+        <StatCard
+          icon="cash" tone="ter"
+          label={t('accounting.statDebits', 'Total débitos registrados')}
+          value={`Q ${(totalAutoDebits / 1000).toFixed(0)}k`}
+          foot={t('accounting.automaticEntries', 'Partidas automáticas')}
+        />
+        <StatCard
+          icon="tag" tone="sec"
+          label={t('accounting.statAccounts', 'Cuentas en el catálogo')}
+          value={accounts.length}
+          foot={`${accounts.filter(a => a.allowsEntries).length} ${t('accounting.detailAccounts', 'cuentas de detalle')}`}
+        />
+        <StatCard
+          icon="calendar" tone="err"
+          label={t('accounting.statCurrentPeriod', 'Período actual')}
+          value={openPeriod?.name || '—'}
+          foot={`${periods.filter(p => p.status === 'closed').length} ${t('accounting.closedPeriods', 'períodos cerrados')}`}
+        />
       </div>
 
       {/* Tabs */}
@@ -466,16 +470,16 @@ export default function Accounting({ pushToast }) {
                       </span>
                     </td>
                     <td style={{ paddingLeft: LEVEL_INDENT[a.level] || 0, ...LEVEL_STYLE[a.level] }}>{a.name}</td>
-                    <td className="muted" style={{ fontSize: 11 }}>{t('accounting.levelN', 'Nivel')} {a.level}</td>
+                    <td className="muted">{t('accounting.levelN', 'Nivel')} {a.level}</td>
                     <td>
-                      <span className={`pill ${a.normalBalance === 'debit' ? 'info' : 'warning'}`} style={{ fontSize: 10 }}>
+                      <span className={`badge-m3 ${a.normalBalance === 'debit' ? 'info' : 'warning'}`}>
                         {a.normalBalance === 'debit' ? t('accounting.debitLabel', 'Débito') : t('accounting.creditLabel', 'Crédito')}
                       </span>
                     </td>
                     <td>
                       {a.allowsEntries
-                        ? <span className="pill success" style={{ fontSize: 10 }}>{t('accounting.detail', 'Detalle')}</span>
-                        : <span className="pill neutral" style={{ fontSize: 10 }}>{t('accounting.grouping', 'Agrupadora')}</span>}
+                        ? <span className="badge-m3 success">{t('accounting.detail', 'Detalle')}</span>
+                        : <span className="badge-m3 neutral">{t('accounting.grouping', 'Agrupadora')}</span>}
                     </td>
                   </tr>
                 ))}
@@ -519,18 +523,18 @@ export default function Accounting({ pushToast }) {
                   <tr><td colSpan={7} className="empty">{t('accounting.noEntries', 'Sin partidas')}</td></tr>
                 ) : filteredEntries.map(e => (
                   <tr key={e.id} className="clickable" onClick={() => setSelected(e)}>
-                    <td className="mono muted" style={{ fontSize: 11 }}>#{e.id}</td>
+                    <td className="mono muted">#{e.id}</td>
                     <td className="mono muted">{fmtDate(e.date)}</td>
                     <td style={{ fontWeight: 500 }}>{e.description}</td>
-                    <td className="mono muted" style={{ fontSize: 11 }}>{e.reference || '—'}</td>
+                    <td className="mono muted">{e.reference || '—'}</td>
                     <td>
-                      <span className={`pill ${e.type === 'auto' ? 'info' : 'neutral'}`} style={{ fontSize: 10 }}>
+                      <span className={`badge-m3 ${e.type === 'auto' ? 'info' : 'neutral'}`}>
                         {TYPE_LABEL[e.type]}
                       </span>
                     </td>
                     <td className="right mono">{fmt(e.totalDebit)}</td>
                     <td>
-                      <span className={`pill ${ENTRY_STATUS[e.status]}`} style={{ fontSize: 10 }}>{e.status}</span>
+                      <span className={`badge-m3 ${ENTRY_STATUS[e.status]}`}>{e.status}</span>
                     </td>
                   </tr>
                 ))}
@@ -556,11 +560,11 @@ export default function Accounting({ pushToast }) {
             <tbody>
               {periods.map(p => (
                 <tr key={p.id}>
-                  <td style={{ fontWeight: 600 }}>{p.name}</td>
+                  <td style={{ fontWeight: 500 }}>{p.name}</td>
                   <td className="mono muted">{p.startDate}</td>
                   <td className="mono muted">{p.endDate}</td>
                   <td>
-                    <span className={`pill ${PERIOD_STATUS[p.status]}`} style={{ fontSize: 10 }}>
+                    <span className={`badge-m3 ${PERIOD_STATUS[p.status]}`}>
                       {p.status === 'open' ? t('accounting.open', 'Abierto') : p.status === 'closed' ? t('accounting.closed', 'Cerrado') : t('accounting.locked', 'Bloqueado')}
                     </span>
                   </td>

@@ -2,6 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { useVariants } from '../hooks/useVariants.js';
 import { useProducts } from '../hooks/useCatalog.js';
@@ -209,36 +211,39 @@ export default function Variants({ pushToast }) {
           <div className="page-subtitle">{t('variants.subtitle', 'Grupos de variantes · tamaño, peso, sabor · SKUs por variante')}</div>
         </div>
         <div className="page-head-actions">
-          <button className="btn accent" onClick={() => setGroupModal(true)}>
-            <Icon name="plus" size={12} /> {t('variants.newGroup', 'Nuevo grupo')}
-          </button>
+          <Button icon="plus" variant="accent" onClick={() => setGroupModal(true)}>{t('variants.newGroup', 'Nuevo grupo')}
+          </Button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="box" size={11} />{t('variants.variantGroups', 'Grupos de variantes')}</div>
-          <div className="val mono">{groups.length}</div>
-          <div className="delta muted">{totalVariants} {t('variants.totalVariants', 'variantes en total')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="alert" size={11} />{t('variants.groupsWithAlerts', 'Grupos con alertas')}</div>
-          <div className="val mono" style={{ color: alertGroups > 0 ? 'var(--danger)' : undefined }}>{alertGroups}</div>
-          <div className="delta muted">{outGroups} {t('variants.outOfStock', 'agotadas')} · {lowGroups} {t('variants.stockLow', 'stock bajo')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="chart" size={11} />{t('variants.mostUsedAttr', 'Tipo de atributo más usado')}</div>
-          <div className="val" style={{ fontSize: 20 }}>{t('variants.attrSize', 'Tamaño')}</div>
-          <div className="delta muted">5 {t('variants.of8groups', 'de 8 grupos')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="check" size={11} />{t('variants.variantCoverage', 'Cobertura de variantes')}</div>
-          <div className="val mono" style={{ color: 'var(--success)' }}>
-            {Math.round((groups.reduce((s, g) => s + g.variants.filter(v => v.active && v.stock > v.min).length, 0) / totalVariants) * 100)}%
-          </div>
-          <div className="delta muted">{t('variants.variantsWithStock', 'Variantes con stock suficiente')}</div>
-        </div>
+        <StatCard
+          icon="box" tone="pri"
+          label={t('variants.variantGroups', 'Grupos de variantes')}
+          value={groups.length}
+          foot={<>{totalVariants} {t('variants.totalVariants', 'variantes en total')}</>}
+        />
+        <StatCard
+          icon="alert" tone="ter"
+          label={t('variants.groupsWithAlerts', 'Grupos con alertas')}
+          valueColor={alertGroups > 0 ? 'var(--danger)' : undefined}
+          value={alertGroups}
+          foot={<>{outGroups} {t('variants.outOfStock', 'agotadas')} · {lowGroups} {t('variants.stockLow', 'stock bajo')}</>}
+        />
+        <StatCard
+          icon="chart" tone="sec"
+          label={t('variants.mostUsedAttr', 'Tipo de atributo más usado')}
+          value={t('variants.attrSize', 'Tamaño')}
+          foot={<>5 {t('variants.of8groups', 'de 8 grupos')}</>}
+        />
+        <StatCard
+          icon="check" tone="err"
+          label={t('variants.variantCoverage', 'Cobertura de variantes')}
+          valueColor={'var(--success)'}
+          value={<>{Math.round((groups.reduce((s, g) => s + g.variants.filter(v => v.active && v.stock > v.min).length, 0) / totalVariants) * 100)}%</>}
+          foot={t('variants.variantsWithStock', 'Variantes con stock suficiente')}
+        />
       </div>
 
       {/* Filtros */}
@@ -286,10 +291,8 @@ export default function Variants({ pushToast }) {
                 <div className="muted" style={{ fontSize: 12 }}>{selected.brand} · {ATTR_LABEL[selected.attrType]}</div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn" style={{ fontSize: 11 }}
-                  onClick={() => { setVariantModal(selected); }}>
-                  <Icon name="plus" size={11} /> {t('variants.variant', 'Variante')}
-                </button>
+                <Button size="sm" icon="plus" onClick={() => { setVariantModal(selected); }}>{t('variants.variant', 'Variante')}
+                </Button>
                 <button className="icon-btn" onClick={() => setSelected(null)}><Icon name="close" /></button>
               </div>
             </div>
@@ -321,7 +324,7 @@ export default function Variants({ pushToast }) {
                         <td><span className="sku">{v.sku}</span></td>
                         <td className="r num">{Q(v.price)}</td>
                         <td className="r num" style={{ color: 'var(--muted)' }}>{Q(v.cost)}</td>
-                        <td className="r num" style={{ fontWeight: 700, color: isOut ? 'var(--danger)' : isLow ? 'var(--warning)' : undefined }}>{v.stock}</td>
+                        <td className="r num" style={{ fontWeight: 500, color: isOut ? 'var(--danger)' : isLow ? 'var(--warning)' : undefined }}>{v.stock}</td>
                         <td className="r num" style={{ color: 'var(--muted)' }}>{v.min}</td>
                         <td>
                           <button className={`chip ${v.active ? 'active' : ''}`} style={{ height: 28, padding: '0 10px', fontSize: 12 }}
@@ -397,14 +400,9 @@ function GroupModal({ products = [], onClose, onSave }) {
           </div>
         </div>
         <div className="modal-foot">
-          <button className="btn ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-          <button className="btn accent" disabled={!valid}
-            onClick={() => {
-              const p = products.find(pp => String(pp.id) === String(productId));
-              onSave({ productId: Number(productId), name: p?.name || '', attrType });
-            }}>
-            <Icon name="check" size={13} /> {t('variants.addVariant', 'Agregar variante')}
-          </button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+          <Button icon="check" variant="accent" disabled={!valid} onClick={() => { const p = products.find(pp => String(pp.id) === String(productId)); onSave({ productId: Number(productId), name: p?.name || '', attrType }); }}>{t('variants.addVariant', 'Agregar variante')}
+          </Button>
         </div>
       </div>
     </div>
@@ -470,11 +468,9 @@ function VariantModal({ group, onClose, onSave }) {
           )}
         </div>
         <div className="modal-foot">
-          <button className="btn ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-          <button className="btn accent" disabled={!valid}
-            onClick={() => onSave({ label, sku, price: parseFloat(price), cost: parseFloat(cost), stock: parseInt(stock) || 0, min: parseInt(min) || 10 })}>
-            <Icon name="check" size={13} /> {t('variants.addVariant', 'Agregar variante')}
-          </button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+          <Button icon="check" variant="accent" disabled={!valid} onClick={() => onSave({ label, sku, price: parseFloat(price), cost: parseFloat(cost), stock: parseInt(stock) || 0, min: parseInt(min) || 10 })}>{t('variants.addVariant', 'Agregar variante')}
+          </Button>
         </div>
       </div>
     </div>

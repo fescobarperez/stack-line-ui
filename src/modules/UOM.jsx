@@ -2,8 +2,10 @@
 // Data-driven: catálogo de unidades → /api/uom/units (CRUD real). Las conversiones
 // por producto se editan localmente (el backend solo modela conversiones genéricas).
 import React, { useState, useMemo } from 'react';
+import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { useUomUnits } from '../hooks/useOperations.js';
 import { useProducts } from '../hooks/useCatalog.js';
@@ -54,7 +56,7 @@ function NewUomModal({ uoms, onSave, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ width: 380 }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
-          <span className="modal-title">{t('uom.newUomTitle', 'Nueva unidad de medida')}</span>
+          <h3>{t('uom.newUomTitle', 'Nueva unidad de medida')}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="close" /></button>
         </div>
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -79,10 +81,10 @@ function NewUomModal({ uoms, onSave, onClose }) {
           </div>
         </div>
         <div className="modal-foot">
-          <button className="btn-ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-          <button className="btn" disabled={!valid} onClick={() => onSave({ ...form, code: form.code.trim(), base: false, active: true })}>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+          <Button icon="check" variant="accent" disabled={!valid} onClick={() => onSave({ ...form, code: form.code.trim(), base: false, active: true })}>
             {t('common.save', 'Guardar')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -109,11 +111,11 @@ function AddConvModal({ product, uoms, onSave, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ width: 340 }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
-          <span className="modal-title">{t('uom.noUomAvailable', 'Sin UOM disponibles')}</span>
+          <h3>{t('uom.noUomAvailable', 'Sin UOM disponibles')}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="close" /></button>
         </div>
-        <div className="modal-body"><p style={{ color: 'var(--muted)', fontSize: 13 }}>{t('uom.allUomsConfigured', 'Todas las UOM activas ya están configuradas para este producto.')}</p></div>
-        <div className="modal-foot"><button className="btn" onClick={onClose}>{t('common.close', 'Cerrar')}</button></div>
+        <div className="modal-body"><p style={{ color: 'var(--muted)', fontSize: 14 }}>{t('uom.allUomsConfigured', 'Todas las UOM activas ya están configuradas para este producto.')}</p></div>
+        <div className="modal-foot"><Button onClick={onClose}>{t('common.close', 'Cerrar')}</Button></div>
       </div>
     </div>
   );
@@ -122,7 +124,7 @@ function AddConvModal({ product, uoms, onSave, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ width: 380 }} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
-          <span className="modal-title">{t('uom.addConversion', 'Agregar conversión')}</span>
+          <h3>{t('uom.addConversion', 'Agregar conversión')}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="close" /></button>
         </div>
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -137,7 +139,7 @@ function AddConvModal({ product, uoms, onSave, onClose }) {
             <input className="field-input" type="number" min="0.001" step="1" placeholder={`1 ${form.uom} = ? ${product.baseUom}`}
               value={form.factor} onChange={e => set('factor', e.target.value)} />
             {form.factor && Number(form.factor) > 0 && (
-              <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
                 1 {form.uom} = {form.factor} {product.baseUom}
               </div>
             )}
@@ -148,22 +150,21 @@ function AddConvModal({ product, uoms, onSave, onClose }) {
               value={form.price} onChange={e => set('price', e.target.value)} />
           </div>
           <div style={{ display: 'flex', gap: 20 }}>
-            <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5, cursor: 'pointer' }}>
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}>
               <input type="checkbox" checked={form.isPurchase} onChange={e => set('isPurchase', e.target.checked)} />
               {t('uom.purchaseUom', 'UOM de compra')}
             </label>
-            <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5, cursor: 'pointer' }}>
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}>
               <input type="checkbox" checked={form.isSale} onChange={e => set('isSale', e.target.checked)} />
               {t('uom.saleUom', 'UOM de venta')}
             </label>
           </div>
         </div>
         <div className="modal-foot">
-          <button className="btn-ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</button>
-          <button className="btn" disabled={!valid}
-            onClick={() => onSave({ uom: form.uom, factor: Number(form.factor), price: Number(form.price), isPurchase: form.isPurchase, isSale: form.isSale })}>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+          <Button icon="check" variant="accent" disabled={!valid} onClick={() => onSave({ uom: form.uom, factor: Number(form.factor), price: Number(form.price), isPurchase: form.isPurchase, isSale: form.isSale })}>
             {t('uom.add', 'Agregar')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -303,35 +304,34 @@ export default function UOM({ pushToast }) {
         </div>
         <div className="page-head-actions">
           {tab === 'catalog' && (
-            <button className="btn" onClick={() => setShowUomModal(true)}>
-              <Icon name="plus" size={12} /> {t('uom.newUnit', 'Nueva UOM')}
-            </button>
+            <Button icon="plus" variant="accent" onClick={() => setShowUomModal(true)}>{t('uom.newUnit', 'Nueva UOM')}
+            </Button>
           )}
         </div>
       </div>
 
       {/* KPIs */}
       <div className="stat-grid" style={{ marginBottom: 20 }}>
-        <div className="stat-card">
-          <div className="label">{t('uom.activeUoms', 'UOM activas')}</div>
-          <div className="value">{totalUoms}</div>
-          <div className="sub muted">{uoms.length} {t('uom.inCatalog', 'en catálogo')}</div>
-        </div>
-        <div className="stat-card">
-          <div className="label">{t('uom.multiUomProducts', 'Productos multi-UOM')}</div>
-          <div className="value">{multiCount}</div>
-          <div className="sub muted">{t('uom.withConversions', 'Con conversiones')}</div>
-        </div>
-        <div className="stat-card">
-          <div className="label">{t('uom.baseUomOnly', 'Solo UOM base')}</div>
-          <div className="value">{singleCount}</div>
-          <div className="sub muted">{t('uom.noExtraConversion', 'Sin conversión extra')}</div>
-        </div>
-        <div className="stat-card">
-          <div className="label">{t('uom.totalProducts', 'Total productos')}</div>
-          <div className="value">{products.length}</div>
-          <div className="sub muted">{t('uom.withUomConfigured', 'Con UOM configurada')}</div>
-        </div>
+        <StatCard
+          label={t('uom.activeUoms', 'UOM activas')}
+          value={totalUoms}
+          foot={<>{uoms.length} {t('uom.inCatalog', 'en catálogo')}</>}
+        />
+        <StatCard
+          label={t('uom.multiUomProducts', 'Productos multi-UOM')}
+          value={multiCount}
+          foot={t('uom.withConversions', 'Con conversiones')}
+        />
+        <StatCard
+          label={t('uom.baseUomOnly', 'Solo UOM base')}
+          value={singleCount}
+          foot={t('uom.noExtraConversion', 'Sin conversión extra')}
+        />
+        <StatCard
+          label={t('uom.totalProducts', 'Total productos')}
+          value={products.length}
+          foot={t('uom.withUomConfigured', 'Con UOM configurada')}
+        />
       </div>
 
       {/* Tabs */}
@@ -363,9 +363,9 @@ export default function UOM({ pushToast }) {
             pageSize={12}
             empty={t('uom.noUnits', 'Sin unidades')}
             actions={(u) => !u.base ? (
-              <button className="btn-text" style={{ height: 32, padding: '0 10px' }} onClick={() => toggleUomActive(u)}>
+              <Button variant="ghost" size="sm" onClick={() => toggleUomActive(u)}>
                 {u.active ? t('uom.deactivate', 'Desactivar') : t('uom.activate', 'Activar')}
-              </button>
+              </Button>
             ) : null}
           />
         </>
@@ -401,7 +401,7 @@ export default function UOM({ pushToast }) {
           <div className="drawer" style={{ width: 540 }} onClick={e => e.stopPropagation()}>
             <div className="drawer-head">
               <div>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{selected.name}</div>
+                <div style={{ fontWeight: 500, fontSize: 14 }}>{selected.name}</div>
                 <div className="mono muted" style={{ fontSize: 11, marginTop: 2 }}>{selected.sku}</div>
               </div>
               <button className="icon-btn" onClick={() => setSelected(null)}><Icon name="close" /></button>
@@ -409,10 +409,10 @@ export default function UOM({ pushToast }) {
 
             <div className="drawer-body">
               <div style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 12.5, color: 'var(--text-2)' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
                   {t('uom.baseUnit', 'Unidad base:')}
                 </span>
-                <span className="pill success">{selected.baseUom} — {uomByCode[selected.baseUom]?.name}</span>
+                <span className="badge-m3 success">{selected.baseUom} — {uomByCode[selected.baseUom]?.name}</span>
                 <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 'auto' }}>
                   {t('uom.stockInBase', 'El stock siempre se registra en la unidad base')}
                 </span>
@@ -442,7 +442,7 @@ export default function UOM({ pushToast }) {
                           <input
                             type="number" min="0.001" step="1"
                             className="field-input"
-                            style={{ width: 80, textAlign: 'center', padding: '3px 6px', fontSize: 12.5 }}
+                            style={{ width: 80, textAlign: 'center', padding: '3px 6px', fontSize: 12 }}
                             value={c.factor}
                             disabled={isBase}
                             onChange={e => updateConvField(c.uom, 'factor', Number(e.target.value))}
@@ -452,7 +452,7 @@ export default function UOM({ pushToast }) {
                           <input
                             type="number" min="0" step="0.01"
                             className="field-input"
-                            style={{ width: 90, textAlign: 'right', padding: '3px 6px', fontSize: 12.5 }}
+                            style={{ width: 90, textAlign: 'right', padding: '3px 6px', fontSize: 12 }}
                             value={c.price}
                             onChange={e => updateConvField(c.uom, 'price', Number(e.target.value))}
                           />
@@ -480,11 +480,11 @@ export default function UOM({ pushToast }) {
 
               {/* Equivalencias informativas */}
               <div className="card" style={{ padding: '10px 14px', marginBottom: 12, background: 'var(--surface-2)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--muted)', marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.05em', color: 'var(--muted)', marginBottom: 8 }}>
                   {t('uom.equivalences', 'EQUIVALENCIAS')}
                 </div>
                 {selected.convs.filter(c => c.uom !== selected.baseUom).map(c => (
-                  <div key={c.uom} style={{ fontSize: 12.5, color: 'var(--text-2)', marginBottom: 4 }}>
+                  <div key={c.uom} style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 4 }}>
                     1 <strong>{c.uom}</strong> = {c.factor} <strong>{selected.baseUom}</strong>
                     <span className="muted" style={{ marginLeft: 12 }}>
                       {t('uom.pricePerBase', 'Precio/unidad base:')} {Q(c.price / (c.factor || 1))}
@@ -496,14 +496,13 @@ export default function UOM({ pushToast }) {
                 )}
               </div>
 
-              <button className="btn-outline" style={{ width: '100%' }} onClick={() => setShowConvModal(true)}>
-                <Icon name="plus" size={12} /> {t('uom.addConversion', 'Agregar conversión')}
-              </button>
+              <Button icon="plus" full onClick={() => setShowConvModal(true)}>{t('uom.addConversion', 'Agregar conversión')}
+              </Button>
             </div>
 
             <div className="drawer-foot">
-              <button className="btn-ghost" onClick={() => setSelected(null)}>{t('common.cancel', 'Cancelar')}</button>
-              <button className="btn" onClick={saveProduct}>{t('uom.saveChanges', 'Guardar cambios')}</button>
+              <Button variant="ghost" onClick={() => setSelected(null)}>{t('common.cancel', 'Cancelar')}</Button>
+              <Button icon="check" variant="accent" onClick={saveProduct}>{t('uom.saveChanges', 'Guardar cambios')}</Button>
             </div>
           </div>
         </div>

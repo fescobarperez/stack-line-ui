@@ -2,6 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import Button from '../components/Button.jsx';
+import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { usePromotions } from '../hooks/useMarketing.js';
 import { createPromotion, updatePromotion } from '../api/marketing.js';
@@ -44,7 +46,7 @@ function PromoTypeBadge({ type }) {
   const t = TYPE_MAP[type];
   if (!t) return null;
   return (
-    <span className="pill" style={{gap:4}}>
+    <span className="badge-m3" style={{gap:4}}>
       <Icon name={t.icon} size={10}/>{t.label}
     </span>
   );
@@ -53,7 +55,7 @@ function PromoTypeBadge({ type }) {
 function StatusPill({ status }) {
   const cfg = STATUS_CFG[status] || STATUS_CFG.expired;
   return (
-    <span className={`pill ${cfg.pill}`}>
+    <span className={`badge-m3 ${cfg.pill}`}>
       {cfg.dot && <span className="dot"/>}{cfg.label}
     </span>
   );
@@ -113,7 +115,7 @@ export default function Promotions({ pushToast }) {
     { key: 'name', header: t('common.name', 'Nombre'), sortable: true, render: (p) => <span className="nm" style={{ whiteSpace: 'normal', display: 'block', maxWidth: 220 }}>{p.name}</span> },
     { key: 'type', header: t('common.type', 'Tipo'), render: (p) => <PromoTypeBadge type={p.type} /> },
     { key: 'appliesTo', header: t('promotions.appliesTo', 'Aplica a'), render: (p) => (
-      <div style={{ fontSize: 11.5 }}>
+      <div style={{ fontSize: 12 }}>
         {p.category && <span className="badge-m3" style={{ marginRight: 4 }}>{p.category}</span>}
         {p.product && <span style={{ color: 'var(--muted)' }}>{p.product}</span>}
         {!p.category && !p.product && <span className="muted">{t('promotions.entireCart', 'Todo el carrito')}</span>}
@@ -189,35 +191,39 @@ export default function Promotions({ pushToast }) {
           </div>
         </div>
         <div className="page-head-actions">
-          <button className="btn"><Icon name="download" size={12}/>{t('common.export', 'Exportar')}</button>
-          <button className="btn accent" onClick={() => { setShowNew(true); setStep(1); }}>
-            <Icon name="plus" size={12}/>{t('promotions.newPromo', 'Nueva promoción')}
-          </button>
+          <Button icon="download">{t('common.export', 'Exportar')}</Button>
+          <Button icon="plus" variant="accent" onClick={() => { setShowNew(true); setStep(1); }}>{t('promotions.newPromo', 'Nueva promoción')}
+          </Button>
         </div>
       </div>
 
       {/* KPIs */}
       <div className="stat-grid" style={{gridTemplateColumns:'repeat(4,1fr)', marginBottom:16}}>
-        <div className="stat">
-          <div className="label"><Icon name="tag" size={11}/>{t('promotions.activePromos', 'Promociones activas')}</div>
-          <div className="val mono" style={{fontSize:26, color:'var(--success)'}}>{summary.active}</div>
-          <div className="delta" style={{color:'var(--muted)'}}>{scheduledPromos.length} {t('promotions.scheduled', 'programadas')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="receipt" size={11}/>{t('promotions.totalUsesMonth', 'Usos totales (mes)')}</div>
-          <div className="val mono" style={{fontSize:26}}>{summary.totalUses.toLocaleString('es-GT')}</div>
-          <div className="delta up"><Icon name="arrowUp" size={11}/>12% {t('promotions.vsPrevMonth', 'vs mes anterior')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="cash" size={11}/>{t('promotions.totalClientSavings', 'Ahorro total clientes')}</div>
-          <div className="val mono" style={{fontSize:26}}>{Q(summary.totalSavings)}</div>
-          <div className="delta" style={{color:'var(--muted)'}}>{t('promotions.discountsApplied', 'Descuentos aplicados')}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><Icon name="chart" size={11}/>{t('promotions.avgSavingPerUse', 'Ahorro promedio/uso')}</div>
-          <div className="val mono" style={{fontSize:26}}>{Q(summary.avgSaving)}</div>
-          <div className="delta" style={{color:'var(--muted)'}}>{t('promotions.perPromoTicket', 'Por ticket con promo')}</div>
-        </div>
+        <StatCard
+          icon="tag" tone="pri"
+          label={t('promotions.activePromos', 'Promociones activas')}
+          valueColor={'var(--success)'}
+          value={summary.active}
+          foot={<>{scheduledPromos.length} {t('promotions.scheduled', 'programadas')}</>}
+        />
+        <StatCard
+          icon="receipt" tone="ter"
+          label={t('promotions.totalUsesMonth', 'Usos totales (mes)')}
+          value={summary.totalUses.toLocaleString('es-GT')}
+          trend={{ dir: 'up', label: <>12% {t('promotions.vsPrevMonth', 'vs mes anterior')}</> }}
+        />
+        <StatCard
+          icon="cash" tone="sec"
+          label={t('promotions.totalClientSavings', 'Ahorro total clientes')}
+          value={Q(summary.totalSavings)}
+          foot={t('promotions.discountsApplied', 'Descuentos aplicados')}
+        />
+        <StatCard
+          icon="chart" tone="err"
+          label={t('promotions.avgSavingPerUse', 'Ahorro promedio/uso')}
+          value={Q(summary.avgSaving)}
+          foot={t('promotions.perPromoTicket', 'Por ticket con promo')}
+        />
       </div>
 
       {/* Tabs */}
@@ -291,7 +297,7 @@ export default function Promotions({ pushToast }) {
                             <td><span className="nm" style={{whiteSpace:'normal', display:'block', maxWidth:200}}>{p.name}</span></td>
                             <td><PromoTypeBadge type={p.type}/></td>
                             <td className="r num">{p.uses}</td>
-                            <td className="r num" style={{color:'var(--success)', fontWeight:600}}>{Q(p.savings)}</td>
+                            <td className="r num" style={{ color:'var(--success)', fontWeight:500 }}>{Q(p.savings)}</td>
                             <td className="r num">{Q(p.savings/p.uses)}</td>
                             <td style={{minWidth:120}}>
                               <div className="prog" style={{width:90}}><i style={{width:`${barW}%`}}/></div>
@@ -353,23 +359,23 @@ export default function Promotions({ pushToast }) {
                 <PromoTypeBadge type={selPromo.type}/>
               </div>
 
-              <p style={{fontSize:13, color:'var(--text-2)', margin:'0 0 20px'}}>{selPromo.desc}</p>
+              <p style={{fontSize: 14, color:'var(--text-2)', margin:'0 0 20px'}}>{selPromo.desc}</p>
 
               {/* Valor de la promoción */}
-              <div style={{fontFamily:'var(--font-mono)', fontSize:10, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8}}>{t('promotions.promoValue', 'Valor de la promoción')}</div>
+              <div style={{fontFamily:'var(--font-mono)', fontSize: 11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8}}>{t('promotions.promoValue', 'Valor de la promoción')}</div>
               <div className="card" style={{marginBottom:20}}>
                 <div className="card-body" style={{padding:'12px 14px'}}>
-                  {selPromo.type === 'pct_desc'   && <div style={{fontSize:28, fontWeight:700, color:'var(--accent)'}}>{pct(selPromo.value)} <span style={{fontSize:14, fontWeight:400, color:'var(--muted)'}}>{t('promotions.discount', 'de descuento')}</span></div>}
-                  {selPromo.type === 'monto_fijo'  && <div style={{fontSize:28, fontWeight:700, color:'var(--accent)'}}>{Q(selPromo.value)} <span style={{fontSize:14, fontWeight:400, color:'var(--muted)'}}>{t('promotions.fixedDiscount', 'de descuento fijo')}</span></div>}
-                  {selPromo.type === 'nxm'         && <div style={{fontSize:28, fontWeight:700, color:'var(--accent)'}}>{selPromo.nxm_n}×{selPromo.nxm_m} <span style={{fontSize:14, fontWeight:400, color:'var(--muted)'}}>{t('promotions.nxmDesc', 'compra')} {selPromo.nxm_n}, {t('promotions.nxmTake', 'lleva')} {selPromo.nxm_m+selPromo.nxm_n}</span></div>}
-                  {selPromo.type === 'precio_esp'  && <div style={{fontSize:28, fontWeight:700, color:'var(--accent)'}}>{Q(selPromo.value)} <span style={{fontSize:14, fontWeight:400, color:'var(--muted)'}}>{t('promotions.specialPrice', 'precio especial')}</span></div>}
-                  {selPromo.type === 'combo'       && <div style={{fontSize:28, fontWeight:700, color:'var(--accent)'}}>{pct(selPromo.value)} <span style={{fontSize:14, fontWeight:400, color:'var(--muted)'}}>{t('promotions.inCombo', 'en combo')}</span></div>}
-                  {selPromo.type === 'min_compra'  && <div><div style={{fontSize:28, fontWeight:700, color:'var(--accent)'}}>{Q(selPromo.value)} <span style={{fontSize:14, fontWeight:400, color:'var(--muted)'}}>{t('promotions.discount', 'de descuento')}</span></div><div style={{fontSize:12, color:'var(--muted)', marginTop:4}}>{t('promotions.whenExceeding', 'al superar')} {Q(selPromo.minCompra)} {t('promotions.inTicket', 'en el ticket')}</div></div>}
+                  {selPromo.type === 'pct_desc'   && <div style={{fontSize:28, fontWeight: 400, color:'var(--accent)'}}>{pct(selPromo.value)} <span style={{fontSize:14, fontWeight:400, color:'var(--muted)'}}>{t('promotions.discount', 'de descuento')}</span></div>}
+                  {selPromo.type === 'monto_fijo'  && <div style={{fontSize:28, fontWeight: 400, color:'var(--accent)'}}>{Q(selPromo.value)} <span style={{fontSize:14, fontWeight:400, color:'var(--muted)'}}>{t('promotions.fixedDiscount', 'de descuento fijo')}</span></div>}
+                  {selPromo.type === 'nxm'         && <div style={{fontSize:28, fontWeight: 400, color:'var(--accent)'}}>{selPromo.nxm_n}×{selPromo.nxm_m} <span style={{fontSize:14, fontWeight:400, color:'var(--muted)'}}>{t('promotions.nxmDesc', 'compra')} {selPromo.nxm_n}, {t('promotions.nxmTake', 'lleva')} {selPromo.nxm_m+selPromo.nxm_n}</span></div>}
+                  {selPromo.type === 'precio_esp'  && <div style={{fontSize:28, fontWeight: 400, color:'var(--accent)'}}>{Q(selPromo.value)} <span style={{fontSize:14, fontWeight:400, color:'var(--muted)'}}>{t('promotions.specialPrice', 'precio especial')}</span></div>}
+                  {selPromo.type === 'combo'       && <div style={{fontSize:28, fontWeight: 400, color:'var(--accent)'}}>{pct(selPromo.value)} <span style={{fontSize:14, fontWeight:400, color:'var(--muted)'}}>{t('promotions.inCombo', 'en combo')}</span></div>}
+                  {selPromo.type === 'min_compra'  && <div><div style={{fontSize:28, fontWeight: 400, color:'var(--accent)'}}>{Q(selPromo.value)} <span style={{fontSize:14, fontWeight:400, color:'var(--muted)'}}>{t('promotions.discount', 'de descuento')}</span></div><div style={{fontSize:12, color:'var(--muted)', marginTop:4}}>{t('promotions.whenExceeding', 'al superar')} {Q(selPromo.minCompra)} {t('promotions.inTicket', 'en el ticket')}</div></div>}
                 </div>
               </div>
 
               {/* Condiciones */}
-              <div style={{fontFamily:'var(--font-mono)', fontSize:10, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8}}>{t('promotions.conditions', 'Condiciones')}</div>
+              <div style={{fontFamily:'var(--font-mono)', fontSize: 11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8}}>{t('promotions.conditions', 'Condiciones')}</div>
               <div className="detail-grid" style={{marginBottom:20}}>
                 {[
                   [t('promotions.appliesTo', 'Aplica a'),       selPromo.category || (selPromo.product ? selPromo.product : t('promotions.entireCart', 'Todo el carrito'))],
@@ -389,29 +395,32 @@ export default function Promotions({ pushToast }) {
               {/* Métricas */}
               {selPromo.uses > 0 && (
                 <>
-                  <div style={{fontFamily:'var(--font-mono)', fontSize:10, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8}}>{t('promotions.performance', 'Rendimiento')}</div>
+                  <div style={{fontFamily:'var(--font-mono)', fontSize: 11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8}}>{t('promotions.performance', 'Rendimiento')}</div>
                   <div className="stat-grid" style={{gridTemplateColumns:'1fr 1fr', gap:8}}>
-                    <div className="stat" style={{padding:'10px 12px'}}>
-                      <div className="label" style={{fontSize:10}}>{t('promotions.totalUses', 'Usos totales')}</div>
-                      <div className="val mono" style={{fontSize:20}}>{selPromo.uses}</div>
-                    </div>
-                    <div className="stat" style={{padding:'10px 12px'}}>
-                      <div className="label" style={{fontSize:10}}>{t('promotions.savingsGenerated', 'Ahorro generado')}</div>
-                      <div className="val mono" style={{fontSize:20, color:'var(--success)'}}>{Q(selPromo.savings)}</div>
-                    </div>
+                    <StatCard
+                      tone="pri"
+                      label={t('promotions.totalUses', 'Usos totales')}
+                      value={selPromo.uses}
+                    />
+                    <StatCard
+                      tone="ter"
+                      label={t('promotions.savingsGenerated', 'Ahorro generado')}
+                      valueColor={'var(--success)'}
+                      value={Q(selPromo.savings)}
+                    />
                   </div>
                 </>
               )}
             </div>
             <div className="drawer-foot">
-              <button className="btn ghost" onClick={() => setSelPromo(null)}>{t('common.close', 'Cerrar')}</button>
+              <Button variant="ghost" onClick={() => setSelPromo(null)}>{t('common.close', 'Cerrar')}</Button>
               {selPromo.status !== 'expired' && (
-                <button className="btn" onClick={() => handleToggle(selPromo)}>
+                <Button onClick={() => handleToggle(selPromo)}>
                   <Icon name={selPromo.status==='active'?'alert':'check'} size={12}/>
                   {selPromo.status === 'active' ? t('promotions.pause', 'Pausar') : t('promotions.activate', 'Activar')}
-                </button>
+                </Button>
               )}
-              <button className="btn accent"><Icon name="edit" size={12}/>{t('common.edit', 'Editar')}</button>
+              <Button icon="edit" variant="accent">{t('common.edit', 'Editar')}</Button>
             </div>
           </div>
         </>
@@ -426,7 +435,7 @@ export default function Promotions({ pushToast }) {
               <div className="row gap-6">
                 {[1,2,3].map(s => (
                   <span key={s} style={{
-                    width:22, height:22, borderRadius:'50%', fontSize:11, fontWeight:600,
+                    width:22, height:22, borderRadius:'50%', fontSize:11, fontWeight: 500,
                     display:'flex', alignItems:'center', justifyContent:'center',
                     background: step === s ? 'var(--accent)' : step > s ? 'var(--success)' : 'var(--surface-3)',
                     color: step >= s ? 'white' : 'var(--muted)',
@@ -442,7 +451,7 @@ export default function Promotions({ pushToast }) {
               {/* Paso 1: Tipo y valor */}
               {step === 1 && (
                 <>
-                  <div style={{fontFamily:'var(--font-mono)', fontSize:10, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12}}>{t('promotions.step1Title', 'Paso 1 — Tipo y valor de la promoción')}</div>
+                  <div style={{fontFamily:'var(--font-mono)', fontSize: 11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12}}>{t('promotions.step1Title', 'Paso 1 — Tipo y valor de la promoción')}</div>
                   <div className="form-grid">
                     <div className="field span-2">
                       <label className="field-label">{t('promotions.promoName', 'Nombre de la promoción')}</label>
@@ -460,7 +469,7 @@ export default function Promotions({ pushToast }) {
                           borderRadius:'var(--r-md)', cursor:'pointer', textAlign:'left',
                           color: form.type===t_item.id ? 'var(--accent-ink)' : 'var(--text)',
                         }}>
-                        <div style={{display:'flex', alignItems:'center', gap:7, fontWeight:600, fontSize:12, marginBottom:3}}>
+                        <div style={{display:'flex', alignItems:'center', gap:7, fontWeight: 500, fontSize:12, marginBottom:3}}>
                           <Icon name={t_item.icon} size={13}/>{t_item.label}
                         </div>
                         <div style={{fontSize:11, color:'var(--muted)'}}>{t_item.desc}</div>
@@ -533,7 +542,7 @@ export default function Promotions({ pushToast }) {
               {/* Paso 2: A qué aplica */}
               {step === 2 && (
                 <>
-                  <div style={{fontFamily:'var(--font-mono)', fontSize:10, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12}}>{t('promotions.step2Title', 'Paso 2 — ¿A qué aplica?')}</div>
+                  <div style={{fontFamily:'var(--font-mono)', fontSize: 11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12}}>{t('promotions.step2Title', 'Paso 2 — ¿A qué aplica?')}</div>
                   <div className="form-grid">
                     <div className="field">
                       <label className="field-label">{t('promotions.productCategory', 'Categoría de producto')}</label>
@@ -571,7 +580,7 @@ export default function Promotions({ pushToast }) {
               {/* Paso 3: Vigencia y horario */}
               {step === 3 && (
                 <>
-                  <div style={{fontFamily:'var(--font-mono)', fontSize:10, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12}}>{t('promotions.step3Title', 'Paso 3 — Vigencia y horario')}</div>
+                  <div style={{fontFamily:'var(--font-mono)', fontSize: 11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12}}>{t('promotions.step3Title', 'Paso 3 — Vigencia y horario')}</div>
                   <div className="form-grid">
                     <div className="field">
                       <label className="field-label">{t('promotions.startDate', 'Fecha inicio')}</label>
@@ -606,7 +615,7 @@ export default function Promotions({ pushToast }) {
                             border: form.dias.includes(i) ? '2px solid var(--accent)' : '1px solid var(--border)',
                             background: form.dias.includes(i) ? 'var(--accent)' : 'var(--surface)',
                             color: form.dias.includes(i) ? 'white' : 'var(--text-2)',
-                            cursor:'pointer', fontSize:11, fontWeight:600,
+                            cursor:'pointer', fontSize:11, fontWeight: 500,
                           }}>{d}</button>
                       ))}
                     </div>
@@ -614,14 +623,14 @@ export default function Promotions({ pushToast }) {
 
                   {/* Resumen */}
                   <div style={{marginTop:20, padding:'14px', background:'var(--surface-2)', borderRadius:'var(--r-md)', border:'1px solid var(--border)'}}>
-                    <div style={{fontFamily:'var(--font-mono)', fontSize:10, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8}}>{t('promotions.promoSummary', 'Resumen de la promoción')}</div>
-                    <div style={{fontSize:13, fontWeight:600, marginBottom:6}}>{form.name || t('promotions.noName', '(Sin nombre)')}</div>
+                    <div style={{fontFamily:'var(--font-mono)', fontSize: 11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8}}>{t('promotions.promoSummary', 'Resumen de la promoción')}</div>
+                    <div style={{fontSize: 14, fontWeight: 500, marginBottom:6}}>{form.name || t('promotions.noName', '(Sin nombre)')}</div>
                     <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
                       <PromoTypeBadge type={form.type}/>
-                      {form.category && <span className="pill">{form.category}</span>}
-                      <span className="pill">{form.clientType}</span>
-                      <span className="pill">{form.branches}</span>
-                      <span className="pill">{form.dateStart} → {form.dateEnd}</span>
+                      {form.category && <span className="badge-m3">{form.category}</span>}
+                      <span className="badge-m3">{form.clientType}</span>
+                      <span className="badge-m3">{form.branches}</span>
+                      <span className="badge-m3">{form.dateStart} → {form.dateEnd}</span>
                     </div>
                   </div>
                 </>
@@ -629,20 +638,18 @@ export default function Promotions({ pushToast }) {
             </div>
 
             <div className="modal-foot">
-              <button className="btn ghost" onClick={() => { setShowNew(false); setStep(1); }}>{t('common.cancel', 'Cancelar')}</button>
+              <Button variant="ghost" onClick={() => { setShowNew(false); setStep(1); }}>{t('common.cancel', 'Cancelar')}</Button>
               {step > 1 && (
-                <button className="btn" onClick={() => setStep(s => s - 1)}>
-                  <Icon name="chevronLeft" size={12}/>{t('promotions.previous', 'Anterior')}
-                </button>
+                <Button icon="chevronLeft" onClick={() => setStep(s => s - 1)}>{t('promotions.previous', 'Anterior')}
+                </Button>
               )}
               {step < 3 ? (
-                <button className="btn accent" onClick={() => setStep(s => s + 1)}>
+                <Button variant="accent" onClick={() => setStep(s => s + 1)}>
                   {t('promotions.next', 'Siguiente')}<Icon name="chevronRight" size={12}/>
-                </button>
+                </Button>
               ) : (
-                <button className="btn accent" onClick={handleSave}>
-                  <Icon name="check" size={12}/>{t('promotions.createPromo', 'Crear promoción')}
-                </button>
+                <Button icon="check" variant="accent" onClick={handleSave}>{t('promotions.createPromo', 'Crear promoción')}
+                </Button>
               )}
             </div>
           </div>
