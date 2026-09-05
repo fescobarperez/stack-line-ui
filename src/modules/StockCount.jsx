@@ -10,69 +10,6 @@ import { createStockCount, saveStockCountCounts, closeStockCount, getStockCount 
 
 const Q = v => `Q ${v.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
-const INIT_SESSIONS = [
-  {
-    id: 'CNT-2026-003',
-    date: '2026-05-24',
-    branch: 'Zona 10',
-    category: 'all',
-    categoryLabel: 'Todas las categorías',
-    responsible: 'Lucía Castillo',
-    status: 'in_progress',
-    notes: 'Conteo mensual — mayo 2026',
-    lines: [
-      { sku: '7501031125678', name: 'Coca-Cola 600ml',           cat: 'bebidas',   unit: 'unid', cost: 5.20,  systemQty: 98,  countedQty: 94,  notes: 'Caja dañada descartada' },
-      { sku: '7501031125890', name: 'Pepsi 600ml',               cat: 'bebidas',   unit: 'unid', cost: 4.80,  systemQty: 76,  countedQty: 76,  notes: '' },
-      { sku: '7501031145552', name: 'Agua Pura Salvavidas 600ml',cat: 'bebidas',   unit: 'unid', cost: 2.10,  systemQty: 240, countedQty: 245, notes: 'Caja extra sin registrar' },
-      { sku: '7501031165432', name: 'Cerveza Gallo 350ml',       cat: 'bebidas',   unit: 'unid', cost: 6.80,  systemQty: 156, countedQty: null, notes: '' },
-      { sku: '7501031199911', name: 'Café Soluble Frasco 200g',  cat: 'bebidas',   unit: 'unid', cost: 28.50, systemQty: 28,  countedQty: 28,  notes: '' },
-      { sku: '7501031134567', name: 'Jugo Naranja Del Frutal 1L',cat: 'bebidas',   unit: 'unid', cost: 11.20, systemQty: 8,   countedQty: null, notes: '' },
-      { sku: '7501055309856', name: 'Arroz Blanco Premium 1kg',  cat: 'abarrotes', unit: 'unid', cost: 8.20,  systemQty: 142, countedQty: 140, notes: '' },
-      { sku: '7501031311309', name: 'Frijol Negro 1kg',          cat: 'abarrotes', unit: 'unid', cost: 9.50,  systemQty: 88,  countedQty: 88,  notes: '' },
-      { sku: '7501055361816', name: 'Azúcar Estándar 2kg',       cat: 'abarrotes', unit: 'unid', cost: 13.00, systemQty: 64,  countedQty: 62,  notes: '' },
-      { sku: '7501008456789', name: 'Aceite Vegetal 900ml',      cat: 'abarrotes', unit: 'unid', cost: 16.40, systemQty: 12,  countedQty: null, notes: '' },
-      { sku: '7501055312987', name: 'Sal Refinada 1kg',          cat: 'abarrotes', unit: 'unid', cost: 3.80,  systemQty: 210, countedQty: 210, notes: '' },
-      { sku: '7501055365432', name: 'Pasta Spaghetti 200g',      cat: 'abarrotes', unit: 'unid', cost: 2.90,  systemQty: 188, countedQty: null, notes: '' },
-      { sku: '7501055333321', name: 'Harina de Maíz 1kg',        cat: 'abarrotes', unit: 'unid', cost: 6.10,  systemQty: 132, countedQty: null, notes: '' },
-      { sku: '7501035010123', name: 'Detergente Ariel 1kg',      cat: 'limpieza',  unit: 'unid', cost: 26.40, systemQty: 42,  countedQty: 45,  notes: 'Encontrado en bodega trasera' },
-      { sku: '7501035010130', name: 'Cloro Magia Blanca 1L',     cat: 'limpieza',  unit: 'unid', cost: 7.80,  systemQty: 88,  countedQty: null, notes: '' },
-      { sku: '7501035010161', name: 'Limpiador Pinol 900ml',     cat: 'limpieza',  unit: 'unid', cost: 10.40, systemQty: 5,   countedQty: 4,   notes: '' },
-    ],
-  },
-  {
-    id: 'CNT-2026-002',
-    date: '2026-05-22',
-    branch: 'Centro',
-    category: 'bebidas',
-    categoryLabel: 'Bebidas',
-    responsible: 'María Hernández',
-    status: 'review',
-    notes: 'Conteo parcial — sección bebidas',
-    lines: [
-      { sku: '7501031125678', name: 'Coca-Cola 600ml',           cat: 'bebidas', unit: 'unid', cost: 5.20,  systemQty: 98,  countedQty: 98,  notes: '' },
-      { sku: '7501031125890', name: 'Pepsi 600ml',               cat: 'bebidas', unit: 'unid', cost: 4.80,  systemQty: 76,  countedQty: 74,  notes: 'Botella rota' },
-      { sku: '7501031145552', name: 'Agua Pura Salvavidas 600ml',cat: 'bebidas', unit: 'unid', cost: 2.10,  systemQty: 240, countedQty: 240, notes: '' },
-      { sku: '7501031134567', name: 'Jugo Naranja Del Frutal 1L',cat: 'bebidas', unit: 'unid', cost: 11.20, systemQty: 8,   countedQty: 6,   notes: 'Caducados descartados' },
-      { sku: '7501031165432', name: 'Cerveza Gallo 350ml',       cat: 'bebidas', unit: 'unid', cost: 6.80,  systemQty: 156, countedQty: 161, notes: 'Incluye pedido no ingresado' },
-      { sku: '7501031199911', name: 'Café Soluble Frasco 200g',  cat: 'bebidas', unit: 'unid', cost: 28.50, systemQty: 28,  countedQty: 28,  notes: '' },
-    ],
-  },
-  {
-    id: 'CNT-2026-001',
-    date: '2026-04-30',
-    branch: 'Zona 10',
-    category: 'all',
-    categoryLabel: 'Todas las categorías',
-    responsible: 'Lucía Castillo',
-    status: 'completed',
-    notes: 'Conteo mensual — abril 2026',
-    discrepancies: 4,
-    adjustedQty: 12,
-    lines: [],
-  },
-];
-
 const STATUS_LABEL = { in_progress: 'En progreso', review: 'En revisión', completed: 'Completado', cancelled: 'Cancelado', scheduled: 'Programado' };
 const STATUS_CLASS = { in_progress: 'info', review: 'warning', completed: 'success', cancelled: 'danger', scheduled: 'neutral' };
 const CATS = ['all', 'abarrotes', 'bebidas', 'lacteos', 'limpieza', 'higiene', 'snacks'];

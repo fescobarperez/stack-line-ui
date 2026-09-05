@@ -25,6 +25,10 @@ function toSession({ token, user }, companyCode) {
       email: user.email,
       role: user.roleName || 'Usuario',
       perms: user.permissions || [],
+      // Nivel de autoridad: nulo = no aprueba nada. La UI oculta la bandeja.
+      authLevelId: user.authLevelId ?? null,
+      authLevelName: user.authLevelName || null,
+      authLevelRank: user.authLevelRank ?? null,
       branch: '',
     },
     company: {

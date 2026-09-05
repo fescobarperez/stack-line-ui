@@ -7,6 +7,8 @@ import { applyPromotions } from '../data/promotions.js';
 import { useProducts, useCategories } from '../hooks/useCatalog.js';
 import { useCashRegisters } from '../hooks/useOperations.js';
 import { sessionUser } from '../api/auth.js';
+import useAuthorization from '../hooks/useAuthorization.js';
+import AuthorizationDialog from '../components/AuthorizationDialog.jsx';
 import { createSale } from '../api/pos.js';
 import React, { useState as useStatePOS, useMemo as useMemoPOS } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -74,13 +76,21 @@ function POSModule({ pushToast }) {
   );
 
   const subtotal    = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const descManual  = discountType === '%' ? subtotal * (discount / 100) : discount;
+  // Acotado al subtotal: sin esto un 150% o un monto mayor da un total negativo.
+  const descManual  = Math.min(
+    discountType === '%' ? subtotal * (discount / 100) : discount,
+    subtotal,
+  );
+  // Lo que evalúa la regla de autorización: Q500 sobre una compra de Q600 es 83%.
+  const descManualPct = subtotal > 0 ? (descManual / subtotal) * 100 : 0;
   const descTotal   = descManual + totalPromoDiscount;
   const netGravable = (subtotal - descTotal) / 1.12;
   const iva         = (subtotal - descTotal) - netGravable;
   const total       = subtotal - descTotal;
   const change      = parseFloat(cashGiven || 0) - total;
   const totalItems  = cart.reduce((s, i) => s + i.qty, 0);
+
+  const { require: requireAuth, prompt: authPrompt } = useAuthorization();
 
   const handleCharge = async () => {
     if (!cart.length) return;
@@ -92,10 +102,40 @@ function POSModule({ pushToast }) {
       pushToast && pushToast('Abre una caja antes de cobrar', 'danger');
       return;
     }
+    // El descuento manual puede requerir autorización. El POS no conoce los
+    // umbrales: pregunta al motor y este decide si hace falta y de qué nivel.
+    let authId = null;
+    if (descManual > 0) {
+      try {
+        const auth = await requireAuth({
+          type: 'pos_discount',
+          branchId: openRegister.branchId,
+          amount: descManual,
+          percent: Number(descManualPct.toFixed(3)),
+          payload: { items: cart.length, subtotal, descManual },
+          reference: openRegister.id ? `TURNO-${openRegister.id}` : null,
+        });
+        if (!auth.granted) {
+          pushToast && pushToast(auth.pending
+            ? t('pos.authPending', 'Descuento enviado a autorización')
+            : t('pos.authDenied', 'Descuento no autorizado'), 'danger');
+          return;
+        }
+        authId = auth.id;
+      } catch (err) {
+        pushToast && pushToast(err.message, 'danger');
+        return;
+      }
+    }
     // Mapea el carrito a líneas con productId real (precio base; las promos son del front).
     const items = cart.map((i) => {
       const product = products.find((p) => p.sku === i.sku);
-      return { productId: product?.id, quantity: i.qty, unitPrice: i.price, discount: 0 };
+      return {
+        productId: product?.id, quantity: i.qty, unitPrice: i.price,
+        // Las promos aún no se persisten: su id sigue siendo el del mock del front
+        // (ver src/data/promotions.js), no el de la tabla `promotions`.
+        discount: 0, discountSource: 'none', promotionId: null,
+      };
     });
     if (items.some((it) => !it.productId)) {
       pushToast && pushToast('Algún producto no existe en el catálogo real', 'danger');
@@ -106,6 +146,8 @@ function POSModule({ pushToast }) {
         branchId: openRegister.branchId,
         cashRegisterId: openRegister.id,
         paymentMethod: PAY_METHOD_MAP[pay] || pay,
+        discountTotal: descManual,
+        authorizationId: authId,
         items,
       });
       setShowReceipt({
@@ -305,14 +347,19 @@ function POSModule({ pushToast }) {
               <span className="v">−{Q(ap.discount)}</span>
             </div>
           ))}
-          <div className="row" style={{ opacity: 0.4, pointerEvents: 'none' }}>
+          <div className="row">
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {t('pos.manualDiscount', 'Descuento manual')}
-              <select value={discountType} onChange={() => {}}>
+              <select value={discountType} onChange={e => setDiscountType(e.target.value)}>
                 <option value="%">%</option>
                 <option value="Q">Q</option>
               </select>
-              <input type="number" value={discount} min="0" readOnly />
+              <input
+                type="number" min="0" step="0.01"
+                max={discountType === '%' ? 100 : subtotal}
+                value={discount}
+                onChange={e => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+              />
             </span>
             <span className="v" style={{ color: 'var(--danger)' }}>−{Q(descManual)}</span>
           </div>
@@ -473,6 +520,10 @@ function POSModule({ pushToast }) {
           </div>
         </div>
       )}
+
+      {/* Diálogo de autorización en sitio. Se monta una vez; el hook decide
+          cuándo aparece y qué nivel exige. */}
+      <AuthorizationDialog prompt={authPrompt} />
     </div>
   );
 }

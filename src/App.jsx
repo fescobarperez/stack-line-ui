@@ -1,6 +1,7 @@
 // Stackline — App shell (ES module)
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { usePendingAuthorizations } from './hooks/useOperations.js';
 import { useTranslation } from 'react-i18next';
 import { canView } from './lib/permissions.js';
 import Icon from './components/Icon.jsx';
@@ -31,6 +32,7 @@ import Transfers from './modules/Transfers.jsx';
 import CxC from './modules/CxC.jsx';
 import CxP from './modules/CxP.jsx';
 import Audit from './modules/Audit.jsx';
+import Authorizations from './modules/Authorizations.jsx';
 import Returns from './modules/Returns.jsx';
 import Variants from './modules/Variants.jsx';
 import StockCount from './modules/StockCount.jsx';
@@ -130,6 +132,7 @@ const MODULE_MAP = {
   clients:      Clients,
   cxc:          CxC,
   cxp:          CxP,
+  authorizations: Authorizations,
   audit:        Audit,
   returns:      Returns,
   variants:     Variants,
@@ -158,6 +161,11 @@ const TWEAK_DEFAULTS = {
 
 export default function App({ session, onLogout }) {
   const navigate = useNavigate();
+  // El escudo solo existe para quien puede aprobar algo. Un cajero sin nivel
+  // de autoridad no debería ver una bandeja donde no puede decidir nada.
+  const canApprove = session?.user?.authLevelId != null;
+  // Pendientes de autorización: el contador del escudo en la barra superior.
+  const { items: pendingAuths } = usePendingAuthorizations();
   const location = useLocation();
   const { t, i18n } = useTranslation();
   const route = location.pathname.slice(1) || 'dashboard';
@@ -325,6 +333,23 @@ export default function App({ session, onLogout }) {
             <Button variant="ghost" title={t('common.language')} onClick={toggleLang} style={{ minWidth: 44, padding: '0 10px' }}>
               {i18n.language === 'es' ? 'ES' : 'EN'}
             </Button>
+            {canApprove && (
+              <button
+                className="icon-btn"
+                title={pendingAuths.length
+                  ? t('authz.pendingTitle', `Autorizaciones · ${pendingAuths.length} pendientes`)
+                  : t('authz.title', 'Autorizaciones')}
+                aria-label={t('authz.title', 'Autorizaciones')}
+                onClick={() => navigate('/authorizations')}
+              >
+                <Icon name="shield" size={24} />
+                {pendingAuths.length > 0 && (
+                  <span className="icon-btn-badge">
+                    {pendingAuths.length > 9 ? '9+' : pendingAuths.length}
+                  </span>
+                )}
+              </button>
+            )}
             <NotificationsPanel
               notifications={notifications}
               unreadCount={unreadCount}
