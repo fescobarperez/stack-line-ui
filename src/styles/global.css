@@ -539,6 +539,19 @@ html, body {
 .icon-btn:disabled { opacity: .38; cursor: not-allowed; }
 .icon-btn:disabled::after { opacity: 0; }
 
+/* Contador sobre un .icon-btn (notificaciones, autorizaciones). label-small. */
+.icon-btn-badge {
+  position: absolute; top: 5px; right: 5px;
+  min-width: 16px; height: 16px; padding: 0 3px;
+  border-radius: var(--shape-full);
+  background: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
+  font: 500 11px/1 var(--font-sans); letter-spacing: .5px;
+  font-variant-numeric: tabular-nums;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+
 .topbar-divider {
   width: 1px; height: 20px;
   background: var(--border);

@@ -7,6 +7,7 @@ import { listPayments, getAging } from '../api/receivables.js';
 import { listPurchaseInvoices, listSupplierPayments, listUnits } from '../api/wave2.js';
 import { listBankAccounts, listAssets } from '../api/wave3.js';
 import { listCashRegisters, listSales, listCashPoints, listPendingRegisters } from '../api/pos.js';
+import { listPendingAuthorizations, listAuthLevels } from '../api/authorizations.js';
 import { listMovements } from '../api/inventory.js';
 
 const EMPTY_AGING = {
@@ -19,7 +20,12 @@ function rows(page) {
 }
 
 function makeListHook(fetcher) {
-  return function useList(opts = {}) {
+  // Instancias montadas del hook. Sin esto cada componente tiene su copia y no
+  // se entera de los cambios de los demás: el contador del navbar no bajaba al
+  // resolver desde la bandeja porque eran dos instancias distintas.
+  const listeners = new Set();
+
+  const useList = function (opts = {}) {
     const [state, setState] = useState({ items: [], loading: true, error: null });
     const reload = useCallback(async () => {
       setState((s) => ({ ...s, loading: true }));
@@ -30,9 +36,17 @@ function makeListHook(fetcher) {
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [JSON.stringify(opts)]);
-    useEffect(() => { reload(); }, [reload]);
+    useEffect(() => {
+      reload();
+      listeners.add(reload);
+      return () => listeners.delete(reload);
+    }, [reload]);
     return { ...state, reload };
   };
+
+  /** Refresca TODAS las instancias montadas: `useX.refresh()`. */
+  useList.refresh = () => listeners.forEach((fn) => fn());
+  return useList;
 }
 
 export const usePurchaseOrders = makeListHook(listPurchaseOrders);
@@ -44,6 +58,10 @@ export const useBankAccounts = makeListHook(listBankAccounts);
 export const useCashRegisters = makeListHook(() => listCashRegisters());
 // Cajas físicas: cada fila trae `openSessionId` si ya está ocupada.
 export const useCashPoints = makeListHook(() => listCashPoints());
+// Bandeja de autorizaciones pendientes.
+export const usePendingAuthorizations = makeListHook(listPendingAuthorizations);
+// Niveles de autoridad configurados por la empresa.
+export const useAuthLevels = makeListHook(listAuthLevels);
 // Turnos abiertos de días anteriores: bloquean abrir hasta cuadrarlos.
 export const usePendingRegisters = makeListHook(listPendingRegisters);
 export const useSales = makeListHook(listSales);

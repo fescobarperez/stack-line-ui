@@ -27,18 +27,6 @@ const PUESTOS_BY_DEPT = {
   Ventas:        ['Vendedor', 'Supervisor de ventas', 'Ejecutivo de cuenta'],
   Contabilidad:  ['Contador', 'Auxiliar contable', 'Jefe de finanzas'],
 };
-
-const EMPLOYEES = [
-  { id:'EMP-001', name:'Carlos Méndez López',     dept:'Operaciones',    pos:'Cajero',               salary:4500,  status:'active', hired:'2023-01-15', dpi:'2456789012345', nit:'1234567-8', banco:'Industrial',  cuenta:'4120-xxxxx' },
-  { id:'EMP-002', name:'María García Pérez',       dept:'Operaciones',    pos:'Supervisor de caja',   salary:6800,  status:'active', hired:'2021-06-01', dpi:'3456789012346', nit:'2345678-9', banco:'BAC',         cuenta:'0102-xxxxx' },
-  { id:'EMP-003', name:'José Ramírez Fuentes',     dept:'Bodega',         pos:'Jefe de bodega',       salary:5200,  status:'active', hired:'2022-03-10', dpi:'1234567890123', nit:'3456789-0', banco:'Industrial',  cuenta:'4131-xxxxx' },
-  { id:'EMP-004', name:'Ana López Castillo',       dept:'Administración', pos:'Asistente administrativo', salary:5500, status:'active', hired:'2020-08-22', dpi:'9876543210987', nit:'4567890-1', banco:'G&T',      cuenta:'0201-xxxxx' },
-  { id:'EMP-005', name:'Pedro Morales Cifuentes',  dept:'Ventas',         pos:'Ejecutivo de cuenta',  salary:4800,  status:'active', hired:'2023-04-05', dpi:'5678901234567', nit:'5678901-2', banco:'Banrural',    cuenta:'1301-xxxxx' },
-  { id:'EMP-006', name:'Lucía Herrera Vásquez',    dept:'Contabilidad',   pos:'Auxiliar contable',    salary:5000,  status:'active', hired:'2022-11-01', dpi:'6789012345678', nit:'6789012-3', banco:'BAC',         cuenta:'0108-xxxxx' },
-  { id:'EMP-007', name:'Roberto Juárez Pérez',     dept:'Bodega',         pos:'Auxiliar de bodega',   salary:3500,  status:'active', hired:'2024-01-08', dpi:'7890123456789', nit:'7890123-4', banco:'Industrial',  cuenta:'4145-xxxxx' },
-  { id:'EMP-008', name:'Carmen Solís Armas',       dept:'Ventas',         pos:'Vendedor',             salary:4200,  status:'inactive', hired:'2021-09-14', dpi:'8901234567890', nit:'8901234-5', banco:'G&T',       cuenta:'0215-xxxxx' },
-];
-
 // ── Cálculo de planilla Guatemala ──────────────────────────────────────────
 function calcPayroll(emp) {
   const base   = emp.salary;
@@ -87,14 +75,6 @@ function printHTML(title, innerHTML) {
     </style></head><body>${innerHTML}<script>window.onload=function(){window.print();}</script></body></html>`);
   w.document.close();
 }
-
-const PAYROLL_HISTORY = [
-  { id:'PL-2026-04', month:3,  year:2026, period:'Abril 2026',     status:'cerrada', total:45820.50, employees:7 },
-  { id:'PL-2026-03', month:2,  year:2026, period:'Marzo 2026',     status:'cerrada', total:45820.50, employees:7 },
-  { id:'PL-2026-02', month:1,  year:2026, period:'Febrero 2026',   status:'cerrada', total:45820.50, employees:7 },
-  { id:'PL-2026-01', month:0,  year:2026, period:'Enero 2026',     status:'cerrada', total:45820.50, employees:7 },
-];
-
 // ══════════════════════════════════════════════════════════════════════════════
 export default function Payroll({ pushToast }) {
   const { t } = useTranslation();

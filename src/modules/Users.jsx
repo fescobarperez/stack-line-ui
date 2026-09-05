@@ -7,8 +7,12 @@ import { MODULES_PERM, ACTIONS, initPerms, permsToMatrix, matrixToPerms } from '
 import { useUsers, useRoles, useBranches } from '../hooks/useMasters.js';
 import { createUser, updateUser, createRole, updateRole } from '../api/security.js';
 import { useTranslation } from 'react-i18next';
+import { useAuthLevels } from '../hooks/useOperations.js';
 
-const initUserForm = () => ({ name: '', email: '', role: '', branch: '', password: '' });
+// managerId/authLevelId/branchIds son el árbol de autorizaciones: jefe directo,
+// nivel de autoridad y qué sucursales cubre como aprobador.
+const initUserForm = () => ({ name: '', email: '', role: '', branch: '', password: '',
+  managerId: '', authLevelId: '', branchIds: [] });
 const initRoleForm = () => ({ name: '', desc: '' });
 
 function userInitials(name) {
@@ -17,6 +21,7 @@ function userInitials(name) {
 
 export default function Users({ pushToast }) {
   const { t } = useTranslation();
+  const { items: authLevels } = useAuthLevels();
   const { items: usersData, reload: reloadUsers } = useUsers();
   const { items: rolesData, reload: reloadRoles } = useRoles();
   const { items: branchesData } = useBranches();
@@ -81,7 +86,8 @@ export default function Users({ pushToast }) {
 
   const openEditUser = (u) => {
     setEditingUser(u);
-    setUserForm({ name: u.name, email: u.email || '', role: u.role, branch: u.branch, password: '' });
+    setUserForm({ name: u.name, email: u.email || '', role: u.role, branch: u.branch, password: '',
+      managerId: u.managerId ?? '', authLevelId: u.authLevelId ?? '', branchIds: u.branchIds || [] });
     setUserErrors({});
     setShowUserModal(true);
   };
@@ -122,6 +128,9 @@ export default function Users({ pushToast }) {
       roleId,
       branchId,
       status: editingUser ? editingUser.status : 'active',
+      managerId: userForm.managerId ? Number(userForm.managerId) : null,
+      authLevelId: userForm.authLevelId ? Number(userForm.authLevelId) : null,
+      branchIds: userForm.branchIds.map(Number),
     };
     try {
       if (editingUser) await updateUser(editingUser.id, payload);
@@ -514,6 +523,42 @@ export default function Users({ pushToast }) {
                     {branchesData.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
                   </select>
                   {userErrors.branch && <span className="login-error">{userErrors.branch}</span>}
+                </div>
+                <div className="field">
+                  <label>{t('users.form.manager', 'Jefe directo')}</label>
+                  <select value={userForm.managerId} onChange={e => setUF('managerId', e.target.value)}>
+                    <option value="">{t('users.form.noManager', 'Sin jefe (raíz)')}</option>
+                    {users.filter(u => !editingUser || u.id !== editingUser.id)
+                      .map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>{t('users.form.authLevel', 'Nivel de autoridad')}</label>
+                  <select value={userForm.authLevelId} onChange={e => setUF('authLevelId', e.target.value)}>
+                    <option value="">{t('users.form.noLevel', 'Operativo (no aprueba)')}</option>
+                    {authLevels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </select>
+                </div>
+                <div className="field" style={{ gridColumn: '1 / -1' }}>
+                  <label>{t('users.form.scope', 'Sucursales que cubre como aprobador')}</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 4 }}>
+                    {branchesData.map(b => {
+                      const on = userForm.branchIds.includes(b.id);
+                      return (
+                        <Button
+                          key={b.id} type="button" size="sm"
+                          variant={on ? 'accent' : 'outlined'}
+                          icon={on ? 'check' : undefined}
+                          onClick={() => setUF('branchIds', on
+                            ? userForm.branchIds.filter(x => x !== b.id)
+                            : [...userForm.branchIds, b.id])}
+                        >{b.name}</Button>
+                      );
+                    })}
+                  </div>
+                  <span className="cfg-hint">
+                    {t('users.form.scopeHint', 'Sin sucursales marcadas no podrá autorizar nada.')}
+                  </span>
                 </div>
                 {!editingUser && (
                   <div className="field" style={{ gridColumn: '1 / -1' }}>

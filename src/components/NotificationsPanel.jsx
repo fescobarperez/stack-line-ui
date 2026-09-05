@@ -66,14 +66,7 @@ export function NotificationsPanel({ notifications, unreadCount, onMarkRead, onM
       >
         <Icon name="bell" />
         {unreadCount > 0 && (
-          <span style={{
-            position: 'absolute', top: 5, right: 5,
-            minWidth: 16, height: 16, borderRadius: 8,
-            background: 'var(--danger)', color: 'var(--md-sys-color-on-error)',
-            fontSize: 11, fontWeight: 500,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '0 3px', lineHeight: 1,
-          }}>
+          <span className="icon-btn-badge">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
