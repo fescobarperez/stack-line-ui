@@ -1,4 +1,4 @@
-# ERP MAYA — Design System
+# Stackline — Design System
 
 Retail ERP UI (Inventario · POS · Facturación · Reportería). Dense, desktop-first
 data screens. React 18. The look is driven by **CSS custom properties (design
@@ -45,7 +45,7 @@ Fonts stylesheet; nothing ships in the bundle by design.
 ## Build snippet
 
 ```jsx
-import { Icon } from 'erp-maya';
+import { Icon } from 'stackline';
 
 function Toolbar() {
   return (

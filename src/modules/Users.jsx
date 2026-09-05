@@ -1,6 +1,7 @@
-// ERP MAYA — Usuarios & Roles (ES module)
+// Stackline — Usuarios & Roles (ES module)
 import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
+import DataTable from '../components/DataTable.jsx';
 import { MODULES_PERM, ACTIONS, initPerms, permsToMatrix, matrixToPerms } from '../lib/permissions.js';
 import { useUsers, useRoles, useBranches } from '../hooks/useMasters.js';
 import { createUser, updateUser, createRole, updateRole } from '../api/security.js';
@@ -269,116 +270,60 @@ export default function Users({ pushToast }) {
             )}
           </div>
 
-          {/* Tabla */}
-          <div className="card">
-            {selected.length > 0 && (
-              <div style={{ padding: '8px 16px', background: 'var(--accent-soft)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-ink)' }}>
-                  {selected.length} {t('users.selected', 'seleccionado')}{selected.length > 1 ? 's' : ''}
-                </span>
-                <button className="btn sm ghost" onClick={() => setSelected([])}>{t('users.deselect', 'Deseleccionar')}</button>
-                <button className="btn sm danger" style={{ marginLeft: 'auto' }}>
-                  <Icon name="trash" size={12} />{t('users.deactivateSelected', 'Desactivar seleccionados')}
-                </button>
-              </div>
+          {/* Bulk actions */}
+          {selected.length > 0 && (
+            <div className="tbl-toolbar" style={{ borderRadius: 'var(--shape-md)', border: '1px solid var(--md-sys-color-outline-variant)', background: 'var(--md-sys-color-secondary-container)' }}>
+              <span className="label-large" style={{ color: 'var(--md-sys-color-on-secondary-container)' }}>
+                {selected.length} {t('users.selected', 'seleccionado')}{selected.length > 1 ? 's' : ''}
+              </span>
+              <button className="btn-text" onClick={() => setSelected([])}>{t('users.deselect', 'Deseleccionar')}</button>
+              <button className="btn-text" style={{ marginLeft: 'auto', color: 'var(--md-sys-color-error)' }}>
+                <Icon name="trash" size={18} />{t('users.deactivateSelected', 'Desactivar seleccionados')}
+              </button>
+            </div>
+          )}
+          <DataTable
+            rowKey={(u) => u.id}
+            rows={filteredUsers}
+            selectable
+            selected={selected}
+            onSelectedChange={setSelected}
+            density="compact"
+            pageSize={15}
+            emptyIcon="users"
+            empty={t('users.noMatch', 'Sin usuarios que coincidan con los filtros')}
+            columns={[
+              { key: 'name', header: t('common.user', 'Usuario'), sortable: true, render: (u) => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div className="avatar" style={{ width: 32, height: 32, fontSize: 12, background: u.status === 'active' ? 'var(--md-sys-color-primary-container)' : 'var(--surface-3)', color: u.status === 'active' ? 'var(--md-sys-color-on-primary-container)' : 'var(--muted)' }}>
+                    {userInitials(u.name)}
+                  </div>
+                  <div className="cell-stack">
+                    <span className="nm">{u.name}</span>
+                    <span className="sku">{u.email || u.name.toLowerCase().replace(/[^a-z\s]/g, '').split(' ').join('.').slice(0, 16) + '@stackline.gt'}</span>
+                  </div>
+                </div>
+              ) },
+              { key: 'role', header: t('users.role', 'Rol'), sortable: true, render: (u) => <RolePill role={u.role} /> },
+              { key: 'branch', header: t('common.branch', 'Sucursal'), sortable: true },
+              { key: 'last', header: t('users.lastAccess', 'Último acceso'), render: (u) => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {u.last === 'En línea' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success)', flexShrink: 0 }} />}
+                  <span className="sku">{u.last}</span>
+                </div>
+              ) },
+              { key: 'status', header: t('common.status', 'Estado'), sortable: true, render: (u) => u.status === 'active'
+                ? <span className="badge-m3 success">{t('common.active', 'Activo')}</span>
+                : <span className="badge-m3">{t('common.inactive', 'Inactivo')}</span> },
+            ]}
+            actions={(u) => (
+              <>
+                <button className="icon-btn" style={{ width: 32, height: 32 }} title={t('users.resetPassword', 'Restablecer contraseña')} onClick={() => pushToast('Correo de restablecimiento enviado', 'success')}><Icon name="lock" size={18} /></button>
+                <button className="icon-btn" style={{ width: 32, height: 32 }} title={t('users.editUser', 'Editar usuario')} onClick={() => openEditUser(u)}><Icon name="edit" size={18} /></button>
+                <button className="icon-btn" style={{ width: 32, height: 32 }} title={u.status === 'active' ? t('users.deactivateUser', 'Desactivar usuario') : t('users.activateUser', 'Activar usuario')} onClick={() => toggleUserStatus(u)}><Icon name={u.status === 'active' ? 'x' : 'check'} size={18} /></button>
+              </>
             )}
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th style={{ width: 36 }}>
-                    <input
-                      type="checkbox"
-                      checked={selected.length === filteredUsers.length && filteredUsers.length > 0}
-                      onChange={toggleAll}
-                    />
-                  </th>
-                  <th>{t('common.user', 'Usuario')}</th>
-                  <th>{t('users.role', 'Rol')}</th>
-                  <th>{t('common.branch', 'Sucursal')}</th>
-                  <th>{t('users.lastAccess', 'Último acceso')}</th>
-                  <th>{t('common.status', 'Estado')}</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={7}>
-                      <div className="empty" style={{ padding: '32px 0' }}>
-                        <Icon name="users" size={22} style={{ opacity: 0.25, marginBottom: 8 }} />
-                        <div>{t('users.noMatch', 'Sin usuarios que coincidan con los filtros')}</div>
-                      </div>
-                    </td>
-                  </tr>
-                ) : filteredUsers.map(u => (
-                  <tr key={u.id} style={{ opacity: u.status === 'inactive' ? 0.55 : 1 }}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selected.includes(u.id)}
-                        onChange={() => toggleSelect(u.id)}
-                      />
-                    </td>
-                    <td>
-                      <div className="row gap-8">
-                        <div
-                          className="avatar"
-                          style={{
-                            width: 28, height: 28, fontSize: 10.5,
-                            background: u.status === 'active' ? 'var(--accent-soft)' : 'var(--surface-3)',
-                            color: u.status === 'active' ? 'var(--accent-ink)' : 'var(--muted)',
-                          }}
-                        >
-                          {userInitials(u.name)}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 13 }}>{u.name}</div>
-                          <div className="muted code" style={{ fontSize: 10.5 }}>
-                            {(u.email || u.name.toLowerCase().replace(/[^a-z\s]/g, '').split(' ').join('.').slice(0, 16) + '@erpmaya.gt')}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <RolePill role={u.role} />
-                    </td>
-                    <td style={{ fontSize: 12.5 }}>{u.branch}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {u.last === 'En línea' && (
-                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success)', display: 'inline-block', flexShrink: 0 }} />
-                        )}
-                        <span className="muted" style={{ fontSize: 12 }}>{u.last}</span>
-                      </div>
-                    </td>
-                    <td>
-                      {u.status === 'active'
-                        ? <span className="pill success"><span className="dot" />{t('common.active', 'Activo')}</span>
-                        : <span className="pill"><span className="dot" style={{ background: 'var(--muted)' }} />{t('common.inactive', 'Inactivo')}</span>
-                      }
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 2 }}>
-                        <button className="icon-btn" title={t('users.resetPassword', 'Restablecer contraseña')} onClick={() => pushToast('Correo de restablecimiento enviado', 'success')}>
-                          <Icon name="lock" />
-                        </button>
-                        <button className="icon-btn" title={t('users.editUser', 'Editar usuario')} onClick={() => openEditUser(u)}>
-                          <Icon name="edit" />
-                        </button>
-                        <button
-                          className="icon-btn"
-                          title={u.status === 'active' ? t('users.deactivateUser', 'Desactivar usuario') : t('users.activateUser', 'Activar usuario')}
-                          onClick={() => toggleUserStatus(u)}
-                        >
-                          <Icon name={u.status === 'active' ? 'x' : 'check'} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          />
         </>
       )}
 
@@ -395,7 +340,7 @@ export default function Users({ pushToast }) {
                 </button>
               </div>
               <div className="card-body flush">
-                <table className="tbl">
+                <table className="mtable">
                   <thead>
                     <tr>
                       <th>{t('users.role', 'Rol')}</th>
@@ -448,7 +393,7 @@ export default function Users({ pushToast }) {
                   {users.filter(u => u.role === selectedRole.name).length === 0 ? (
                     <div className="empty" style={{ padding: 20 }}>{t('users.noAssignedUsers', 'Sin usuarios asignados')}</div>
                   ) : (
-                    <table className="tbl">
+                    <table className="mtable">
                       <tbody>
                         {users.filter(u => u.role === selectedRole.name).map(u => (
                           <tr key={u.id}>
@@ -489,7 +434,7 @@ export default function Users({ pushToast }) {
             </div>
             {selectedRole ? (
               <div className="card-body flush">
-                <table className="tbl">
+                <table className="mtable">
                   <thead>
                     <tr>
                       <th style={{ minWidth: 160 }}>{t('users.module', 'Módulo')}</th>
@@ -651,7 +596,7 @@ export default function Users({ pushToast }) {
                 {t('users.permissionsMatrix', 'Matriz de permisos')}
               </div>
               <div style={{ overflowX: 'auto' }}>
-                <table className="tbl">
+                <table className="mtable">
                   <thead>
                     <tr>
                       <th style={{ minWidth: 170 }}>{t('users.module', 'Módulo')}</th>

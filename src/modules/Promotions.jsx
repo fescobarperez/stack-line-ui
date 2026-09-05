@@ -1,7 +1,8 @@
-// ERP MAYA — Promotions / Motor de Promociones
+// Stackline — Promotions / Motor de Promociones
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import DataTable from '../components/DataTable.jsx';
 import { usePromotions } from '../hooks/useMarketing.js';
 import { createPromotion, updatePromotion } from '../api/marketing.js';
 
@@ -106,6 +107,33 @@ export default function Promotions({ pushToast }) {
     !search || p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.id.toLowerCase().includes(search.toLowerCase())
   );
+
+  const promoColumns = [
+    { key: 'id', header: 'ID', render: (p) => <span className="sku">{p.id}</span> },
+    { key: 'name', header: t('common.name', 'Nombre'), sortable: true, render: (p) => <span className="nm" style={{ whiteSpace: 'normal', display: 'block', maxWidth: 220 }}>{p.name}</span> },
+    { key: 'type', header: t('common.type', 'Tipo'), render: (p) => <PromoTypeBadge type={p.type} /> },
+    { key: 'appliesTo', header: t('promotions.appliesTo', 'Aplica a'), render: (p) => (
+      <div style={{ fontSize: 11.5 }}>
+        {p.category && <span className="badge-m3" style={{ marginRight: 4 }}>{p.category}</span>}
+        {p.product && <span style={{ color: 'var(--muted)' }}>{p.product}</span>}
+        {!p.category && !p.product && <span className="muted">{t('promotions.entireCart', 'Todo el carrito')}</span>}
+      </div>
+    ) },
+    { key: 'conditions', header: t('promotions.conditions', 'Condiciones'), render: (p) => (
+      <div className="sku">
+        <div>{p.clientType !== 'Todos' ? p.clientType : t('promotions.allClients', 'Todos los clientes')}</div>
+        <div>{p.branches}</div>
+        {p.minCompra > 0 && <div>{t('promotions.min', 'Min.')} {Q(p.minCompra)}</div>}
+        {p.horaInicio && <div>{p.horaInicio}–{p.horaFin}</div>}
+      </div>
+    ) },
+    { key: 'validity', header: t('promotions.validity', 'Vigencia'), render: (p) => (
+      <div className="sku"><div>{p.dateStart}</div><div style={{ color: 'var(--muted)' }}>→ {p.dateEnd}</div></div>
+    ) },
+    { key: 'uses', header: t('promotions.uses', 'Usos'), align: 'right', sortable: true, render: (p) => p.uses.toLocaleString('es-GT') },
+    { key: 'savings', header: t('promotions.savingsGenerated', 'Ahorro generado'), align: 'right', sortable: true, sortValue: (p) => p.savings, render: (p) => <span className="num" style={{ color: 'var(--success)' }}>{p.savings > 0 ? Q(p.savings) : '—'}</span> },
+    { key: 'status', header: t('common.status', 'Estado'), render: (p) => <StatusPill status={p.status} /> },
+  ];
 
   // Empaqueta el formulario del wizard al shape del backend.
   const toPayload = (f) => ({
@@ -218,61 +246,16 @@ export default function Promotions({ pushToast }) {
 
       {/* ── TAB: LISTA ── */}
       {tab !== 'efectividad' && (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>{t('common.name', 'Nombre')}</th>
-                <th>{t('common.type', 'Tipo')}</th>
-                <th>{t('promotions.appliesTo', 'Aplica a')}</th>
-                <th>{t('promotions.conditions', 'Condiciones')}</th>
-                <th>{t('promotions.validity', 'Vigencia')}</th>
-                <th className="num">{t('promotions.uses', 'Usos')}</th>
-                <th className="num">{t('promotions.savingsGenerated', 'Ahorro generado')}</th>
-                <th>{t('common.status', 'Estado')}</th>
-                <th/>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(p => (
-                <tr key={p.id} className="clickable" onClick={() => setSelPromo(p)}>
-                  <td className="mono">{p.id}</td>
-                  <td style={{fontWeight:500, maxWidth:220, whiteSpace:'normal'}}>{p.name}</td>
-                  <td><PromoTypeBadge type={p.type}/></td>
-                  <td>
-                    <div style={{fontSize:11.5}}>
-                      {p.category && <span className="pill" style={{marginRight:4}}>{p.category}</span>}
-                      {p.product && <span style={{color:'var(--muted)'}}>{p.product}</span>}
-                      {!p.category && !p.product && <span className="muted">{t('promotions.entireCart', 'Todo el carrito')}</span>}
-                    </div>
-                  </td>
-                  <td style={{fontSize:11, color:'var(--muted)'}}>
-                    <div>{p.clientType !== 'Todos' ? p.clientType : t('promotions.allClients', 'Todos los clientes')}</div>
-                    <div>{p.branches}</div>
-                    {p.minCompra > 0 && <div>{t('promotions.min', 'Min.')} {Q(p.minCompra)}</div>}
-                    {p.horaInicio && <div>{p.horaInicio}–{p.horaFin}</div>}
-                  </td>
-                  <td className="mono" style={{fontSize:11}}>
-                    <div>{p.dateStart}</div>
-                    <div style={{color:'var(--muted)'}}>→ {p.dateEnd}</div>
-                  </td>
-                  <td className="num">{p.uses.toLocaleString('es-GT')}</td>
-                  <td className="num" style={{color:'var(--success)'}}>{p.savings > 0 ? Q(p.savings) : '—'}</td>
-                  <td><StatusPill status={p.status}/></td>
-                  <td>
-                    <button className="btn sm ghost" onClick={ev=>{ev.stopPropagation();setSelPromo(p);}}>
-                      <Icon name="eye" size={11}/>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={10} className="empty">{t('promotions.noPromosInCategory', 'Sin promociones en esta categoría')}</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          rowKey={(p) => p.id}
+          columns={promoColumns}
+          rows={filtered}
+          density="compact"
+          pageSize={12}
+          onRowClick={(p) => setSelPromo(p)}
+          onView={(p) => setSelPromo(p)}
+          empty={t('promotions.noPromosInCategory', 'Sin promociones en esta categoría')}
+        />
       )}
 
       {/* ── TAB: EFECTIVIDAD ── */}
@@ -286,13 +269,13 @@ export default function Promotions({ pushToast }) {
                 <span className="meta">{t('promotions.currentMonth', 'Mes actual')}</span>
               </div>
               <div className="card-body flush">
-                <table className="tbl">
+                <table className="mtable">
                   <thead>
                     <tr>
                       <th>#</th><th>{t('promotions.promotionCol', 'Promoción')}</th><th>{t('common.type', 'Tipo')}</th>
-                      <th className="num">{t('promotions.uses', 'Usos')}</th>
-                      <th className="num">{t('promotions.totalSavings', 'Ahorro total')}</th>
-                      <th className="num">{t('promotions.savingsPerUse', 'Ahorro/uso')}</th>
+                      <th className="r">{t('promotions.uses', 'Usos')}</th>
+                      <th className="r">{t('promotions.totalSavings', 'Ahorro total')}</th>
+                      <th className="r">{t('promotions.savingsPerUse', 'Ahorro/uso')}</th>
                       <th>{t('promotions.effectivenessCol', 'Efectividad')}</th>
                     </tr>
                   </thead>
@@ -304,16 +287,14 @@ export default function Promotions({ pushToast }) {
                         const barW = Math.round((p.savings/maxSav)*100);
                         return (
                           <tr key={p.id}>
-                            <td className="mono" style={{color:'var(--muted)'}}>{String(i+1).padStart(2,'0')}</td>
-                            <td style={{fontWeight:500, maxWidth:200, whiteSpace:'normal'}}>{p.name}</td>
+                            <td><span className="sku">{String(i+1).padStart(2,'0')}</span></td>
+                            <td><span className="nm" style={{whiteSpace:'normal', display:'block', maxWidth:200}}>{p.name}</span></td>
                             <td><PromoTypeBadge type={p.type}/></td>
-                            <td className="num">{p.uses}</td>
-                            <td className="num" style={{color:'var(--success)', fontWeight:600}}>{Q(p.savings)}</td>
-                            <td className="num">{Q(p.savings/p.uses)}</td>
+                            <td className="r num">{p.uses}</td>
+                            <td className="r num" style={{color:'var(--success)', fontWeight:600}}>{Q(p.savings)}</td>
+                            <td className="r num">{Q(p.savings/p.uses)}</td>
                             <td style={{minWidth:120}}>
-                              <div className="bar" style={{width:90}}>
-                                <div style={{width:`${barW}%`}}/>
-                              </div>
+                              <div className="prog" style={{width:90}}><i style={{width:`${barW}%`}}/></div>
                             </td>
                           </tr>
                         );

@@ -1,4 +1,4 @@
-// ERP MAYA — Módulo de Clientes (CRM básico)
+// Stackline — Módulo de Clientes (CRM básico)
 import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
 import { useTranslation } from 'react-i18next';

@@ -1,9 +1,9 @@
 {
-  "name": "erp-maya",
+  "name": "stackline",
   "private": true,
   "version": "3.2.0",
   "type": "module",
-  "description": "ERP MAYA — Sistema retail (Inventario · POS · Facturación · Reportería)",
+  "description": "Stackline — Sistema retail (Inventario · POS · Facturación · Reportería)",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

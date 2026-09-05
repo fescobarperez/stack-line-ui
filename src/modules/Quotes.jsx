@@ -1,4 +1,4 @@
-// ERP MAYA — Cotizaciones a clientes + RFQ a proveedores
+// Stackline — Cotizaciones a clientes + RFQ a proveedores
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
@@ -646,9 +646,8 @@ export default function Quotes({ pushToast }) {
               <button key={val} onClick={() => switchType(val)}
                 style={{ padding: '5px 14px', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit',
                   borderRadius: 'calc(var(--r-md) - 2px)',
-                  background: quoteType === val ? 'var(--surface)' : 'transparent',
-                  color: quoteType === val ? 'var(--text)' : 'var(--text-2)',
-                  boxShadow: quoteType === val ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
+                  background: quoteType === val ? 'var(--md-sys-color-secondary-container)' : 'transparent',
+                  color: quoteType === val ? 'var(--md-sys-color-on-secondary-container)' : 'var(--text-2)',
                   transition: 'background .15s, color .15s',
                 }}>
                 {lbl}

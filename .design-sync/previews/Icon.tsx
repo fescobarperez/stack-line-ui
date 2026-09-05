@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icon } from 'erp-maya';
+import { Icon } from 'stackline';
 
 const NAMES = [
   'dashboard', 'pos', 'box', 'receipt', 'chart', 'settings', 'user', 'users',

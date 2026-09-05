@@ -1,8 +1,9 @@
-// ERP MAYA — Fixed Assets / Activos Fijos (Guatemala · Decreto 26-92 ISR)
+// Stackline — Fixed Assets / Activos Fijos (Guatemala · Decreto 26-92 ISR)
 // Data-driven: activos desde /api/fixed-assets (hook useAssets). La depreciación
 // línea recta se calcula en el front sobre el costo/fecha reales.
 import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
+import DataTable from '../components/DataTable.jsx';
 import { useAssets } from '../hooks/useOperations.js';
 import { useAccounts } from '../hooks/useAccounting.js';
 import { createAsset, updateAsset, disposeAsset } from '../api/wave3.js';
@@ -110,6 +111,29 @@ export default function FixedAssets({ pushToast }) {
   });
 
   const activeAssets = assets.filter(a => a.status === 'active');
+
+  const assetColumns = [
+    { key: 'id', header: t('common.code', 'Código'), render: (a) => <span className="sku">{a.id}</span> },
+    { key: 'name', header: t('fixedassets.asset', 'Activo'), sortable: true, render: (a) => (
+      <div className="cell-stack"><span className="nm">{a.name}</span>{a.serial && <span className="sku">S/N {a.serial}</span>}</div>
+    ) },
+    { key: 'cat', header: t('common.category', 'Categoría'), sortable: true, render: (a) => { const cat = CAT_MAP[a.cat]; return <span><span style={{ marginRight: 5 }}>{cat?.icon}</span>{cat?.name}</span>; } },
+    { key: 'branch', header: t('common.branch', 'Sucursal'), sortable: true, render: (a) => <span style={{ color: 'var(--muted)' }}>{a.branch}</span> },
+    { key: 'purchase', header: t('fixedassets.historicalCostShort', 'Costo histórico'), align: 'right', sortable: true, render: (a) => <span className="num">{Q(a.purchase)}</span> },
+    { key: 'deprAcum', header: t('fixedassets.accDeprShort', 'Dep. acumulada'), align: 'right', render: (a) => <span className="num" style={{ color: 'var(--danger)' }}>{a.status === 'active' ? Q(a.depr.deprAcum) : '—'}</span> },
+    { key: 'valorLibros', header: t('fixedassets.bookValue', 'Valor en libros'), align: 'right', sortable: true, sortValue: (a) => a.depr.valorLibros, render: (a) => <span className="num" style={{ fontWeight: 600, color: a.depr.fullyDepr ? 'var(--muted)' : undefined }}>{a.status === 'active' ? Q(a.depr.valorLibros) : '—'}</span> },
+    { key: 'pctDep', header: t('fixedassets.pctDepr', '% Dep.'), render: (a) => {
+      if (a.status !== 'active') return null;
+      const barW = Math.round(a.depr.pctDepAcum * 100);
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 120 }}>
+          <div className="prog" style={{ width: 90 }}><i style={{ width: `${barW}%`, background: barW >= 90 ? 'var(--danger)' : barW >= 60 ? 'var(--warning)' : 'var(--accent)' }} /></div>
+          <span className="sku">{barW}%</span>
+        </div>
+      );
+    } },
+    { key: 'status', header: t('common.status', 'Estado'), sortable: true, render: (a) => <span className={`badge-m3 ${a.status === 'active' ? 'success' : a.status === 'baja' ? 'error' : 'warning'}`}>{STATUS_LABELS[a.status]}</span> },
+  ];
 
   const summary = useMemo(() => ({
     totalCosto:   activeAssets.reduce((s, a) => s + a.purchase,        0),
@@ -262,76 +286,16 @@ export default function FixedAssets({ pushToast }) {
           </div>
 
           {/* Tabla */}
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>{t('common.code', 'Código')}</th>
-                  <th>{t('fixedassets.asset', 'Activo')}</th>
-                  <th>{t('common.category', 'Categoría')}</th>
-                  <th>{t('common.branch', 'Sucursal')}</th>
-                  <th className="num">{t('fixedassets.historicalCostShort', 'Costo histórico')}</th>
-                  <th className="num">{t('fixedassets.accDeprShort', 'Dep. acumulada')}</th>
-                  <th className="num">{t('fixedassets.bookValue', 'Valor en libros')}</th>
-                  <th>{t('fixedassets.pctDepr', '% Dep.')}</th>
-                  <th>{t('common.status', 'Estado')}</th>
-                  <th/>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(a => {
-                  const cat = CAT_MAP[a.cat];
-                  const barW = Math.round(a.depr.pctDepAcum * 100);
-                  return (
-                    <tr key={a.id} className="clickable" onClick={() => setSelAsset(a)}>
-                      <td className="mono">{a.id}</td>
-                      <td>
-                        <div style={{fontWeight:500}}>{a.name}</div>
-                        {a.serial && <div className="mono muted" style={{fontSize:10}}>S/N {a.serial}</div>}
-                      </td>
-                      <td>
-                        <span style={{marginRight:5}}>{cat?.icon}</span>
-                        <span style={{fontSize:12}}>{cat?.name}</span>
-                      </td>
-                      <td className="muted">{a.branch}</td>
-                      <td className="num">{Q(a.purchase)}</td>
-                      <td className="num" style={{color:'var(--danger)'}}>
-                        {a.status === 'active' ? Q(a.depr.deprAcum) : '—'}
-                      </td>
-                      <td className="num" style={{fontWeight:600,
-                        color: a.depr.fullyDepr ? 'var(--muted)' : 'var(--text)'}}>
-                        {a.status === 'active' ? Q(a.depr.valorLibros) : '—'}
-                      </td>
-                      <td style={{minWidth:120}}>
-                        {a.status === 'active' && (
-                          <div>
-                            <div className="bar" style={{width:90, display:'inline-block', verticalAlign:'middle', marginRight:6}}>
-                              <div style={{width:`${barW}%`,
-                                background: barW >= 90 ? 'var(--danger)' : barW >= 60 ? 'var(--warning)' : 'var(--accent)'}}/>
-                            </div>
-                            <span className="mono" style={{fontSize:10}}>{barW}%</span>
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`pill ${STATUS_PILL[a.status] || ''}`}>
-                          <span className="dot"/>{STATUS_LABELS[a.status]}
-                        </span>
-                      </td>
-                      <td>
-                        <button className="btn sm ghost" onClick={ev => { ev.stopPropagation(); setSelAsset(a); }}>
-                          <Icon name="eye" size={11}/>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <tr><td colSpan={10} className="empty">{t('fixedassets.noAssets', 'Sin activos')}</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            rowKey={(a) => a.id}
+            columns={assetColumns}
+            rows={filtered}
+            density="compact"
+            pageSize={12}
+            onRowClick={(a) => setSelAsset(a)}
+            onView={(a) => setSelAsset(a)}
+            empty={t('fixedassets.noAssets', 'Sin activos')}
+          />
         </>
       )}
 
@@ -350,7 +314,7 @@ export default function FixedAssets({ pushToast }) {
               </div>
             </div>
             <div className="tbl-wrap">
-              <table className="tbl" style={{fontSize:11.5}}>
+              <table className="mtable" style={{fontSize:11.5}}>
                 <thead>
                   <tr>
                     <th>{t('common.code', 'Código')}</th>
@@ -410,7 +374,7 @@ export default function FixedAssets({ pushToast }) {
               <span className="meta">{`${String(CUR_MONTH).padStart(2,'0')}/${CUR_YEAR}`}</span>
             </div>
             <div className="card-body">
-              <table className="tbl">
+              <table className="mtable">
                 <thead>
                   <tr><th>{t('fixedassets.account', 'Cuenta')}</th><th>{t('common.description', 'Descripción')}</th><th className="num">{t('fixedassets.debit', 'Débito')}</th><th className="num">{t('fixedassets.credit', 'Crédito')}</th></tr>
                 </thead>
@@ -626,7 +590,7 @@ export default function FixedAssets({ pushToast }) {
                     </div>
                     <div className="card" style={{marginBottom:16}}>
                       <div className="card-body" style={{padding:0}}>
-                        <table className="tbl" style={{fontSize:12}}>
+                        <table className="mtable" style={{fontSize:12}}>
                           <tbody>
                             <tr><td>{t('fixedassets.deprRate', 'Tasa de depreciación')}</td><td className="num">{pct(d.rate)}/{t('fixedassets.year', 'año')}</td></tr>
                             <tr><td>{t('fixedassets.annualDepr', 'Depreciación anual')}</td><td className="num">{Q(d.deprAnual)}</td></tr>

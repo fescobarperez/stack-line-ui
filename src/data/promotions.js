@@ -1,4 +1,4 @@
-// ERP MAYA — Promotions data + engine (shared between POS and Promotions module)
+// Stackline — Promotions data + engine (shared between POS and Promotions module)
 
 const today = new Date();
 const fmtDate = (d) => d.toISOString().slice(0, 10);

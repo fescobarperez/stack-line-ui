@@ -1,4 +1,4 @@
-// ERP MAYA — App shell (ES module)
+// Stackline — App shell (ES module)
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,7 @@ import {
   TweakRadio,
   TweakButton,
 } from './components/TweaksPanel.jsx';
+import Logo from './components/Logo.jsx';
 
 import { useNotifications, NotificationsPanel } from './components/NotificationsPanel.jsx';
 import GlobalSearch from './components/GlobalSearch.jsx';
@@ -56,13 +57,13 @@ const NAV = [
       { id: 'billing',  label: 'Facturación',          icon: 'receipt', badge: 142 },
       { id: 'fel',      label: 'FEL · SAT',            icon: 'check'              },
       { id: 'returns',  label: 'Devoluciones',          icon: 'return',  badge: 1   },
-      { id: 'cash', label: 'Caja &amp; Cortes', icon: 'cash' },
+      { id: 'cash', label: 'Caja y Cortes', icon: 'cash' },
     ],
   },
   {
     section: 'INVENTARIO',
     items: [
-      { id: 'inventory',  label: 'Productos &amp; stock', icon: 'box',      alert: 5 },
+      { id: 'inventory',  label: 'Productos y stock', icon: 'box',      alert: 5 },
       { id: 'variants',    label: 'Variantes',              icon: 'settings'          },
       { id: 'stockcount', label: 'Conteo físico',          icon: 'check'             },
       { id: 'uom',        label: 'Unidades de Medida',     icon: 'settings'          },
@@ -95,7 +96,7 @@ const NAV = [
       { id: 'presupuestos', label: 'Presupuestos',          icon: 'chart'   },
       { id: 'ledger',       label: 'Mayor General',         icon: 'chart'   },
       { id: 'financials',   label: 'Estados Financieros',   icon: 'receipt' },
-      { id: 'banks',        label: 'Bancos &amp; Cuentas',  icon: 'card'    },
+      { id: 'banks',        label: 'Bancos y Cuentas',  icon: 'card'    },
       { id: 'bankrec',      label: 'Conciliación Bancaria', icon: 'card'    },
     ],
   },
@@ -103,7 +104,7 @@ const NAV = [
     section: 'ADMINISTRACIÓN',
     items: [
       { id: 'maintenance', label: 'Mantenimientos', icon: 'settings' },
-      { id: 'users',       label: 'Usuarios &amp; roles', icon: 'users' },
+      { id: 'users',       label: 'Usuarios y roles', icon: 'users' },
       { id: 'payroll',      label: 'Planilla',        icon: 'users'    },
       { id: 'fixedassets',  label: 'Activos Fijos',  icon: 'box'      },
       { id: 'audit',       label: 'Auditoría',      icon: 'clock' },
@@ -149,7 +150,6 @@ const MODULE_MAP = {
 
 const TWEAK_DEFAULTS = {
   theme: 'light',
-  accent: 'teal',
   style: 'editorial',
   density: 'high',
   showSparklines: true,
@@ -183,12 +183,11 @@ export default function App({ session, onLogout }) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // Aplicar tema/accent/style al <html>
+  // Aplicar tema/estilo al <html>
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', tweaks.theme);
-    document.documentElement.setAttribute('data-accent', tweaks.accent);
     document.documentElement.setAttribute('data-style', tweaks.style);
-  }, [tweaks.theme, tweaks.accent, tweaks.style]);
+  }, [tweaks.theme, tweaks.style]);
 
   // Auto-expandir la sección que contiene la ruta activa
   useEffect(() => {
@@ -224,10 +223,10 @@ export default function App({ session, onLogout }) {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="mark">M</div>
+          <Logo size={40} className="drawer-mark" />
           <div className="sidebar-brand-text">
-            <div className="name">ERP MAYA</div>
-            <div className="tier">RETAIL · v3.2</div>
+            <div className="drawer-title">Stack<span className="wm-l">line</span></div>
+            <div className="tier">STACKLINE · RETAIL v4.0</div>
           </div>
           <button
             className="icon-btn sidebar-toggle"
@@ -277,12 +276,12 @@ export default function App({ session, onLogout }) {
                     onClick={() => navigate('/' + it.id)}
                     onMouseEnter={sidebarCollapsed ? (e) => {
                       const r = e.currentTarget.getBoundingClientRect();
-                      setNavTooltip({ label: it.label.replace(/&amp;/g, '&'), y: r.top + r.height / 2 });
+                      setNavTooltip({ label: it.label, y: r.top + r.height / 2 });
                     } : undefined}
                     onMouseLeave={sidebarCollapsed ? () => setNavTooltip(null) : undefined}
                   >
-                    <Icon name={it.icon} size={14} className="icon" />
-                    <span className="nav-item-label">{t(`nav.${it.id}`, it.label.replace(/&amp;/g, '&'))}</span>
+                    <Icon name={it.icon} size={24} fill={route === it.id} className="icon" />
+                    <span className="nav-item-label">{t(`nav.${it.id}`, it.label)}</span>
                     {it.alert && <span className="badge alert">{it.alert}</span>}
                     {it.badge && !it.alert && <span className="badge">{it.badge}</span>}
                     {it.kbd && route !== it.id && <span className="badge mono">{it.kbd}</span>}
@@ -308,17 +307,12 @@ export default function App({ session, onLogout }) {
       {/* Main */}
       <main className="main">
         <header className="topbar">
-          <div className="crumbs">
-            <Icon name="dashboard" size={12} style={{ color: 'var(--muted)' }} />
-            <span>ERP Maya</span>
-            <span className="sep">/</span>
-            <span className="cur">
-              {currentNav ? t(`nav.${currentNav.id}`, currentNav.label.replace(/&amp;/g, '&')) : 'Módulo'}
-            </span>
-          </div>
+          <button className="icon-btn" title="Menú" onClick={() => setSidebarCollapsed(v => !v)}>
+            <Icon name="menu" size={24} />
+          </button>
           <div className="topbar-search" role="button" tabIndex={0} onClick={() => setShowSearch(true)} onKeyDown={e => e.key === 'Enter' && setShowSearch(true)}>
-            <Icon name="search" className="icon" />
-            <span style={{ flex: 1, color: 'var(--muted)', fontSize: 13 }}>{t('shell.searchPlaceholder')}</span>
+            <Icon name="search" className="icon" size={24} />
+            <span style={{ flex: 1, color: 'var(--md-sys-color-on-surface-variant)' }}>{t('shell.searchPlaceholder')}</span>
             <span className="kbd">⌘K</span>
           </div>
           <div className="topbar-spacer"></div>
@@ -328,10 +322,10 @@ export default function App({ session, onLogout }) {
               {t('shell.satOnline')}
             </span>
             <button
-              className="btn"
+              className="btn btn-text"
               title={t('common.language')}
               onClick={toggleLang}
-              style={{ fontFamily: 'var(--font-mono)', fontSize: 11, minWidth: 36 }}
+              style={{ minWidth: 44, padding: '0 10px' }}
             >
               {i18n.language === 'es' ? 'ES' : 'EN'}
             </button>
@@ -346,17 +340,18 @@ export default function App({ session, onLogout }) {
               title={t('common.theme')}
               onClick={() => setTweak('theme', tweaks.theme === 'dark' ? 'light' : 'dark')}
             >
-              <Icon name={tweaks.theme === 'dark' ? 'eye' : 'moon'} />
+              <Icon name={tweaks.theme === 'dark' ? 'light_mode' : 'moon'} size={24} />
             </button>
-            <div className="topbar-divider"></div>
-            <button className="btn">
-              <Icon name="plus" size={12} />
-              {t('shell.create')}
+            <button className="icon-btn" title={t('common.help', 'Ayuda')}>
+              <Icon name="help" size={24} />
             </button>
+            <div className="avatar" title={session.user.name} style={{ width: 32, height: 32, fontSize: 12, marginLeft: 8 }}>
+              {session.user.initials}
+            </div>
           </div>
         </header>
 
-        <div className="content" key={route}>
+        <div className="content" data-route={route} key={route}>
           {module}
         </div>
       </main>
@@ -387,7 +382,7 @@ export default function App({ session, onLogout }) {
       {showSearch && (
         <GlobalSearch
           navItems={visibleNav.flatMap(s =>
-            s.items.map(i => ({ ...i, label: i.label.replace(/&amp;/g, '&'), section: s.section }))
+            s.items.map(i => ({ ...i, label: i.label, section: s.section }))
           )}
           onClose={() => setShowSearch(false)}
           onNavigate={(route) => navigate('/' + route)}
@@ -407,7 +402,7 @@ export default function App({ session, onLogout }) {
 
       {/* Tweaks panel (sólo desarrollo) */}
       {import.meta.env.DEV && (
-        <TweaksPanel title="Tweaks · ERP Maya">
+        <TweaksPanel title="Tweaks · Stackline">
           <TweakSection label="Tema">
             <TweakRadio
               label="Modo"
@@ -416,16 +411,6 @@ export default function App({ session, onLogout }) {
               options={[
                 { value: 'light', label: 'Claro' },
                 { value: 'dark', label: 'Oscuro' },
-              ]}
-            />
-            <TweakRadio
-              label="Acento"
-              value={tweaks.accent}
-              onChange={(v) => setTweak('accent', v)}
-              options={[
-                { value: 'teal', label: 'Teal' },
-                { value: 'indigo', label: 'Indigo' },
-                { value: 'amber', label: 'Ámbar' },
               ]}
             />
           </TweakSection>

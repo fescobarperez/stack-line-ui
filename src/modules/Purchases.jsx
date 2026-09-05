@@ -1,8 +1,10 @@
-// ERP MAYA — Módulo de Compras / Órdenes de Compra
-import React, { useState, useMemo, useEffect } from 'react';
+// Stackline — Módulo de Compras / Órdenes de Compra
+import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import DataTable from '../components/DataTable.jsx';
 import { usePurchaseOrders } from '../hooks/useOperations.js';
+import { createPurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder } from '../api/purchasing.js';
 import { useSuppliers } from '../hooks/useMasters.js';
 import { useBranches } from '../hooks/useMasters.js';
 import { useProducts } from '../hooks/useCatalog.js';
@@ -11,6 +13,30 @@ const STATUS_LABEL = { pending: 'Pendiente', partial: 'Parcial', received: 'Reci
 const STATUS_CLASS  = { pending: 'warning', partial: 'info', received: 'success', cancelled: 'neutral', draft: 'neutral' };
 
 function fmt(n) { return `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
+
+// PurchaseOrderDtos.Response → forma que usa la vista.
+function mapOrder(o) {
+  return {
+    id: o.docNumber || `OC-${o.id}`,
+    poId: o.id,                       // id real para las llamadas al backend
+    date: o.orderDate || '',
+    supplier: o.supplierName || 'Sin proveedor',
+    supplierId: o.supplierId,
+    branch: o.branchName || '',
+    branchId: o.branchId,
+    total: Number(o.total || 0),
+    status: o.status || 'pending',
+    notes: o.notes || '',
+    items: (o.items || []).map((i) => ({
+      id: i.id,
+      sku: i.productId != null ? String(i.productId) : '',
+      name: i.productName || '',
+      qtyOrdered: Number(i.qtyOrdered || 0),
+      qtyReceived: Number(i.qtyReceived || 0),
+      unitCost: Number(i.unitCost || 0),
+    })),
+  };
+}
 
 // ── Modal: Recibir ítems ─────────────────────────────────────────────────────
 function ReceiveModal({ po, onSave, onClose }) {
@@ -95,7 +121,9 @@ function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
   const setItem = (idx, key, val) => setItems(prev => prev.map((it, i) => i === idx ? { ...it, [key]: val } : it));
 
   const selectProduct = (idx, p) => {
-    setItems(prev => prev.map((it, i) => i === idx ? { ...it, sku: p.sku, name: p.name, unitCost: String(p.cost) } : it));
+    setItems(prev => prev.map((it, i) => i === idx
+      ? { ...it, productId: p.id, sku: p.sku, name: p.name, unitCost: String(p.cost) }
+      : it));
     setSearch('');
   };
 
@@ -104,12 +132,13 @@ function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
     : [];
 
   const total = items.reduce((s, i) => s + (parseFloat(i.unitCost) || 0) * (parseInt(i.qtyOrdered) || 0), 0);
-  const valid = branchId && items.some(i => i.sku && parseFloat(i.unitCost) > 0 && parseInt(i.qtyOrdered) > 0);
+  const usable = items.filter(i => i.productId && parseFloat(i.unitCost) > 0 && parseInt(i.qtyOrdered) > 0);
+  const valid = branchId && usable.length > 0;
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!valid) return;
-    onSave({ supplierId, branchId, notes, items: items.filter(i => i.sku), total });
+    onSave({ supplierId, branchId, notes, items: usable, total });
   };
 
   return (
@@ -151,7 +180,7 @@ function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
                 <input className="search-input" placeholder={t('purchases.searchProductPlaceholder', 'Buscar producto para agregar…')} value={search} onChange={e => setSearch(e.target.value)} />
               </div>
               {matchedProducts.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: 'var(--shadow-md)', zIndex: 50, maxHeight: 200, overflowY: 'auto' }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--shape-sm)', boxShadow: 'var(--shadow-md)', zIndex: 50, maxHeight: 200, overflowY: 'auto' }}>
                   {matchedProducts.map(p => (
                     <div key={p.sku} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 13 }}
                       onClick={() => { selectProduct(items.length - 1, p); }}>
@@ -330,10 +359,10 @@ function PODetail({ po, onClose, onReceive, onCancel }) {
 export default function Purchases({ pushToast }) {
   const { t } = useTranslation();
   // Órdenes de compra + catálogos (proveedores/sucursales/productos) desde el backend.
-  const { items: apiOrders } = usePurchaseOrders();
+  const { items: apiOrders, loading, reload: reloadOrders } = usePurchaseOrders();
   const { items: SUPPLIERS } = useSuppliers();
   const { items: BRANCHES } = useBranches();
-  const { items: PRODUCTS } = useProducts();
+  const { items: PRODUCTS, reload: reloadProducts } = useProducts();
   const [tab, setTab]             = useState('lista');
   const [search, setSearch]       = useState('');
   const [statusFilter, setStatus] = useState('all');
@@ -341,9 +370,9 @@ export default function Purchases({ pushToast }) {
   const [selected, setSelected]   = useState(null);
   const [showNew, setShowNew]     = useState(false);
   const [showReceive, setReceive] = useState(false);
-  const [orders, setOrders]       = useState(apiOrders);
-  // Sincroniza la lista local cuando llegan las órdenes del backend.
-  useEffect(() => { setOrders(apiOrders); }, [apiOrders]);
+  const [saving, setSaving]       = useState(false);
+  // La lista es siempre la del backend: no se mantiene copia local editable.
+  const orders = useMemo(() => apiOrders.map(mapOrder), [apiOrders]);
 
   const filtered = useMemo(() => {
     let o = orders;
@@ -356,54 +385,122 @@ export default function Purchases({ pushToast }) {
     return o;
   }, [orders, statusFilter, supplierFilter, search]);
 
-  const pendingOrders = useMemo(() => orders.filter(o => o.status === 'pending' || o.status === 'partial'), [orders]);
+  const isPending = (o) => o.status === 'pending' || o.status === 'partial';
+  // Contador global del tab y KPIs: no depende de los filtros de la barra.
+  const pendingOrders = useMemo(() => orders.filter(isPending), [orders]);
+  // Filas que realmente se muestran: los filtros de la barra aplican en ambos tabs.
+  const visibleRows = useMemo(
+    () => (tab === 'pendientes' ? filtered.filter(isPending) : filtered),
+    [tab, filtered]
+  );
 
   const totalThisMonth = orders.reduce((s, o) => s + (o.status !== 'cancelled' ? o.total : 0), 0);
   const totalPending   = pendingOrders.reduce((s, o) => s + o.total, 0);
 
-  const handleNewOC = ({ supplierId, branchId, notes, items, total }) => {
-    const sup = SUPPLIERS.find(s => s.id === supplierId);
-    const br  = BRANCHES.find(b => b.id === branchId);
-    const id  = `OC-2026-${String(orders.length + 1).padStart(4, '0')}`;
-    const newOC = {
-      id, date: new Date().toISOString().slice(0, 10),
-      supplier: sup?.name || 'Sin proveedor', supplierId,
-      branch: br?.name || '', branchId,
-      total, status: 'pending', notes,
-      items: items.map((item, idx) => ({
-        id: Date.now() + idx,
-        sku: item.sku, name: item.name,
-        qtyOrdered: parseInt(item.qtyOrdered),
-        qtyReceived: 0,
-        unitCost: parseFloat(item.unitCost),
-      })),
-    };
-    setOrders(prev => [newOC, ...prev]);
-    setShowNew(false);
-    pushToast?.(`OC ${id} creada correctamente`, 'success');
-  };
+  // ── Columnas (estándar <DataTable>) ──────────────────────────────────────
+  const colOC = { key: 'id', header: t('purchases.headers.po', 'OC'), sortable: true, mono: true,
+    render: (oc) => <span className="nm">{oc.id}</span> };
+  const colDate = { key: 'date', header: t('purchases.headers.date', 'Fecha'), sortable: true, mono: true,
+    className: 'muted' };
+  const colSupplier = { key: 'supplier', header: t('purchases.headers.supplier', 'Proveedor'), sortable: true,
+    render: (oc) => oc.supplier || <span className="muted">{t('purchases.unassigned', 'Sin asignar')}</span> };
+  const colBranch = { key: 'branch', header: t('common.branch', 'Sucursal'), sortable: true, className: 'muted' };
+  const colTotal = { key: 'total', header: t('purchases.headers.total', 'Total'), align: 'right', sortable: true,
+    render: (oc) => fmt(oc.total) };
+  const colStatus = { key: 'status', header: t('purchases.headers.status', 'Estado'), sortable: true,
+    sortValue: (oc) => STATUS_LABEL[oc.status],
+    render: (oc) => <span className={`pill ${STATUS_CLASS[oc.status]}`}>{STATUS_LABEL[oc.status]}</span> };
 
-  const handleReceive = (received) => {
-    setOrders(prev => prev.map(o => {
-      if (o.id !== selected.id) return o;
-      const updatedItems = o.items.map(item => {
-        const r = received.find(r => r.itemId === item.id);
-        return r ? { ...item, qtyReceived: item.qtyReceived + r.qty } : item;
+  const pctOf = (oc) => {
+    const ord = oc.items.reduce((a, i) => a + i.qtyOrdered, 0);
+    const rec = oc.items.reduce((a, i) => a + i.qtyReceived, 0);
+    return ord > 0 ? Math.round((rec / ord) * 100) : 0;
+  };
+  const missingOf = (oc) => oc.items.reduce((a, i) => a + (i.qtyOrdered - i.qtyReceived), 0);
+
+  const listaColumns = [
+    colOC, colDate, colSupplier, colBranch,
+    { key: 'items', header: t('purchases.headers.items', 'Ítems'), align: 'right', sortable: true,
+      sortValue: (oc) => oc.items.length, render: (oc) => oc.items.length },
+    colTotal, colStatus,
+    { key: 'reception', header: t('purchases.reception', 'Recepción'), sortable: true, sortValue: pctOf,
+      render: (oc) => {
+        if (oc.status === 'cancelled') return null;
+        const pct = pctOf(oc);
+        return (
+          <div className="po-progress">
+            <div className="po-progress-track">
+              <div className={`po-progress-fill${pct === 100 ? ' is-done' : ''}`} style={{ width: `${pct}%` }} />
+            </div>
+            <span className="po-progress-pct">{pct}%</span>
+          </div>
+        );
+      } },
+  ];
+
+  const pendientesColumns = [
+    colOC, colDate, colSupplier, colBranch,
+    { key: 'missing', header: t('purchases.missing', 'Faltante'), align: 'right', sortable: true,
+      sortValue: missingOf,
+      render: (oc) => <span className="po-missing">{missingOf(oc)} {t('purchases.units', 'unid.')}</span> },
+    colTotal, colStatus,
+  ];
+
+  const handleNewOC = async ({ supplierId, branchId, notes, items }) => {
+    setSaving(true);
+    try {
+      const po = await createPurchaseOrder({
+        supplierId: supplierId ? Number(supplierId) : null,
+        branchId: Number(branchId),
+        orderDate: new Date().toISOString().slice(0, 10),
+        notes,
+        items: items.map((item) => ({
+          productId: Number(item.productId),
+          qtyOrdered: Number(item.qtyOrdered),
+          unitCost: Number(item.unitCost),
+        })),
       });
-      const allDone   = updatedItems.every(i => i.qtyReceived >= i.qtyOrdered);
-      const someDone  = updatedItems.some(i => i.qtyReceived > 0);
-      return { ...o, items: updatedItems, status: allDone ? 'received' : someDone ? 'partial' : 'pending' };
-    }));
-    const updatedOC = orders.find(o => o.id === selected.id);
-    if (updatedOC) setSelected({ ...updatedOC });
-    setReceive(false);
-    pushToast?.('Recepción registrada y stock actualizado', 'success');
+      await reloadOrders();
+      setShowNew(false);
+      pushToast?.(`OC ${po.docNumber || po.id} creada correctamente`, 'success');
+    } catch (err) {
+      pushToast?.('No se pudo crear la OC: ' + err.message, 'danger');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleCancel = () => {
-    setOrders(prev => prev.map(o => o.id === selected.id ? { ...o, status: 'cancelled' } : o));
-    setSelected(prev => ({ ...prev, status: 'cancelled' }));
-    pushToast?.(`OC ${selected.id} cancelada`, '');
+  const handleReceive = async (received) => {
+    setSaving(true);
+    try {
+      // El backend espera `quantity`; el modal trabaja con `qty`.
+      const po = await receivePurchaseOrder(selected.poId, {
+        items: received.map((r) => ({ itemId: r.itemId, quantity: Number(r.qty) })),
+      });
+      await Promise.all([reloadOrders(), reloadProducts()]);
+      setSelected(mapOrder(po));
+      setReceive(false);
+      pushToast?.('Recepción registrada · stock actualizado', 'success');
+    } catch (err) {
+      pushToast?.('No se pudo registrar la recepción: ' + err.message, 'danger');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    setSaving(true);
+    try {
+      const po = await cancelPurchaseOrder(selected.poId);
+      await reloadOrders();
+      setSelected(mapOrder(po));
+      pushToast?.(`OC ${selected.id} cancelada`, 'success');
+    } catch (err) {
+      // 409 cuando la orden ya tiene mercancía recibida o ya estaba cancelada.
+      pushToast?.('No se pudo cancelar: ' + err.message, 'danger');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const selectedOrder = selected ? orders.find(o => o.id === selected.id) || selected : null;
@@ -476,99 +573,51 @@ export default function Purchases({ pushToast }) {
           <option value="all">{t('purchases.allSuppliers', 'Todos los proveedores')}</option>
           {SUPPLIERS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
-        <span className="muted" style={{ fontSize: 12 }}>{filtered.length} {t('common.results_other', 'resultados')}</span>
+        <span className="filterbar-count">{t('common.results', { count: visibleRows.length })}</span>
       </div>
 
       {tab === 'lista' && (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>{t('purchases.headers.po', 'OC')}</th>
-                <th>{t('purchases.headers.date', 'Fecha')}</th>
-                <th>{t('purchases.headers.supplier', 'Proveedor')}</th>
-                <th>{t('common.branch', 'Sucursal')}</th>
-                <th className="right">{t('purchases.headers.items', 'Ítems')}</th>
-                <th className="right">{t('purchases.headers.total', 'Total')}</th>
-                <th>{t('purchases.headers.status', 'Estado')}</th>
-                <th>{t('purchases.reception', 'Recepción')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={8} className="empty">{t('common.noResults', 'Sin resultados')}</td></tr>
-              ) : filtered.map(oc => {
-                const totalRecv = oc.items.reduce((s, i) => s + i.qtyReceived, 0);
-                const totalOrd  = oc.items.reduce((s, i) => s + i.qtyOrdered, 0);
-                const pct = totalOrd > 0 ? Math.round((totalRecv / totalOrd) * 100) : 0;
-                return (
-                  <tr key={oc.id} className="clickable" onClick={() => setSelected(oc)}>
-                    <td className="mono" style={{ fontWeight: 600 }}>{oc.id}</td>
-                    <td className="mono muted">{oc.date}</td>
-                    <td>{oc.supplier || <span className="muted">{t('purchases.unassigned', 'Sin asignar')}</span>}</td>
-                    <td className="muted">{oc.branch}</td>
-                    <td className="right mono">{oc.items.length}</td>
-                    <td className="right mono">{fmt(oc.total)}</td>
-                    <td><span className={`pill ${STATUS_CLASS[oc.status]}`} style={{ fontSize: 10 }}>{STATUS_LABEL[oc.status]}</span></td>
-                    <td>
-                      {oc.status !== 'cancelled' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden', minWidth: 60 }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? 'var(--success)' : 'var(--accent)', borderRadius: 2 }} />
-                          </div>
-                          <span className="mono muted" style={{ fontSize: 10 }}>{pct}%</span>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={listaColumns}
+          rows={visibleRows}
+          rowKey={(oc) => oc.id}
+          loading={loading}
+          pageSize={25}
+          defaultSort={{ key: 'date', dir: 'desc' }}
+          onRowClick={setSelected}
+          onRefresh={reloadOrders}
+          empty={t('common.noResults', 'Sin resultados')}
+          emptyIcon="truck"
+          totals={{
+            items: visibleRows.reduce((a, oc) => a + oc.items.length, 0),
+            total: fmt(visibleRows.reduce((a, oc) => a + oc.total, 0)),
+          }}
+        />
       )}
 
       {tab === 'pendientes' && (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>{t('purchases.headers.po', 'OC')}</th>
-                <th>{t('purchases.headers.date', 'Fecha')}</th>
-                <th>{t('purchases.headers.supplier', 'Proveedor')}</th>
-                <th>{t('common.branch', 'Sucursal')}</th>
-                <th className="right">{t('purchases.missing', 'Faltante')}</th>
-                <th className="right">{t('purchases.headers.total', 'Total')}</th>
-                <th>{t('purchases.headers.status', 'Estado')}</th>
-                <th>{t('common.actions', 'Acciones')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendingOrders.length === 0 ? (
-                <tr><td colSpan={8} className="empty">{t('purchases.noPendingOCs', 'No hay OCs pendientes de recepción')}</td></tr>
-              ) : pendingOrders.map(oc => {
-                const faltante = oc.items.reduce((s, i) => s + (i.qtyOrdered - i.qtyReceived), 0);
-                return (
-                  <tr key={oc.id} className="clickable" onClick={() => setSelected(oc)}>
-                    <td className="mono" style={{ fontWeight: 600 }}>{oc.id}</td>
-                    <td className="mono muted">{oc.date}</td>
-                    <td>{oc.supplier || <span className="muted">{t('purchases.unassigned', 'Sin asignar')}</span>}</td>
-                    <td className="muted">{oc.branch}</td>
-                    <td className="right mono" style={{ color: 'var(--warning)', fontWeight: 600 }}>{faltante} {t('purchases.units', 'unid.')}</td>
-                    <td className="right mono">{fmt(oc.total)}</td>
-                    <td><span className={`pill ${STATUS_CLASS[oc.status]}`} style={{ fontSize: 10 }}>{STATUS_LABEL[oc.status]}</span></td>
-                    <td>
-                      <button className="btn accent" style={{ fontSize: 11, padding: '3px 10px' }}
-                        onClick={e => { e.stopPropagation(); setSelected(oc); setReceive(true); }}>
-                        <Icon name="truck" size={11} />{t('purchases.receive', 'Recibir')}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={pendientesColumns}
+          rows={visibleRows}
+          rowKey={(oc) => oc.id}
+          loading={loading}
+          pageSize={25}
+          defaultSort={{ key: 'date', dir: 'asc' }}
+          onRowClick={setSelected}
+          onRefresh={reloadOrders}
+          empty={t('purchases.noPendingOCs', 'No hay OCs pendientes de recepción')}
+          emptyIcon="clock"
+          totals={{
+            missing: visibleRows.reduce((a, oc) => a + missingOf(oc), 0),
+            total: fmt(visibleRows.reduce((a, oc) => a + oc.total, 0)),
+          }}
+          actions={(oc) => (
+            <button className="btn sm accent"
+              onClick={() => { setSelected(oc); setReceive(true); }}>
+              <Icon name="truck" size={18} />{t('purchases.receive', 'Recibir')}
+            </button>
+          )}
+        />
       )}
 
       {/* Panel detalle OC */}

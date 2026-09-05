@@ -1,4 +1,4 @@
-// ERP MAYA — Conciliación Bancaria
+// Stackline — Conciliación Bancaria
 // Data-driven contra el modelo real del backend: cuentas + movimientos (con flag
 // reconciled) + registros de conciliación (fecha extracto + saldo banco → diferencia).
 import React, { useState, useEffect, useCallback } from 'react';

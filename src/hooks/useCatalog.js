@@ -1,7 +1,7 @@
 // Hooks del módulo Catálogo. 100% datos reales del backend (sin fallback a mock):
 // si el backend no responde → lista vacía + error.
 import { useState, useEffect, useCallback } from 'react';
-import { listProducts, listCategories } from '../api/catalog.js';
+import { listProducts, listCategories, createProduct, updateProduct, deleteProduct } from '../api/catalog.js';
 import { listStock } from '../api/inventory.js';
 
 // Mapea un ProductResponse del backend a la forma que usan los componentes.
@@ -46,7 +46,24 @@ export function useProducts({ search = '' } = {}) {
   }, [search]);
 
   useEffect(() => { reload(); }, [reload]);
-  return { ...state, reload };
+
+  // Mutaciones reales contra el backend; recargan la lista al terminar.
+  const create = useCallback(async (data) => {
+    const r = await createProduct(data);
+    await reload();
+    return r;
+  }, [reload]);
+  const update = useCallback(async (id, data) => {
+    const r = await updateProduct(id, data);
+    await reload();
+    return r;
+  }, [reload]);
+  const remove = useCallback(async (id) => {
+    await deleteProduct(id);
+    await reload();
+  }, [reload]);
+
+  return { ...state, reload, create, update, remove };
 }
 
 export function useCategories() {

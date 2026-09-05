@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Stackline">
+  <style>
+    .body{fill:#181818}
+    .spine{fill:#893149}
+    @media (prefers-color-scheme:dark){ .body{fill:#f1f1f1} .spine{fill:#e7bcc3} }
+  </style>
+  <path class="body" fill-rule="evenodd" d="M14.5 6 H33.5 A8.5 8.5 0 0 1 42 14.5 V33.5 A8.5 8.5 0 0 1 33.5 42 H14.5 A8.5 8.5 0 0 1 6 33.5 V14.5 A8.5 8.5 0 0 1 14.5 6 Z M19 12.4 H42 V20.6 H19 Z M6 27.4 H29 V35.6 H6 Z"/>
+  <rect class="spine" x="19" y="20.6" width="10" height="6.8"/>
+</svg>

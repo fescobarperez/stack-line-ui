@@ -93,8 +93,8 @@
     "billing": "Facturación",
     "fel": "FEL · SAT",
     "returns": "Devoluciones",
-    "cash": "Caja & Cortes",
-    "inventory": "Productos & stock",
+    "cash": "Caja y Cortes",
+    "inventory": "Productos y stock",
     "variants": "Variantes",
     "stockcount": "Conteo físico",
     "uom": "Unidades de Medida",
@@ -112,10 +112,10 @@
     "presupuestos": "Presupuestos",
     "ledger": "Mayor General",
     "financials": "Estados Financieros",
-    "banks": "Bancos & Cuentas",
+    "banks": "Bancos y Cuentas",
     "bankrec": "Conciliación Bancaria",
     "maintenance": "Mantenimientos",
-    "users": "Usuarios & roles",
+    "users": "Usuarios y roles",
     "payroll": "Planilla",
     "fixedassets": "Activos Fijos",
     "audit": "Auditoría",
@@ -207,7 +207,7 @@
         "inventory": "Inventario inteligente",
         "inventoryDesc": "PEPS, promedio, lotes, vencimientos"
       },
-      "legal": "© 2026 ERP MAYA · Guatemala · Todos los derechos reservados"
+      "legal": "© 2026 Stackline · Guatemala · Todos los derechos reservados"
     }
   },
 
@@ -219,10 +219,10 @@
       "90d": "90 días"
     },
     "kpis": {
-      "salesToday": "Ventas hoy",
+      "salesToday": "Ventas del día",
       "gross": "Utilidad bruta",
       "margin": "Margen",
-      "transactions": "Transacciones",
+      "transactions": "Tickets emitidos",
       "avgTicket": "Ticket promedio"
     },
     "alerts": {
@@ -230,13 +230,13 @@
       "expiringSoon": "por vencer"
     },
     "charts": {
-      "salesByDay": "Ventas por día",
+      "salesByDay": "Tendencia de ventas",
       "salesByCategory": "Ventas por categoría",
       "topProducts": "Productos más vendidos"
     },
     "sections": {
       "branches": "Sucursales en vivo",
-      "inventoryAlerts": "Alertas de inventario",
+      "inventoryAlerts": "Requiere atención",
       "recentTransactions": "Últimas transacciones"
     },
     "headers": {
@@ -602,10 +602,12 @@
 
   "fel": {
     "title": "FEL · SAT",
+    "editInConfig": "Editar en Configuración",
     "tabs": {
-      "pending": "Pendientes",
-      "sent": "Enviados",
-      "errors": "Errores"
+      "documents": "DTEs emitidos",
+      "cancellations": "Anulaciones",
+      "book": "Libro de ventas",
+      "certifier": "Certificador / Emisor"
     }
   },
 

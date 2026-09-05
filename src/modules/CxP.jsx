@@ -1,4 +1,4 @@
-// ERP MAYA — Cuentas por Pagar (CxP)
+// Stackline — Cuentas por Pagar (CxP)
 // Data-driven: /api/purchase-invoices + /api/supplier-payments (aging client-side).
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
@@ -200,7 +200,7 @@ export default function CxP({ pushToast }) {
 
           {/* Aging by supplier table */}
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="tbl-wrap"><table className="tbl">
+            <div className="tbl-wrap"><table className="mtable">
               <thead>
                 <tr>
                   <th>{t('common.supplier', 'Proveedor')}</th>
@@ -267,7 +267,7 @@ export default function CxP({ pushToast }) {
           </div>
 
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="tbl-wrap"><table className="tbl">
+            <div className="tbl-wrap"><table className="mtable">
               <thead>
                 <tr>
                   <th>Documento</th>
@@ -320,7 +320,7 @@ export default function CxP({ pushToast }) {
 
       {tab === 'payments' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="tbl-wrap"><table className="tbl">
+          <div className="tbl-wrap"><table className="mtable">
             <thead>
               <tr>
                 <th>{t('common.date', 'Fecha')}</th>

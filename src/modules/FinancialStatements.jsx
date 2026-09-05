@@ -1,4 +1,4 @@
-// ERP MAYA — Estados Financieros (Estado de Resultados + Balance General)
+// Stackline — Estados Financieros (Estado de Resultados + Balance General)
 // Data-driven: consume /api/accounting/{balance-sheet,income-statement} con
 // fallback calculado del mock (hook useFinancialStatements).
 import React, { useState } from 'react';

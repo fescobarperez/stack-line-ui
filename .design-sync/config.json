@@ -1,8 +1,8 @@
 {
   "projectId": "7a47def5-5898-445f-ac1d-dd63373c6763",
   "shape": "package",
-  "pkg": "erp-maya",
-  "globalName": "ErpMaya",
+  "pkg": "stackline",
+  "globalName": "Stackline",
   "srcDir": "src/components",
   "cssEntry": "src/styles/global.css",
   "readmeHeader": ".design-sync/conventions.md",

@@ -1,4 +1,4 @@
-# ERP MAYA · Sistema Retail
+# Stackline · Sistema Retail
 
 ERP modular para retail (Inventario · POS · Facturación · Compras · Reportería)
 construido como un **proyecto compilado** Vite + React 18 con backend Node.js +
@@ -81,7 +81,7 @@ npm start               # arranca Vite (5173) + API (4000) en paralelo
 - Frontend: <http://localhost:5173>
 - API:      <http://localhost:4000/api/health>
 
-> Usuario demo seed: `ana@erpmaya.gt` / `demo123`
+> Usuario demo seed: `ana@stackline.gt` / `demo123`
 
 ### Scripts
 
@@ -220,8 +220,8 @@ Cada módulo importa hoy desde `src/data/mock.js`. Para conectarlos al backend:
 
 ```jsx
 // Antes:
-import * as MAYA from '../data/mock.js';
-const { PRODUCTS } = MAYA;
+import * as STACKLINE from '../data/mock.js';
+const { PRODUCTS } = STACKLINE;
 
 // Después:
 import { useEffect, useState } from 'react';

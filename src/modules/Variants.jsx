@@ -1,7 +1,8 @@
-// ERP MAYA — Variantes de Producto
+// Stackline — Variantes de Producto
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import DataTable from '../components/DataTable.jsx';
 import { useVariants } from '../hooks/useVariants.js';
 import { useProducts } from '../hooks/useCatalog.js';
 import { createVariant, updateVariant } from '../api/wave2.js';
@@ -175,6 +176,31 @@ export default function Variants({ pushToast }) {
   const statusPill = { ok: 'success', low: 'warning', out: 'danger' };
   const statusTxt  = { ok: 'OK', low: t('variants.stockLow', 'Stock bajo'), out: t('variants.outOfStock', 'Agotada') };
 
+  // Columnas de la tabla de grupos (CRUD → DataTable)
+  const groupColumns = [
+    { key: 'name', header: t('common.product', 'Producto'), sortable: true, render: (g) => (
+      <div className="cell-stack">
+        <span className="nm">{g.name}</span>
+        {g.variants.some(v => !v.active) && <span className="sku">{g.variants.filter(v => !v.active).length} {t('variants.inactiveVariants', 'variante(s) inactiva(s)')}</span>}
+      </div>
+    ) },
+    { key: 'brand', header: t('variants.brand', 'Marca'), sortable: true, render: (g) => <span className="sku">{g.brand}</span> },
+    { key: 'cat', header: t('common.category', 'Categoría'), sortable: true, render: (g) => <span className="badge-m3 tertiary" style={{ textTransform: 'capitalize' }}>{g.cat}</span> },
+    { key: 'attrType', header: t('variants.attribute', 'Atributo'), render: (g) => ATTR_LABEL[g.attrType] || g.attrType },
+    { key: 'activeCount', header: t('variants.variantsCol', 'Variantes'), align: 'right', sortable: true, render: (g) => (
+      <span className="num"><strong>{g.activeCount}</strong>{g.variants.length !== g.activeCount && <span className="sku" style={{ display: 'inline' }}> /{g.variants.length}</span>}</span>
+    ) },
+    { key: 'totalStock', header: t('variants.totalStock', 'Stock total'), align: 'right', sortable: true, render: (g) => <span className="num" style={{ color: g.totalStock === 0 ? 'var(--md-error)' : undefined }}>{g.totalStock}</span> },
+    { key: 'price', header: t('variants.priceRange', 'Rango de precios'), align: 'right', render: (g) => <span className="num">{g.minPrice === g.maxPrice ? Q(g.minPrice) : `${Q(g.minPrice)} – ${Q(g.maxPrice)}`}</span> },
+    { key: 'status', header: t('common.status', 'Estado'), render: (g) => (
+      <>
+        {g.variants.some(v => v.active && v.stock === 0) && <span className="badge-m3 error" style={{ marginRight: 4 }}>{t('variants.outOfStock', 'Agotada')}</span>}
+        {g.variants.some(v => v.active && v.stock > 0 && v.stock < v.min) && <span className="badge-m3 warning">{t('variants.stockLow', 'Stock bajo')}</span>}
+        {g.status === 'ok' && <span className="badge-m3 success">OK</span>}
+      </>
+    ) },
+  ];
+
   return (
     <div className="page">
       <div className="page-head">
@@ -240,71 +266,15 @@ export default function Variants({ pushToast }) {
       </div>
 
       {/* Tabla de grupos */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="tbl-wrap"><table className="tbl">
-          <thead>
-            <tr>
-              <th>{t('common.product', 'Producto')}</th>
-              <th>{t('variants.brand', 'Marca')}</th>
-              <th>{t('common.category', 'Categoría')}</th>
-              <th>{t('variants.attribute', 'Atributo')}</th>
-              <th style={{ textAlign: 'right' }}>{t('variants.variantsCol', 'Variantes')}</th>
-              <th style={{ textAlign: 'right' }}>{t('variants.totalStock', 'Stock total')}</th>
-              <th>{t('variants.priceRange', 'Rango de precios')}</th>
-              <th>{t('common.status', 'Estado')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr><td colSpan={8} className="empty">{t('variants.noGroupsWithFilters', 'Sin grupos con los filtros aplicados')}</td></tr>
-            ) : filtered.map(g => (
-              <tr key={g.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(g)}>
-                <td>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{g.name}</div>
-                  {g.variants.some(v => !v.active) && (
-                    <div className="muted" style={{ fontSize: 10 }}>
-                      {g.variants.filter(v => !v.active).length} {t('variants.inactiveVariants', 'variante(s) inactiva(s)')}
-                    </div>
-                  )}
-                </td>
-                <td className="muted" style={{ fontSize: 12 }}>{g.brand}</td>
-                <td>
-                  <span className="pill info" style={{ fontSize: 9, textTransform: 'capitalize' }}>{g.cat}</span>
-                </td>
-                <td style={{ fontSize: 12 }}>{ATTR_LABEL[g.attrType] || g.attrType}</td>
-                <td style={{ textAlign: 'right' }}>
-                  <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>{g.activeCount}</span>
-                  {g.variants.length !== g.activeCount && (
-                    <span className="muted" style={{ fontSize: 10, marginLeft: 4 }}>/{g.variants.length}</span>
-                  )}
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  <span className="mono" style={{ fontSize: 13, color: g.totalStock === 0 ? 'var(--danger)' : undefined }}>
-                    {g.totalStock}
-                  </span>
-                </td>
-                <td>
-                  {g.minPrice === g.maxPrice
-                    ? <span className="mono" style={{ fontSize: 12 }}>{Q(g.minPrice)}</span>
-                    : <span className="mono" style={{ fontSize: 12 }}>{Q(g.minPrice)} – {Q(g.maxPrice)}</span>
-                  }
-                </td>
-                <td>
-                  {g.variants.some(v => v.active && v.stock === 0) && (
-                    <span className="pill danger" style={{ fontSize: 9, marginRight: 4 }}>{t('variants.outOfStock', 'Agotada')}</span>
-                  )}
-                  {g.variants.some(v => v.active && v.stock > 0 && v.stock < v.min) && (
-                    <span className="pill warning" style={{ fontSize: 9 }}>{t('variants.stockLow', 'Stock bajo')}</span>
-                  )}
-                  {g.status === 'ok' && (
-                    <span className="pill success" style={{ fontSize: 9 }}>OK</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table></div>
-      </div>
+      <DataTable
+        rowKey={(g) => g.id}
+        columns={groupColumns}
+        rows={filtered}
+        density="compact"
+        pageSize={12}
+        onRowClick={(g) => setSelected(g)}
+        empty={t('variants.noGroupsWithFilters', 'Sin grupos con los filtros aplicados')}
+      />
 
       {/* Drawer detalle de grupo */}
       {selected && (
@@ -324,47 +294,38 @@ export default function Variants({ pushToast }) {
               </div>
             </div>
             <div className="drawer-body" style={{ padding: 0 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+              <table className="mtable">
                 <thead>
-                  <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '8px 14px', textAlign: 'left', fontSize: 10, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      {ATTR_LABEL[selected.attrType]}
-                    </th>
-                    <th style={{ padding: '8px 14px', textAlign: 'left', fontSize: 10, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>SKU</th>
-                    <th style={{ padding: '8px 14px', textAlign: 'right', fontSize: 10, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('common.price', 'Precio')}</th>
-                    <th style={{ padding: '8px 14px', textAlign: 'right', fontSize: 10, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('common.cost', 'Costo')}</th>
-                    <th style={{ padding: '8px 14px', textAlign: 'right', fontSize: 10, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Stock</th>
-                    <th style={{ padding: '8px 14px', textAlign: 'right', fontSize: 10, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('variants.min', 'Mín.')}</th>
-                    <th style={{ padding: '8px 14px', width: 60, fontSize: 10, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('common.status', 'Estado')}</th>
+                  <tr>
+                    <th>{ATTR_LABEL[selected.attrType]}</th>
+                    <th>SKU</th>
+                    <th className="r">{t('common.price', 'Precio')}</th>
+                    <th className="r">{t('common.cost', 'Costo')}</th>
+                    <th className="r">Stock</th>
+                    <th className="r">{t('variants.min', 'Mín.')}</th>
+                    <th style={{ width: 80 }}>{t('common.status', 'Estado')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {selected.variants.map((v, i) => {
+                  {selected.variants.map((v) => {
                     const isOut = v.active && v.stock === 0;
                     const isLow = v.active && v.stock > 0 && v.stock < v.min;
                     return (
-                      <tr key={v.sku} style={{ borderBottom: '1px solid var(--border)', opacity: v.active ? 1 : 0.45 }}>
-                        <td style={{ padding: '9px 14px', fontWeight: 600 }}>
+                      <tr key={v.sku} style={{ opacity: v.active ? 1 : 0.45 }}>
+                        <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: isOut ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--success)', flexShrink: 0 }} />
-                            {v.label}
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: isOut ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--success)', flexShrink: 0 }} />
+                            <span className="nm">{v.label}</span>
                           </div>
                         </td>
-                        <td style={{ padding: '9px 14px' }}>
-                          <span className="mono muted" style={{ fontSize: 11 }}>{v.sku}</span>
-                        </td>
-                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--font-mono)' }}>{Q(v.price)}</td>
-                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>{Q(v.cost)}</td>
-                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: isOut ? 'var(--danger)' : isLow ? 'var(--warning)' : undefined }}>
-                          {v.stock}
-                        </td>
-                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>{v.min}</td>
-                        <td style={{ padding: '9px 14px' }}>
-                          <button
-                            className={`chip ${v.active ? 'active' : ''}`}
-                            style={{ fontSize: 9, padding: '2px 6px' }}
-                            onClick={() => { toggleVariant(selected, v); }}
-                          >
+                        <td><span className="sku">{v.sku}</span></td>
+                        <td className="r num">{Q(v.price)}</td>
+                        <td className="r num" style={{ color: 'var(--muted)' }}>{Q(v.cost)}</td>
+                        <td className="r num" style={{ fontWeight: 700, color: isOut ? 'var(--danger)' : isLow ? 'var(--warning)' : undefined }}>{v.stock}</td>
+                        <td className="r num" style={{ color: 'var(--muted)' }}>{v.min}</td>
+                        <td>
+                          <button className={`chip ${v.active ? 'active' : ''}`} style={{ height: 28, padding: '0 10px', fontSize: 12 }}
+                            onClick={() => { toggleVariant(selected, v); }}>
                             {v.active ? t('variants.active', 'Activa') : t('variants.inactive', 'Inactiva')}
                           </button>
                         </td>

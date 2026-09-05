@@ -1,4 +1,4 @@
-// ERP MAYA — POSModule (ES module)
+// Stackline — POSModule (ES module)
 // Data-driven: productos/categorías reales; el cobro crea una venta real
 // (POST /api/sales) contra la caja abierta y descuenta stock en el backend.
 import Icon from '../components/Icon.jsx';
@@ -132,14 +132,16 @@ function POSModule({ pushToast }) {
         style={touchMode && touchView !== 'products' ? { display: 'none' } : {}}
       >
         <div className="pos-search-bar">
-          <Icon name="search" size={14} style={{ color: 'var(--muted)' }} />
-          <input
-            type="text"
-            placeholder={t('pos.searchPlaceholder', 'Buscar por nombre o código de barras…')}
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            autoFocus={!touchMode}
-          />
+          <div className="pos-search-field">
+            <Icon name="search" size={20} className="icon" />
+            <input
+              type="text"
+              placeholder={t('pos.searchPlaceholder', 'Buscar por nombre o código de barras…')}
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              autoFocus={!touchMode}
+            />
+          </div>
           <button className="btn"><Icon name="barcode" size={14} />{t('pos.scan', 'Escanear')}</button>
           <button
             className={`btn${touchMode ? ' accent' : ''}`}
@@ -158,9 +160,9 @@ function POSModule({ pushToast }) {
               className={`pos-cat ${cat === c.id ? 'active' : ''}`}
               onClick={() => setCat(c.id)}
             >
-              {c.icon && <span style={{ marginRight: 5 }}>{c.icon}</span>}
+              {c.icon && <span>{c.icon}</span>}
               {c.name}
-              <span className="mono" style={{ opacity: 0.6, marginLeft: 6, fontSize: 10 }}>{c.count ?? ''}</span>
+              {c.count != null && <span className="n">{c.count}</span>}
             </button>
           ))}
         </div>
@@ -187,8 +189,8 @@ function POSModule({ pushToast }) {
       >
         <div className="pos-cart-head">
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>{t('pos.currentSale', 'Venta actual')}</div>
-            <div className="mono" style={{ fontSize: 10.5, color: openRegister ? 'var(--muted)' : 'var(--danger)' }}>
+            <div className="pos-cart-title">{t('pos.currentSale', 'Venta actual')}</div>
+            <div className={`pos-cart-sub${openRegister ? '' : ' alert'}`}>
               {openRegister ? `${openRegister.branchName || 'Caja'} · #${openRegister.id}` : 'Sin caja abierta'}
             </div>
           </div>
@@ -199,17 +201,16 @@ function POSModule({ pushToast }) {
         </div>
 
         {/* Cliente */}
-        <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Icon name="user" size={12} style={{ color: 'var(--muted)' }} />
-          <div style={{ flex: 1, fontSize: 12 }}>
-            <span style={{ color: 'var(--muted)' }}>{t('common.client', 'Cliente')}:</span>{' '}
-            <span style={{ fontWeight: 500 }}>{client.name}</span>
-            <span className="mono" style={{ color: 'var(--muted)', marginLeft: 6 }}>NIT {client.nit}</span>
+        <div className="pos-cart-client">
+          <Icon name="user" size={14} style={{ color: 'var(--muted)' }} />
+          <div className="who">
+            <span className="lbl">{t('common.client', 'Cliente')}:</span>{' '}
+            <span className="nm">{client.name}</span>
+            <span className="nit mono">NIT {client.nit}</span>
           </div>
           <select
             value={client.type}
             onChange={e => setClient(c => ({ ...c, type: e.target.value }))}
-            style={{ fontSize: 10, border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 4, color: 'var(--text)', padding: '2px 4px' }}
           >
             <option>{t('pos.clientTypes.cf', 'Consumidor final')}</option>
             <option>{t('pos.clientTypes.retail', 'Minorista')}</option>
@@ -224,7 +225,7 @@ function POSModule({ pushToast }) {
           <div className="pos-cart-empty">
             <div className="big">∅</div>
             <div>{t('pos.emptyCart', 'Sin productos en el carrito')}</div>
-            <div style={{ fontSize: 11, marginTop: 4 }}>{t('pos.emptyCartHint', 'Toca un producto o escanea')}</div>
+            <div className="hint">{t('pos.emptyCartHint', 'Toca un producto o escanea')}</div>
           </div>
         ) : (
           <div className="pos-cart-items">
@@ -239,15 +240,11 @@ function POSModule({ pushToast }) {
                   style={hasPromo ? { background: 'var(--success-soft)' } : {}}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="nm" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div className="nm">
                       {i.name}
-                      {hasPromo && (
-                        <span style={{ fontSize: 9, fontWeight: 700, background: 'var(--success)', color: '#fff', borderRadius: 3, padding: '1px 5px' }}>
-                          PROMO
-                        </span>
-                      )}
+                      {hasPromo && <span className="pos-tag">PROMO</span>}
                     </div>
-                    <div className="meta" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div className="meta">
                       {i.promoPrice !== null ? (
                         <>
                           <span style={{ textDecoration: 'line-through', color: 'var(--muted)' }}>{Q(i.price)}</span>
@@ -257,11 +254,7 @@ function POSModule({ pushToast }) {
                         <span>{Q(i.price)}</span>
                       )}
                       <span style={{ color: 'var(--muted)' }}>· {i.unit}</span>
-                      {i.freeQty > 0 && (
-                        <span style={{ fontSize: 9, fontWeight: 700, background: 'var(--success)', color: '#fff', borderRadius: 3, padding: '1px 5px' }}>
-                          +{i.freeQty} GRATIS
-                        </span>
-                      )}
+                      {i.freeQty > 0 && <span className="pos-tag">+{i.freeQty} GRATIS</span>}
                     </div>
                   </div>
 
@@ -281,11 +274,7 @@ function POSModule({ pushToast }) {
                     </div>
                   )}
 
-                  <button
-                    className="remove"
-                    style={touchMode ? { fontSize: 18, padding: '0 8px', minWidth: 36 } : {}}
-                    onClick={() => removeItem(i.sku)}
-                  >
+                  <button className="remove" onClick={() => removeItem(i.sku)}>
                     ✕
                   </button>
                 </div>
@@ -298,9 +287,9 @@ function POSModule({ pushToast }) {
         <div className="pos-totals">
           <div className="row"><span>{t('common.subtotal', 'Subtotal')} ({totalItems} items)</span><span className="v">{Q(subtotal)}</span></div>
           {appliedPromos.map((ap, idx) => (
-            <div key={idx} className="row" style={{ color: 'var(--success)', fontSize: 11 }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, background: 'var(--success)', color: '#fff', borderRadius: 3, padding: '1px 5px' }}>PROMO</span>
+            <div key={idx} className="row promo">
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="pos-tag">PROMO</span>
                 {ap.label}
               </span>
               <span className="v">−{Q(ap.discount)}</span>
@@ -309,18 +298,15 @@ function POSModule({ pushToast }) {
           <div className="row" style={{ opacity: 0.4, pointerEvents: 'none' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {t('pos.manualDiscount', 'Descuento manual')}
-              <select value={discountType} onChange={() => {}} style={{ border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 4, fontSize: 11, color: 'var(--text)' }}>
+              <select value={discountType} onChange={() => {}}>
                 <option value="%">%</option>
                 <option value="Q">Q</option>
               </select>
-              <input
-                type="number" value={discount} min="0" readOnly
-                style={{ width: 50, border: '1px solid var(--border)', borderRadius: 4, padding: '1px 4px', fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface)', color: 'var(--text)' }}
-              />
+              <input type="number" value={discount} min="0" readOnly />
             </span>
             <span className="v" style={{ color: 'var(--danger)' }}>−{Q(descManual)}</span>
           </div>
-          <div className="row" style={{ color: 'var(--muted)' }}><span>{t('pos.ivaIncluded', 'IVA incluido (12%)')}</span><span className="v">{Q(iva)}</span></div>
+          <div className="row muted"><span>{t('pos.ivaIncluded', 'IVA incluido (12%)')}</span><span className="v">{Q(iva)}</span></div>
           <div className="row total"><span>{t('common.total', 'TOTAL')}</span><span className="v">{Q(total)}</span></div>
         </div>
 
@@ -548,7 +534,7 @@ function Ticket({ data }) {
   return (
     <div className="ticket">
       <div className="center">
-        <div className="biz-name">ERP MAYA · TIENDA</div>
+        <div className="biz-name">Stackline · TIENDA</div>
         <div className="biz-info">
           Sucursal Zona 10<br />
           5a Av. 10-25, Z.10, Guatemala<br />
@@ -597,7 +583,7 @@ function Ticket({ data }) {
       <div className="barcode"></div>
       <div className="center" style={{ fontSize: 9, marginTop: 6 }}>
         ¡GRACIAS POR SU COMPRA!<br />
-        www.erpmaya.gt
+        www.stackline.gt
       </div>
     </div>
   );

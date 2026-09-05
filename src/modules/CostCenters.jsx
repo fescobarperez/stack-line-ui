@@ -1,4 +1,4 @@
-// ERP MAYA — Centros de Costo (catálogo)
+// Stackline — Centros de Costo (catálogo)
 // Data-driven contra /api/cost-centers (hook useCostCenters). El análisis de gasto
 // por centro se omite: el backend aún no etiqueta transacciones con centro de costo.
 import React, { useState, useMemo } from 'react';
@@ -136,46 +136,46 @@ export default function CostCenters({ pushToast }) {
         </div>
       </div>
 
-      <div className="card">
-        <div className="table-wrap" style={{ border: 'none', margin: 0 }}>
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>{t('common.code', 'Código')}</th>
-                <th>{t('common.name', 'Nombre')}</th>
-                <th>{t('costcenters.group', 'Grupo')}</th>
-                <th>{t('common.type', 'Tipo')}</th>
-                <th>{t('costcenters.responsible', 'Responsable')}</th>
-                <th style={{ textAlign: 'right' }}>{t('costcenters.monthlyBudget', 'Presupuesto / mes')}</th>
-                <th>{t('common.status', 'Estado')}</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {centers.length === 0 && <tr><td colSpan={8}><div className="empty" style={{ padding: 24 }}>Sin centros de costo</div></td></tr>}
-              {groups.map((grp) => (
-                <React.Fragment key={grp}>
-                  <tr className="fs-section-hdr"><td colSpan={8}>{grp.toUpperCase()}</td></tr>
-                  {centers.filter((c) => c.group === grp).map((c) => (
-                    <tr key={c.id} style={{ opacity: c.active ? 1 : 0.55 }}>
-                      <td><span className="mono" style={{ fontWeight: 700, fontSize: 12 }}>{c.code}</span></td>
-                      <td style={{ fontWeight: 500 }}>{c.name}</td>
-                      <td className="muted">{c.group}</td>
-                      <td><span className={`pill ${TYPE_CLASS[c.type]}`}>{TYPE_LABEL[c.type] || c.type}</span></td>
-                      <td style={{ fontSize: 12.5 }}>{c.responsible || '—'}</td>
-                      <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)' }}>{Q(c.budget)}</td>
-                      <td><span className={`pill ${c.active ? 'success' : ''}`}>{c.active ? t('common.active', 'Activo') : t('common.inactive', 'Inactivo')}</span></td>
-                      <td style={{ display: 'flex', gap: 4 }}>
-                        <button className="btn-ghost" onClick={() => openEdit(c)}>{t('common.edit', 'Editar')}</button>
-                        <button className="btn-ghost" onClick={() => toggleActive(c)}>{c.active ? t('costcenters.deactivate', 'Desactivar') : t('costcenters.activate', 'Activar')}</button>
-                      </td>
-                    </tr>
-                  ))}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="card card-outlined">
+        <table className="mtable">
+          <thead>
+            <tr>
+              <th>{t('common.code', 'Código')}</th>
+              <th>{t('common.name', 'Nombre')}</th>
+              <th>{t('costcenters.group', 'Grupo')}</th>
+              <th>{t('common.type', 'Tipo')}</th>
+              <th>{t('costcenters.responsible', 'Responsable')}</th>
+              <th className="r">{t('costcenters.monthlyBudget', 'Presupuesto / mes')}</th>
+              <th>{t('common.status', 'Estado')}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {centers.length === 0 && <tr><td colSpan={8}><div className="tbl-empty">Sin centros de costo</div></td></tr>}
+            {groups.map((grp) => (
+              <React.Fragment key={grp}>
+                <tr className="section"><td colSpan={8}>{grp.toUpperCase()}</td></tr>
+                {centers.filter((c) => c.group === grp).map((c) => (
+                  <tr key={c.id} style={{ opacity: c.active ? 1 : 0.55 }}>
+                    <td><strong className="num">{c.code}</strong></td>
+                    <td><span className="nm">{c.name}</span></td>
+                    <td style={{ color: 'var(--muted)' }}>{c.group}</td>
+                    <td><span className={`badge-m3 ${c.type === 'profit' ? 'success' : ''}`}>{TYPE_LABEL[c.type] || c.type}</span></td>
+                    <td>{c.responsible || '—'}</td>
+                    <td className="r num">{Q(c.budget)}</td>
+                    <td><span className={`badge-m3 ${c.active ? 'success' : ''}`}>{c.active ? t('common.active', 'Activo') : t('common.inactive', 'Inactivo')}</span></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                        <button className="icon-btn" title={t('common.edit', 'Editar')} style={{ width: 32, height: 32 }} onClick={() => openEdit(c)}><Icon name="edit" size={18} /></button>
+                        <button className="btn-text" style={{ height: 32, padding: '0 10px' }} onClick={() => toggleActive(c)}>{c.active ? t('costcenters.deactivate', 'Desactivar') : t('costcenters.activate', 'Activar')}</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {showModal && <CenterModal center={editTarget} onSave={saveCenter} onClose={() => setShowModal(false)} />}

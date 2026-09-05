@@ -1,4 +1,4 @@
-// ERP MAYA — Mayor General + Balance de Comprobación
+// Stackline — Mayor General + Balance de Comprobación
 // Data-driven: consume /api/accounting/ledger/{trial-balance,account/:id} con
 // fallback al mock (hooks useLedgerTrialBalance / useAccountLedger).
 import React, { useState, useEffect, useMemo } from 'react';

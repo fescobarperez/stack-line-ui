@@ -1,4 +1,4 @@
-// ERP MAYA — Tweaks panel (en proyecto compilado vive sólo durante desarrollo)
+// Stackline — Tweaks panel (en proyecto compilado vive sólo durante desarrollo)
 // Borra esta importación de App.jsx para builds de producción.
 import React from 'react';
 

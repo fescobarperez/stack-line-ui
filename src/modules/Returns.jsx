@@ -1,4 +1,4 @@
-// ERP MAYA — Devoluciones · Notas de Crédito FEL
+// Stackline — Devoluciones · Notas de Crédito FEL
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
 import { useTranslation } from 'react-i18next';

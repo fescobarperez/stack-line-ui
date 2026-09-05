@@ -1,7 +1,8 @@
-// ERP MAYA — MaintenanceModule (catálogos / mantenimientos)
+// Stackline — MaintenanceModule (catálogos / mantenimientos)
 // Data-driven con CRUD: sucursales/proveedores/categorías desde sus endpoints.
 // La pestaña Impuestos & SAT es configuración fiscal estática por ahora.
 import Icon from '../components/Icon.jsx';
+import DataTable from '../components/DataTable.jsx';
 import { useBranches, useSuppliers } from '../hooks/useMasters.js';
 import { createBranch, updateBranch } from '../api/org.js';
 import { createSupplier, updateSupplier } from '../api/partners.js';
@@ -88,6 +89,24 @@ function MaintenanceModule({ pushToast }) {
 
   const catalogCategories = categories.filter((c) => c.id !== 'todos');
 
+  const branchColumns = [
+    { key: 'id', header: t('common.code', 'Código'), render: (b) => <span className="sku">{String(b.id).toUpperCase()}</span> },
+    { key: 'name', header: t('common.name', 'Nombre'), sortable: true, render: (b) => <span className="nm">{b.name}</span> },
+    { key: 'address', header: t('common.address', 'Dirección'), render: (b) => b.address || b.addr || '—' },
+    { key: 'establishmentName', header: t('maintenance.establishment', 'Establecimiento'), render: (b) => <span style={{ color: 'var(--muted)' }}>{b.establishmentName || '—'}</span> },
+    { key: 'status', header: t('common.status', 'Estado'), sortable: true, render: (b) => b.status !== 'paused'
+      ? <span className="badge-m3 success">{t('maintenance.branchActive', 'Activa')}</span>
+      : <span className="badge-m3 warning">{t('maintenance.branchPaused', 'Pausada')}</span> },
+  ];
+  const supplierColumns = [
+    { key: 'name', header: t('maintenance.legalName', 'Razón social'), sortable: true, render: (s) => <span className="nm">{s.name}</span> },
+    { key: 'nit', header: 'NIT', render: (s) => <span className="sku">{s.nit || '—'}</span> },
+    { key: 'contact', header: t('maintenance.contact', 'Contacto'), render: (s) => s.contact || '—' },
+    { key: 'phone', header: t('common.phone', 'Teléfono'), render: (s) => <span className="sku">{s.phone || '—'}</span> },
+    { key: 'paymentTerms', header: t('maintenance.terms', 'Términos'), render: (s) => s.paymentTerms ? <span className="badge-m3">{s.paymentTerms}</span> : '—' },
+    { key: 'balance', header: t('maintenance.cxpBalance', 'Saldo CxP'), align: 'right', sortable: true, sortValue: (s) => Number(s.balance), render: (s) => <span className="num" style={{ fontWeight: 600, color: Number(s.balance) > 0 ? 'var(--warning)' : 'var(--muted)' }}>{Q(s.balance)}</span> },
+  ];
+
   return (
     <div className="page">
       <div className="page-head">
@@ -111,34 +130,15 @@ function MaintenanceModule({ pushToast }) {
               <Icon name="plus" size={12} /> {t('maintenance.addBranch', 'Agregar sucursal')}
             </button>
           </div>
-          <div className="card">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>{t('common.code', 'Código')}</th><th>{t('common.name', 'Nombre')}</th>
-                  <th>{t('common.address', 'Dirección')}</th><th>{t('maintenance.establishment', 'Establecimiento')}</th>
-                  <th>{t('common.status', 'Estado')}</th><th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {branches.length === 0 && <tr><td colSpan={6}><div className="empty" style={{ padding: 20 }}>Sin sucursales</div></td></tr>}
-                {branches.map((b) => (
-                  <tr key={b.id}>
-                    <td className="code">{String(b.id).toUpperCase()}</td>
-                    <td><div style={{ fontWeight: 500 }}>{b.name}</div></td>
-                    <td>{b.address || b.addr || '—'}</td>
-                    <td className="muted">{b.establishmentName || '—'}</td>
-                    <td>
-                      {b.status !== 'paused'
-                        ? <span className="pill success"><span className="dot" />{t('maintenance.branchActive', 'Activa')}</span>
-                        : <span className="pill warning"><span className="dot" />{t('maintenance.branchPaused', 'Pausada')}</span>}
-                    </td>
-                    <td><button className="btn-ghost" onClick={() => setModal({ type: 'sucursal', mode: 'edit', id: b.id, data: b })}>{t('common.edit', 'Editar')}</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            rowKey={(b) => b.id}
+            columns={branchColumns}
+            rows={branches}
+            density="compact"
+            pageSize={12}
+            onEdit={(b) => setModal({ type: 'sucursal', mode: 'edit', id: b.id, data: b })}
+            empty={t('maintenance.noBranches', 'Sin sucursales')}
+          />
         </>
       )}
 
@@ -149,31 +149,15 @@ function MaintenanceModule({ pushToast }) {
               <Icon name="plus" size={12} /> {t('maintenance.addSupplier', 'Agregar proveedor')}
             </button>
           </div>
-          <div className="card">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>{t('maintenance.legalName', 'Razón social')}</th><th>NIT</th><th>{t('maintenance.contact', 'Contacto')}</th>
-                  <th>{t('common.phone', 'Teléfono')}</th><th>{t('maintenance.terms', 'Términos')}</th>
-                  <th className="num">{t('maintenance.cxpBalance', 'Saldo CxP')}</th><th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {suppliers.length === 0 && <tr><td colSpan={7}><div className="empty" style={{ padding: 20 }}>Sin proveedores</div></td></tr>}
-                {suppliers.map((s) => (
-                  <tr key={s.id}>
-                    <td><div style={{ fontWeight: 500 }}>{s.name}</div></td>
-                    <td className="code">{s.nit || '—'}</td>
-                    <td>{s.contact || '—'}</td>
-                    <td className="code">{s.phone || '—'}</td>
-                    <td>{s.paymentTerms ? <span className="pill">{s.paymentTerms}</span> : '—'}</td>
-                    <td className="num" style={{ fontWeight: 600, color: Number(s.balance) > 0 ? 'var(--warning)' : 'var(--muted)' }}>{Q(s.balance)}</td>
-                    <td><button className="btn-ghost" onClick={() => setModal({ type: 'proveedor', mode: 'edit', id: s.id, data: s })}>{t('common.edit', 'Editar')}</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            rowKey={(s) => s.id}
+            columns={supplierColumns}
+            rows={suppliers}
+            density="compact"
+            pageSize={12}
+            onEdit={(s) => setModal({ type: 'proveedor', mode: 'edit', id: s.id, data: s })}
+            empty={t('maintenance.noSuppliers', 'Sin proveedores')}
+          />
         </>
       )}
 
@@ -217,11 +201,11 @@ function MaintenanceModule({ pushToast }) {
           <div className="card">
             <div className="card-head"><h3>{t('maintenance.taxConfig', 'Configuración de impuestos')}</h3></div>
             <div className="card-body flush">
-              <table className="tbl">
-                <thead><tr><th>{t('common.code', 'Código')}</th><th>{t('common.name', 'Nombre')}</th><th className="num">{t('maintenance.rate', 'Tasa')}</th><th>{t('common.status', 'Estado')}</th></tr></thead>
+              <table className="mtable">
+                <thead><tr><th>{t('common.code', 'Código')}</th><th>{t('common.name', 'Nombre')}</th><th className="r">{t('maintenance.rate', 'Tasa')}</th><th>{t('common.status', 'Estado')}</th></tr></thead>
                 <tbody>
-                  <tr><td className="code">IVA</td><td>Impuesto al Valor Agregado</td><td className="num" style={{ fontWeight: 600 }}>12%</td><td><span className="pill success"><span className="dot" />{t('common.active', 'Activo')}</span></td></tr>
-                  <tr><td className="code">IDP</td><td>Impuesto Distribución Petróleo</td><td className="num">—</td><td><span className="pill"><span className="dot" style={{ background: 'var(--muted)' }} />N/A</span></td></tr>
+                  <tr><td><span className="sku">IVA</span></td><td>Impuesto al Valor Agregado</td><td className="r num" style={{ fontWeight: 600 }}>12 %</td><td><span className="badge-m3 success">{t('common.active', 'Activo')}</span></td></tr>
+                  <tr><td><span className="sku">IDP</span></td><td>Impuesto Distribución Petróleo</td><td className="r num">—</td><td><span className="badge-m3">N/A</span></td></tr>
                 </tbody>
               </table>
             </div>

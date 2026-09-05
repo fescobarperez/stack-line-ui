@@ -1,9 +1,9 @@
-# design-sync — notas de ERP MAYA
+# design-sync — notas de Stackline
 
 Repo-específico. Léelo antes de cada re-sync.
 
 ## Contexto del repo
-- `erp-maya` es una **app Vite + React (JS/JSX)**, no una librería de componentes.
+- `stackline` es una **app Vite + React (JS/JSX)**, no una librería de componentes.
   No hay `dist/` de librería, ni `.d.ts`, ni Storybook.
 - Por eso corre en **modo synth-entry**: el converter sintetiza el entry desde
   `src/components` (fijado en `cfg.srcDir`). Invocación:
@@ -12,7 +12,7 @@ Repo-específico. Léelo antes de cada re-sync.
     --node-modules ./node_modules --entry ./dist/index.es.js --out ./ds-bundle
   ```
   El `--entry ./dist/index.es.js` **no existe a propósito** — así `resolveDistEntry`
-  cae a synth y `PKG_DIR` se resuelve a la raíz del repo (nombre `erp-maya`).
+  cae a synth y `PKG_DIR` se resuelve a la raíz del repo (nombre `stackline`).
 - Scope: solo `src/components`. Se excluyen 10 sub-componentes internos del panel
   de dev `TweaksPanel` (`Tweak*`) vía `componentSrcMap: null`.
 
@@ -24,7 +24,7 @@ Repo-específico. Léelo antes de cada re-sync.
 
 ## Gotcha: default exports en synth-entry
 El entry sintético usa `export * from`, que **NO reenvía default exports**. `Icon` y
-`GlobalSearch` eran default-only y no llegaban a `window.ErpMaya` → `[BUNDLE_EXPORT]`.
+`GlobalSearch` eran default-only y no llegaban a `window.Stackline` → `[BUNDLE_EXPORT]`.
 **Fix aplicado en el código de la app:** se añadió un named export a cada uno
 (`export { Icon }` en `Icon.jsx`; se convirtió `GlobalSearch` a named + `export default`).
 Si alguien revierte esos named exports, el build vuelve a fallar `[BUNDLE_EXPORT]`.

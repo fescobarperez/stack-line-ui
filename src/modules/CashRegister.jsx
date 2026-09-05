@@ -1,4 +1,4 @@
-// ERP MAYA — Módulo de Cierre de Caja
+// Stackline — Módulo de Cierre de Caja
 // Data-driven: /api/cash-registers (open/close). El backend calcula ventas/efectivo/
 // tarjeta/diferencia a partir de las ventas de la caja.
 import React, { useState, useMemo } from 'react';

@@ -1,4 +1,4 @@
-// ERP MAYA — Panel lateral de notificaciones
+// Stackline — Panel lateral de notificaciones
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from './Icon.jsx';
@@ -68,7 +68,7 @@ export function NotificationsPanel({ notifications, unreadCount, onMarkRead, onM
           <span style={{
             position: 'absolute', top: 5, right: 5,
             minWidth: 16, height: 16, borderRadius: 8,
-            background: 'var(--danger)', color: '#fff',
+            background: 'var(--danger)', color: 'var(--md-sys-color-on-error)',
             fontSize: 9, fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '0 3px', lineHeight: 1,

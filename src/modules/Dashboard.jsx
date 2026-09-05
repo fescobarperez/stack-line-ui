@@ -1,7 +1,7 @@
-// ERP MAYA — DashboardModule (ES module)
+// Stackline — DashboardModule (ES module)
 import Icon from '../components/Icon.jsx';
 import { useDashboard } from '../hooks/useDashboard.js';
-// ERP MAYA — Dashboard module
+// Stackline — Dashboard module
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 function Sparkline({ data, color = "currentColor", height = 32, width = 100 }) {
@@ -90,7 +90,7 @@ function DonutChart({ data, size = 160 }) {
   const r = size / 2 - 12;
   const cx = size / 2;
   const cy = size / 2;
-  const colors = ['var(--accent)', '#64748b', '#0891b2', '#a16207', '#7c3aed', '#9d174d', '#475569'];
+  const colors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
   let acc = 0;
   return (
     <svg width={size} height={size}>
@@ -139,88 +139,120 @@ function DashboardModule() {
   const totalTickets = salesTrend.reduce((s, d) => s + d.tickets, 0);
   const avgTicket = totalTickets ? totalSales / totalTickets : 0;
 
-  const colors = ['var(--accent)', '#64748b', '#0891b2', '#a16207', '#7c3aed', '#9d174d', '#475569'];
+  // Saludo con contexto (copy M3)
+  const now = new Date();
+  const greeting = now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches';
+  let firstName = '';
+  try { firstName = (JSON.parse(sessionStorage.getItem('maya_session'))?.user?.name || '').split(' ')[0]; } catch { firstName = ''; }
+  const longDate = now.toLocaleDateString('es-GT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const hhmm = now.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
+
+  const colors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
+
+  // Distribución de métodos de pago (derivada de los tickets recientes reales)
+  const payAgg = {};
+  recentTickets.forEach(tk => { payAgg[tk.pay] = (payAgg[tk.pay] || 0) + tk.total; });
+  const payTotal = Object.values(payAgg).reduce((a, b) => a + b, 0) || 1;
+  const rangeLabels = [['hoy', 'Hoy'], ['7d', '7 días'], ['14d', '14 días'], ['30d', '30 días']];
 
   return (
-    <div className="page">
+    <div className="page dash">
       <div className="page-head">
-        <div>
-          <h1 className="page-title">{t('nav.dashboard', 'Dashboard general')}</h1>
-          <div className="page-subtitle">Vista consolidada · 5 sucursales · {new Date().toLocaleDateString('es-GT', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}</div>
+        <div className="grow">
+          <h1 className="headline-large">{greeting}{firstName ? `, ${firstName}` : ''}</h1>
+          <p className="body-large supporting">Resumen operativo · {longDate} · {hhmm}</p>
         </div>
-        <div className="page-head-actions">
-          <div className="filterbar" style={{margin:0, padding:'4px 6px'}}>
-            {['Hoy','7d','14d','30d','90d'].map(r => (
-              <button key={r} className={`chip ${range === r.toLowerCase() ? 'active' : ''}`} onClick={() => setRange(r.toLowerCase())}>{r}</button>
+        <div className="actions">
+          <div className="segmented">
+            {rangeLabels.map(([id, lbl]) => (
+              <button key={id} className={`seg ${range === id ? 'sel' : ''}`} onClick={() => setRange(id)}>
+                {range === id && <Icon name="check"/>}{lbl}
+              </button>
             ))}
           </div>
-          <button className="btn"><Icon name="download"/>{t('common.export', 'Exportar')}</button>
-          <button className="btn primary"><Icon name="refresh"/>Sincronizar</button>
+          <button className="btn btn-outlined"><Icon name="download"/>{t('common.export', 'Exportar')}</button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="stat-grid">
-        <div className="stat">
-          <div className="label"><Icon name="cash" size={11}/>{t('dashboard.kpis.salesToday', 'Ventas hoy')}</div>
-          <div className="val mono">{Qs(today.total)}</div>
-          <div className={`delta ${deltaToday >= 0 ? 'up' : 'dn'}`}>
-            <Icon name={deltaToday >= 0 ? 'arrowUp' : 'arrowDown'} size={11}/>
-            {deltaToday}% vs ayer
+      {/* KPI cards */}
+      <div className="kpi-grid">
+        <div className="card card-elevated kpi">
+          <div className="kpi-top">
+            <div className="kpi-ic pri"><Icon name="cash" size={24}/></div>
+            <div className="kpi-label label-large">{t('dashboard.kpis.salesToday', 'Ventas del día')}</div>
           </div>
-          <div className="spark"><Sparkline data={salesTrend.slice(-7).map(d => d.total)} color="var(--accent)" width={84} height={32}/></div>
+          <div className="kpi-val">{Qs(today.total)}</div>
+          <div className="kpi-foot body-small">
+            <span className={`trend ${deltaToday >= 0 ? 'up' : 'down'}`}>
+              <Icon name={deltaToday >= 0 ? 'arrowUp' : 'arrowDown'} size={16}/>{Math.abs(deltaToday)} %
+            </span>
+            <span>vs. ayer</span>
+          </div>
         </div>
-        <div className="stat">
-          <div className="label"><Icon name="receipt" size={11}/>{t('dashboard.kpis.transactions', 'Tickets hoy')}</div>
-          <div className="val mono">{today.tickets}</div>
-          <div className="delta up"><Icon name="arrowUp" size={11}/>8.4% vs ayer</div>
-          <div className="spark"><Sparkline data={salesTrend.slice(-7).map(d => d.tickets)} color="var(--info)" width={84} height={32}/></div>
+        <div className="card card-elevated kpi">
+          <div className="kpi-top">
+            <div className="kpi-ic ter"><Icon name="receipt" size={24}/></div>
+            <div className="kpi-label label-large">{t('dashboard.kpis.transactions', 'Tickets emitidos')}</div>
+          </div>
+          <div className="kpi-val">{today.tickets}</div>
+          <div className="kpi-foot body-small">
+            <span>ticket prom. {Q(avgTicket)}</span>
+          </div>
         </div>
-        <div className="stat">
-          <div className="label"><Icon name="chart" size={11}/>{t('dashboard.kpis.avgTicket', 'Ticket promedio')}</div>
-          <div className="val mono">{Q(avgTicket)}</div>
-          <div className="delta up"><Icon name="arrowUp" size={11}/>2.1% vs sem. anterior</div>
+        <div className="card card-elevated kpi">
+          <div className="kpi-top">
+            <div className="kpi-ic sec"><Icon name="chart" size={24}/></div>
+            <div className="kpi-label label-large">{t('dashboard.kpis.avgTicket', 'Ticket promedio')}</div>
+          </div>
+          <div className="kpi-val">{Q(avgTicket)}</div>
+          <div className="kpi-foot body-small">
+            <span className="trend up"><Icon name="arrowUp" size={16}/>2.1 %</span>
+            <span>vs. sem. anterior</span>
+          </div>
         </div>
-        <div className="stat">
-          <div className="label"><Icon name="alert" size={11}/>{t('dashboard.sections.inventoryAlerts', 'Alertas activas')}</div>
-          <div className="val mono" style={{color:'var(--danger)'}}>{lowStock.length + expiringSoon.filter(p => p.daysLeft < 30).length}</div>
-          <div className="delta dn">
-            {lowStock.length} {t('dashboard.alerts.lowStock', 'stock bajo')} · {expiringSoon.filter(p => p.daysLeft < 30).length} {t('dashboard.alerts.expiringSoon', 'por vencer')}
+        <div className="card card-elevated kpi">
+          <div className="kpi-top">
+            <div className="kpi-ic err"><Icon name="alert" size={24}/></div>
+            <div className="kpi-label label-large">Alertas de stock</div>
+          </div>
+          <div className="kpi-val">{lowStock.length}</div>
+          <div className="kpi-foot body-small">
+            <span className="trend down"><Icon name="alert" size={16}/>{lowStock.length} bajo mínimo</span>
           </div>
         </div>
       </div>
 
       {/* Row 1: Chart + Donut */}
-      <div className="grid-2 mt-12">
-        <div className="card">
+      <div className="grid-2">
+        <div className="card card-elevated">
           <div className="card-head">
-            <div>
-              <h3>{t('dashboard.charts.salesByDay', 'Ventas por día')}</h3>
-              <div className="meta">Últimos 14 días · Q en miles</div>
+            <div className="grow">
+              <h2 className="title-large">{t('dashboard.charts.salesByDay', 'Tendencia de ventas')}</h2>
+              <p className="body-medium supporting">Últimos {daysFor[range] || 14} días · todas las sucursales</p>
             </div>
-            <div className="row gap-6">
-              <button className="btn sm ghost"><Icon name="chart" size={12}/>Detalle</button>
+            <button className="btn btn-text">Ver detalle</button>
+          </div>
+          <div className="card-body">
+            <AreaChart data={salesTrend} accent="var(--chart-1)"/>
+          </div>
+        </div>
+        <div className="card card-elevated">
+          <div className="card-head">
+            <div className="grow">
+              <h2 className="title-large">{t('dashboard.charts.salesByCategory', 'Ventas por categoría')}</h2>
+              <p className="body-medium supporting">Por categoría · mes actual</p>
             </div>
           </div>
           <div className="card-body">
-            <AreaChart data={salesTrend}/>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-head">
-            <h3>{t('dashboard.charts.salesByCategory', 'Ventas por categoría')}</h3>
-            <span className="meta">MTD</span>
-          </div>
-          <div className="card-body" style={{display:'flex', alignItems:'center', gap:16}}>
-            <DonutChart data={salesByCat} size={150}/>
-            <div style={{flex:1, display:'flex', flexDirection:'column', gap:4}}>
+            <div style={{display:'grid', placeItems:'center', padding:'8px 0 4px'}}>
+              <DonutChart data={salesByCat} size={180}/>
+            </div>
+            <div className="legend">
               {salesByCat.map((c, i) => (
-                <div key={i} className="row" style={{justifyContent:'space-between', fontSize:12}}>
-                  <span className="row gap-6">
-                    <span style={{width:9, height:9, borderRadius:2, background:colors[i % colors.length], display:'inline-block'}}/>
-                    {c.cat}
-                  </span>
-                  <span className="mono muted">{c.pct}%</span>
+                <div key={i} className="legend-row">
+                  <span className="legend-sw" style={{background: colors[i % colors.length]}}/>
+                  <span className="legend-nm body-medium">{c.cat}</span>
+                  <span className="legend-val label-large">{c.pct} %</span>
                 </div>
               ))}
             </div>
@@ -228,76 +260,38 @@ function DashboardModule() {
         </div>
       </div>
 
-      {/* Row 2: Top products + Branches */}
-      <div className="grid-2 mt-12">
-        <div className="card">
+      {/* Row 2: Top products + Alerts */}
+      <div className="grid-2">
+        <div className="card card-outlined">
           <div className="card-head">
-            <h3>{t('dashboard.charts.topProducts', 'Productos más vendidos')}</h3>
-            <a className="meta" href="#" style={{color:'var(--accent)'}}>Ver todos →</a>
+            <div className="grow">
+              <h2 className="title-large">{t('dashboard.charts.topProducts', 'Productos más vendidos')}</h2>
+              <p className="body-medium supporting">Por ingreso · hoy</p>
+            </div>
+            <button className="btn btn-tonal"><Icon name="filter"/>Filtrar</button>
           </div>
           <div className="card-body flush">
-            <table className="tbl">
+            <table>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>{t('dashboard.headers.product', 'Producto')}</th>
-                  <th className="num">Vendidos</th>
-                  <th className="num">{t('common.total', 'Total')}</th>
-                  <th className="num">∆</th>
+                  <th style={{width:'44%'}}>{t('dashboard.headers.product', 'Producto')}</th>
+                  <th className="r">Unid.</th>
+                  <th className="r">{t('common.total', 'Total')}</th>
+                  <th className="r">∆</th>
+                  <th style={{width:'18%'}}>Stock</th>
                 </tr>
               </thead>
               <tbody>
-                {topProducts.slice(0,7).map((p, i) => (
-                  <tr key={p.sku}>
-                    <td className="code">{String(i+1).padStart(2,'0')}</td>
-                    <td>
-                      <div style={{fontWeight:500}}>{p.name}</div>
-                      <div className="code muted" style={{fontSize:10.5}}>{p.sku}</div>
-                    </td>
-                    <td className="num">{p.qty}</td>
-                    <td className="num">{Q(p.total)}</td>
-                    <td className="num" style={{color: p.trend.startsWith('+') ? 'var(--success)':'var(--danger)'}}>{p.trend}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-head">
-            <h3>{t('dashboard.sections.branches', 'Sucursales en vivo')}</h3>
-            <span className="meta">Tiempo real</span>
-          </div>
-          <div className="card-body flush">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>{t('dashboard.headers.branch', 'Sucursal')}</th>
-                  <th className="num">{t('dashboard.kpis.salesToday', 'Ventas hoy')}</th>
-                  <th className="center">{t('common.status', 'Estado')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {branchSales.map(b => {
-                  const max = Math.max(...branchSales.map(x => x.sales));
-                  const pct = (b.sales / max) * 100;
+                {topProducts.slice(0,6).map((p) => {
+                  const maxQty = Math.max(...topProducts.map(x => x.qty)) || 1;
+                  const pctBar = Math.round((p.qty / maxQty) * 100);
                   return (
-                    <tr key={b.id}>
-                      <td>
-                        <div style={{fontWeight:500}}>{b.name}</div>
-                        <div className="muted" style={{fontSize:11}}>{b.addr}</div>
-                      </td>
-                      <td className="num">
-                        <div>{Q(b.sales)}</div>
-                        <div className="bar" style={{marginTop:3, width:80, marginLeft:'auto'}}>
-                          <div style={{width: `${pct}%`}}/>
-                        </div>
-                      </td>
-                      <td className="center">
-                        {b.status === 'active'
-                          ? <span className="pill success"><span className="dot"/>{t('common.active', 'Activa')}</span>
-                          : <span className="pill warning"><span className="dot"/>Pausada</span>}
-                      </td>
+                    <tr key={p.sku}>
+                      <td><div className="cell-stack"><span className="nm">{p.name}</span><span className="sku">{p.sku}</span></div></td>
+                      <td className="r num">{p.qty}</td>
+                      <td className="r num">{Q(p.total)}</td>
+                      <td className="r num" style={{color: p.trend.startsWith('+') ? 'var(--md-success)' : 'var(--md-error)'}}>{p.trend}</td>
+                      <td><div className="prog"><i style={{width:`${pctBar}%`}}/></div></td>
                     </tr>
                   );
                 })}
@@ -305,86 +299,88 @@ function DashboardModule() {
             </table>
           </div>
         </div>
-      </div>
 
-      {/* Row 3: Alerts + Recent tickets */}
-      <div className="grid-2 mt-12">
-        <div className="card">
+        <div className="card card-filled">
           <div className="card-head">
-            <h3>{t('dashboard.sections.inventoryAlerts', 'Alertas de inventario')}</h3>
-            <span className="pill danger">{lowStock.length + expiringSoon.filter(p => p.daysLeft < 30).length} activas</span>
+            <div className="grow">
+              <h2 className="title-large">{t('dashboard.sections.inventoryAlerts', 'Requiere atención')}</h2>
+              <p className="body-medium supporting">{lowStock.length} alertas activas</p>
+            </div>
           </div>
-          <div className="card-body flush">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>{t('dashboard.headers.type', 'Tipo')}</th>
-                  <th>{t('dashboard.headers.product', 'Producto')}</th>
-                  <th className="num">Stock / Días</th>
-                  <th>{t('dashboard.headers.action', 'Acción')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lowStock.slice(0,4).map(p => (
-                  <tr key={p.sku}>
-                    <td><span className="pill warning"><span className="dot"/>{t('dashboard.alerts.lowStock', 'Stock bajo')}</span></td>
-                    <td>
-                      <div style={{fontWeight:500}}>{p.name}</div>
-                      <div className="code muted" style={{fontSize:10.5}}>{p.sku}</div>
-                    </td>
-                    <td className="num">
-                      <span style={{color:'var(--warning)', fontWeight:600}}>{p.stock}</span>
-                      <span className="muted"> / {p.min}</span>
-                    </td>
-                    <td><a href="#" style={{color:'var(--accent)', fontSize:11.5}}>Crear OC →</a></td>
-                  </tr>
-                ))}
-                {expiringSoon.slice(0,3).map(p => (
-                  <tr key={p.sku + '_exp'}>
-                    <td><span className="pill danger"><span className="dot"/>Vence pronto</span></td>
-                    <td>
-                      <div style={{fontWeight:500}}>{p.name}</div>
-                      <div className="code muted" style={{fontSize:10.5}}>Lote {p.batch} · {p.exp}</div>
-                    </td>
-                    <td className="num">
-                      <span style={{color:'var(--danger)', fontWeight:600}}>{p.daysLeft}d</span>
-                    </td>
-                    <td><a href="#" style={{color:'var(--accent)', fontSize:11.5}}>Promocionar →</a></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="list">
+            {lowStock.slice(0,5).map(p => (
+              <div key={p.sku} className="list-item">
+                <div className="list-lead err"><Icon name="alert" size={20}/></div>
+                <div className="list-txt">
+                  <div className="h title-medium">{p.name}</div>
+                  <div className="s body-small">{p.stock} unid. · mínimo {p.min}</div>
+                </div>
+                <div className="list-trail label-large">{p.stock - p.min}</div>
+              </div>
+            ))}
+          </div>
+          <div className="divider"/>
+          <div style={{padding:'12px 16px', display:'flex', justifyContent:'flex-end', gap:8}}>
+            <button className="btn btn-text">Descartar todo</button>
+            <button className="btn btn-tonal">Ver todas</button>
           </div>
         </div>
-        <div className="card">
+      </div>
+
+      {/* Row 3: Payment methods + Recent tickets */}
+      <div className="grid-2b">
+        <div className="card card-outlined">
           <div className="card-head">
-            <h3>{t('dashboard.sections.recentTransactions', 'Últimas transacciones')}</h3>
-            <a className="meta" href="#" style={{color:'var(--accent)'}}>Ver feed →</a>
+            <div className="grow">
+              <h2 className="title-large">Métodos de pago</h2>
+              <p className="body-medium supporting">Distribución del día</p>
+            </div>
+          </div>
+          <div className="card-body">
+            <div style={{display:'flex', flexDirection:'column', gap:20}}>
+              {Object.entries(payAgg).map(([method, amt], i) => {
+                const pct = Math.round((amt / payTotal) * 100);
+                return (
+                  <div key={method}>
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:8}}>
+                      <span className="label-large">{method}</span>
+                      <span className="label-large num">{Q(amt)} · {pct} %</span>
+                    </div>
+                    <div className={i === 1 ? 'prog ter' : 'prog'}><i style={{width:`${pct}%`}}/></div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="card card-outlined">
+          <div className="card-head">
+            <div className="grow">
+              <h2 className="title-large">{t('dashboard.sections.recentTransactions', 'Tickets recientes')}</h2>
+              <p className="body-medium supporting">Últimas transacciones</p>
+            </div>
+            <button className="btn btn-text">Ver todos</button>
           </div>
           <div className="card-body flush">
-            <table className="tbl">
+            <table>
               <thead>
                 <tr>
                   <th>{t('dashboard.headers.ticket', 'Ticket')}</th>
                   <th>{t('dashboard.headers.time', 'Hora')}</th>
-                  <th>{t('dashboard.headers.branch', 'Sucursal')}</th>
                   <th>{t('dashboard.headers.payment', 'Pago')}</th>
-                  <th className="num">{t('common.total', 'Total')}</th>
+                  <th className="r">{t('common.total', 'Total')}</th>
+                  <th>{t('common.status', 'Estado')}</th>
                 </tr>
               </thead>
               <tbody>
-                {recentTickets.slice(0,8).map(t => (
-                  <tr key={t.id}>
-                    <td className="code">{t.id.slice(-6)}</td>
-                    <td className="code">{t.date.slice(11)}</td>
-                    <td>{t.branch}</td>
-                    <td>
-                      <span className="pill">
-                        <Icon name={t.pay === 'Efectivo' ? 'cash' : t.pay === 'Tarjeta' ? 'card' : 'transfer'} size={10}/>
-                        {t.pay}
-                      </span>
-                    </td>
-                    <td className="num" style={{fontWeight:600}}>{Q(t.total)}</td>
+                {recentTickets.slice(0,6).map(tk => (
+                  <tr key={tk.id}>
+                    <td className="num">{tk.id.slice(-6)}</td>
+                    <td className="num">{tk.date.slice(11,16)}</td>
+                    <td>{tk.pay}</td>
+                    <td className="r num">{Q(tk.total)}</td>
+                    <td><span className="badge ok">Certificado</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -392,6 +388,8 @@ function DashboardModule() {
           </div>
         </div>
       </div>
+
+      <button className="fab dash-fab"><Icon name="plus"/>Nueva venta</button>
     </div>
   );
 }

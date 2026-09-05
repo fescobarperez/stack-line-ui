@@ -1,6 +1,8 @@
-// ERP MAYA — InventoryModule (ES module)
+// Stackline — InventoryModule (ES module)
 import Icon from '../components/Icon.jsx';
-// ERP MAYA — Inventory module
+import DataTable from '../components/DataTable.jsx';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
+// Stackline — Inventory module
 import React, { useState as useStateInv, useMemo as useMemoInv } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProducts, useCategories } from '../hooks/useCatalog.js';
@@ -10,10 +12,13 @@ import { useStockMovements } from '../hooks/useOperations.js';
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const Qs = Q;
 
+const EMPTY_FORM = { name: '', sku: '', cat: '', unit: 'Unidad', supplierId: '', cost: '', price: '', stock: '', min: '', desc: '', active: true, lots: false };
+
 function InventoryModule({ pushToast }) {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   // Datos reales desde el backend (con fallback automático al mock).
-  const { items: PRODUCTS } = useProducts();
+  const { items: PRODUCTS, reload: reloadProducts, create: createProductApi, update: updateProductApi, remove: removeProductApi } = useProducts();
   const CATEGORIES = useCategories();
   const { items: SUPPLIERS } = useSuppliers();
   const { items: BRANCHES } = useBranches();
@@ -37,7 +42,11 @@ function InventoryModule({ pushToast }) {
   const [search, setSearch] = useStateInv('');
   const [stockFilter, setStockFilter] = useStateInv('all'); // all, low, ok, out
   const [selected, setSelected] = useStateInv(null);
+  const [selRows, setSelRows] = useStateInv([]);
   const [showNew, setShowNew] = useStateInv(false);
+  const [form, setForm] = useStateInv(EMPTY_FORM);
+  const [editingId, setEditingId] = useStateInv(null);
+  const [saving, setSaving] = useStateInv(false);
 
   const filtered = useMemoInv(() => {
     let p = PRODUCTS;
@@ -54,6 +63,98 @@ function InventoryModule({ pushToast }) {
 
   const totalValueCost = PRODUCTS.reduce((s, p) => s + p.cost * p.stock, 0);
   const totalValueSale = PRODUCTS.reduce((s, p) => s + p.price * p.stock, 0);
+  const totalStock = filtered.reduce((s, p) => s + Number(p.stock || 0), 0);
+
+  // Acciones de producto (reutilizadas por la tabla y el drawer de detalle)
+  const firstCatId = () => (CATEGORIES.find(c => c.id !== 'todos') || {}).id ?? '';
+
+  const openNew = () => {
+    setEditingId(null);
+    setForm({ ...EMPTY_FORM, cat: firstCatId() });
+    setShowNew(true);
+  };
+  const viewProduct = (p) => setSelected(p);
+  const editProduct = (p) => {
+    // Redirige al formulario en modo edición, precargando los datos del producto.
+    setSelected(null);
+    setEditingId(p.id);
+    setForm({
+      name: p.name ?? '', sku: p.sku ?? '', cat: p.cat ?? firstCatId(),
+      unit: p.unit ?? 'Unidad', supplierId: p.supplierId ?? '',
+      cost: p.cost ?? '', price: p.price ?? '', stock: p.stock ?? '', min: p.min ?? '',
+      desc: p.description ?? '', active: (p.status ?? 'ACTIVE') !== 'INACTIVE', lots: !!p.lots,
+    });
+    setShowNew(true);
+  };
+  const saveProduct = async () => {
+    if (!form.name.trim() || !form.sku.trim()) {
+      if (pushToast) pushToast('Nombre y SKU son obligatorios', 'danger');
+      return;
+    }
+    const payload = {
+      name: form.name.trim(),
+      sku: form.sku.trim(),
+      categoryId: form.cat || null,
+      unit: form.unit,
+      cost: Number(form.cost) || 0,
+      price: Number(form.price) || 0,
+      minStock: Number(form.min) || 0,
+      status: form.active ? 'ACTIVE' : 'INACTIVE',
+    };
+    setSaving(true);
+    try {
+      if (editingId != null) {
+        await updateProductApi(editingId, payload);
+        if (pushToast) pushToast(`"${payload.name}" actualizado`, 'success');
+      } else {
+        await createProductApi(payload);
+        if (pushToast) pushToast(`"${payload.name}" creado`, 'success');
+      }
+      setShowNew(false);
+    } catch (err) {
+      if (pushToast) pushToast(err?.message || 'No se pudo guardar el producto', 'danger');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const deleteProduct = async (p) => {
+    const ok = await confirm({
+      title: 'Eliminar producto',
+      message: `¿Seguro que querés eliminar "${p.name}"? Esta acción no se puede deshacer.`,
+      confirmLabel: 'Eliminar',
+      danger: true,
+      icon: 'trash',
+    });
+    if (!ok) return;
+    try {
+      await removeProductApi(p.id);
+      if (pushToast) pushToast(`"${p.name}" eliminado`, 'success');
+      if (selected && selected.id === p.id) setSelected(null);
+    } catch (err) {
+      if (pushToast) pushToast(err?.message || 'No se pudo eliminar el producto', 'danger');
+    }
+  };
+
+  // Columnas de la tabla de productos (demo del componente <DataTable>)
+  const catName = (id) => CATEGORIES.find(c => c.id === id)?.name;
+  const productColumns = [
+    { key: 'sku', header: t('inventory.headers.sku', 'SKU / Código'), sortable: true, mono: true },
+    { key: 'name', header: t('inventory.headers.product', 'Producto'), sortable: true,
+      render: (p) => (<><div style={{ fontWeight: 500 }}>{p.name}</div><div className="muted" style={{ fontSize: 10.5 }}>{p.unit}</div></>) },
+    { key: 'cat', header: t('inventory.headers.category', 'Categoría'), sortable: true,
+      sortValue: (p) => catName(p.cat), render: (p) => catName(p.cat) },
+    { key: 'cost', header: t('inventory.headers.cost', 'Costo'), align: 'right', sortable: true, render: (p) => Q(p.cost) },
+    { key: 'price', header: t('inventory.headers.price', 'Precio'), align: 'right', sortable: true,
+      render: (p) => (<span style={{ fontWeight: 600 }}>{Q(p.price)}</span>) },
+    { key: 'margin', header: t('inventory.headers.margin', 'Margen'), align: 'right', sortable: true,
+      sortValue: (p) => ((p.price - p.cost) / p.price * 100),
+      render: (p) => { const m = ((p.price - p.cost) / p.price * 100); return <span style={{ color: m > 30 ? 'var(--success)' : m > 15 ? 'var(--text-2)' : 'var(--warning)' }}>{m.toFixed(1)}%</span>; } },
+    { key: 'stock', header: t('inventory.headers.stock', 'Stock'), align: 'right', sortable: true,
+      render: (p) => (<span style={{ fontWeight: 600, color: p.stock === 0 ? 'var(--danger)' : p.stock < p.min ? 'var(--warning)' : 'var(--text)' }}>{p.stock}</span>) },
+    { key: 'min', header: t('inventory.headers.min', 'Mín'), align: 'right', sortable: true, className: 'muted' },
+    { key: 'batch', header: t('inventory.headers.lot', 'Lote'), mono: true, className: 'muted', render: (p) => p.batch || '—' },
+    { key: 'exp', header: t('inventory.headers.expires', 'Vence'), mono: true, className: 'muted', render: (p) => p.exp || '—' },
+  ];
 
   return (
     <div className="page">
@@ -65,7 +166,7 @@ function InventoryModule({ pushToast }) {
         <div className="page-head-actions">
           <button className="btn"><Icon name="upload"/>{t('common.import', 'Importar')}</button>
           <button className="btn"><Icon name="download"/>{t('common.export', 'Exportar')}</button>
-          <button className="btn accent" onClick={() => setShowNew(true)}><Icon name="plus"/>{t('inventory.newProduct', 'Nuevo producto')}</button>
+          <button className="btn accent" onClick={openNew}><Icon name="plus"/>{t('inventory.newProduct', 'Nuevo producto')}</button>
         </div>
       </div>
 
@@ -140,61 +241,25 @@ function InventoryModule({ pushToast }) {
             <button className="btn sm"><Icon name="filter" size={12}/>{t('common.filter', 'Filtrar')}</button>
           </div>
 
-          <div className="card">
-            <div className="tbl-wrap" style={{maxHeight:'62vh'}}>
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th style={{width:24}}><input type="checkbox"/></th>
-                    <th>{t('inventory.headers.sku', 'SKU / Código')}</th>
-                    <th>{t('inventory.headers.product', 'Producto')}</th>
-                    <th>{t('inventory.headers.category', 'Categoría')}</th>
-                    <th className="num">{t('inventory.headers.cost', 'Costo')}</th>
-                    <th className="num">{t('inventory.headers.price', 'Precio')}</th>
-                    <th className="num">{t('inventory.headers.margin', 'Margen')}</th>
-                    <th className="num">{t('inventory.headers.stock', 'Stock')}</th>
-                    <th className="num">{t('inventory.headers.min', 'Mín')}</th>
-                    <th>{t('inventory.headers.lot', 'Lote')}</th>
-                    <th>{t('inventory.headers.expires', 'Vence')}</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(p => {
-                    const margin = ((p.price - p.cost)/p.price * 100);
-                    const lowStock = p.stock < p.min;
-                    const noStock = p.stock === 0;
-                    return (
-                      <tr key={p.sku} onClick={() => setSelected(p)} style={{cursor:'pointer'}}>
-                        <td><input type="checkbox" onClick={e=>e.stopPropagation()}/></td>
-                        <td className="code">{p.sku}</td>
-                        <td>
-                          <div style={{fontWeight:500}}>{p.name}</div>
-                          <div className="muted" style={{fontSize:10.5}}>{p.unit}</div>
-                        </td>
-                        <td>{CATEGORIES.find(c=>c.id===p.cat)?.name}</td>
-                        <td className="num">{Q(p.cost)}</td>
-                        <td className="num" style={{fontWeight:600}}>{Q(p.price)}</td>
-                        <td className="num" style={{color: margin > 30 ? 'var(--success)' : margin > 15 ? 'var(--text-2)' : 'var(--warning)'}}>{margin.toFixed(1)}%</td>
-                        <td className="num">
-                          <span style={{
-                            fontWeight:600,
-                            color: noStock ? 'var(--danger)' : lowStock ? 'var(--warning)' : 'var(--text)'
-                          }}>{p.stock}</span>
-                        </td>
-                        <td className="num muted">{p.min}</td>
-                        <td className="code muted">{p.batch || '—'}</td>
-                        <td className="code muted">{p.exp || '—'}</td>
-                        <td>
-                          <button className="icon-btn" onClick={e=>{e.stopPropagation();}}><Icon name="dots"/></button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <DataTable
+            rowKey={(p) => p.sku}
+            columns={productColumns}
+            rows={filtered}
+            selectable
+            selected={selRows}
+            onSelectedChange={setSelRows}
+            pageSize={12}
+            density="compact"
+            totals={{ sku: 'Total', stock: totalStock }}
+            title={`${filtered.length} productos`}
+            onRowClick={viewProduct}
+            onView={viewProduct}
+            onEdit={editProduct}
+            onDelete={deleteProduct}
+            onRefresh={() => { reloadProducts(); pushToast && pushToast('Actualizando productos…'); }}
+            empty={t('inventory.empty', 'Sin productos que coincidan con el filtro')}
+            emptyIcon="box"
+          />
         </>
       )}
 
@@ -217,15 +282,15 @@ function InventoryModule({ pushToast }) {
             <button className="btn sm"><Icon name="calendar" size={12}/>Mayo 2026</button>
             <button className="btn sm"><Icon name="download" size={12}/>{t('inventory.exportMovements', 'Exportar')}</button>
           </div>
-          <div className="card">
-            <table className="tbl">
+          <div className="card card-outlined">
+            <table className="mtable">
               <thead>
                 <tr>
                   <th>{t('inventory.headers.date', 'Fecha')}</th>
                   <th>{t('inventory.headers.type', 'Tipo')}</th>
                   <th>{t('inventory.headers.sku', 'SKU / Código')}</th>
                   <th>{t('inventory.headers.product', 'Producto')}</th>
-                  <th className="num">{t('inventory.headers.quantity', 'Cantidad')}</th>
+                  <th className="r">{t('inventory.headers.quantity', 'Cantidad')}</th>
                   <th>{t('inventory.headers.reference', 'Referencia')}</th>
                   <th>{t('inventory.headers.user', 'Usuario')}</th>
                 </tr>
@@ -233,19 +298,19 @@ function InventoryModule({ pushToast }) {
               <tbody>
                 {STOCK_MOVEMENTS.map((m, i) => (
                   <tr key={i}>
-                    <td className="code">{m.date}</td>
+                    <td className="num">{m.date}</td>
                     <td>
-                      {m.type === 'sale' && <span className="pill"><Icon name="receipt" size={9}/>Venta</span>}
-                      {m.type === 'reception' && <span className="pill success"><Icon name="truck" size={9}/>Recepción</span>}
-                      {m.type === 'transfer' && <span className="pill info"><Icon name="transfer" size={9}/>Transferencia</span>}
-                      {m.type === 'adjustment' && <span className="pill warning"><Icon name="edit" size={9}/>Ajuste</span>}
+                      {m.type === 'sale' && <span className="badge-m3"><Icon name="receipt" size={14}/>Venta</span>}
+                      {m.type === 'reception' && <span className="badge-m3 success"><Icon name="truck" size={14}/>Recepción</span>}
+                      {m.type === 'transfer' && <span className="badge-m3 tertiary"><Icon name="transfer" size={14}/>Transferencia</span>}
+                      {m.type === 'adjustment' && <span className="badge-m3 warning"><Icon name="edit" size={14}/>Ajuste</span>}
                     </td>
-                    <td className="code">{m.sku.slice(-7)}</td>
+                    <td><span className="sku">{m.sku.slice(-7)}</span></td>
                     <td>{m.name}</td>
-                    <td className="num" style={{color: m.qty > 0 ? 'var(--success)' : 'var(--danger)', fontWeight:600}}>
+                    <td className="r num" style={{color: m.qty > 0 ? 'var(--md-success)' : 'var(--md-error)', fontWeight:600}}>
                       {m.qty > 0 ? '+' : ''}{m.qty}
                     </td>
-                    <td className="code">{m.ref}</td>
+                    <td><span className="sku">{m.ref}</span></td>
                     <td>{m.user}</td>
                   </tr>
                 ))}
@@ -527,7 +592,7 @@ function InventoryModule({ pushToast }) {
               </div>
 
               <div className="card" style={{marginBottom:12}}>
-                <div className="card-head"><h3>{t('inventory.generalData', 'Datos generales')}</h3><button className="btn sm ghost"><Icon name="edit" size={11}/>{t('common.edit', 'Editar')}</button></div>
+                <div className="card-head"><h3>{t('inventory.generalData', 'Datos generales')}</h3><button className="btn sm ghost" onClick={() => editProduct(selected)}><Icon name="edit" size={11}/>{t('common.edit', 'Editar')}</button></div>
                 <div className="card-body" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 14px', fontSize:12.5}}>
                   <div><div className="muted" style={{fontSize:11}}>{t('inventory.headers.category', 'Categoría')}</div><div>{CATEGORIES.find(c=>c.id===selected.cat)?.name}</div></div>
                   <div><div className="muted" style={{fontSize:11}}>Unidad</div><div>{selected.unit}</div></div>
@@ -563,54 +628,67 @@ function InventoryModule({ pushToast }) {
               </div>
             </div>
             <div className="drawer-foot">
-              <button className="btn"><Icon name="trash"/>{t('common.delete', 'Eliminar')}</button>
-              <button className="btn accent"><Icon name="edit"/>{t('inventory.editProduct', 'Editar producto')}</button>
+              <button className="btn danger" onClick={() => deleteProduct(selected)}><Icon name="trash"/>{t('common.delete', 'Eliminar')}</button>
+              <button className="btn accent" onClick={() => editProduct(selected)}><Icon name="edit"/>{t('inventory.editProduct', 'Editar producto')}</button>
             </div>
           </div>
         </>
       )}
 
-      {/* New product modal */}
+      {/* Product form modal (crear / editar) */}
       {showNew && (
-        <div className="modal-overlay" onClick={() => setShowNew(false)}>
+        <div className="modal-overlay" onClick={() => !saving && setShowNew(false)}>
           <div className="modal" style={{width:640}} onClick={e => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>{t('inventory.newProduct', 'Nuevo producto')}</h3>
+              <h3>{editingId != null ? t('inventory.editProduct', 'Editar producto') : t('inventory.newProduct', 'Nuevo producto')}</h3>
               <button className="icon-btn" onClick={() => setShowNew(false)}><Icon name="x"/></button>
             </div>
             <div className="modal-body" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 14px'}}>
-              <div className="field" style={{gridColumn:'1 / -1'}}><label>Nombre del producto</label><input placeholder="Ej. Coca-Cola 600ml"/></div>
-              <div className="field"><label>Código de barras / SKU</label><input placeholder="7501..." /></div>
+              <div className="field" style={{gridColumn:'1 / -1'}}><label>Nombre del producto</label>
+                <input placeholder="Ej. Coca-Cola 600ml" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}/></div>
+              <div className="field"><label>Código de barras / SKU</label>
+                <input placeholder="7501..." value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))}/></div>
               <div className="field"><label>{t('inventory.headers.category', 'Categoría')}</label>
-                <select>{CATEGORIES.filter(c=>c.id!=='todos').map(c => <option key={c.id}>{c.name}</option>)}</select>
+                <select value={form.cat} onChange={e => setForm(f => ({ ...f, cat: e.target.value }))}>
+                  {CATEGORIES.filter(c=>c.id!=='todos').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
               </div>
               <div className="field"><label>Unidad de medida</label>
-                <select><option>Unidad</option><option>Paquete</option><option>Kg</option><option>Libra</option><option>Litro</option></select>
+                <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}>
+                  <option>Unidad</option><option>Paquete</option><option>Kg</option><option>Libra</option><option>Litro</option>
+                </select>
               </div>
               <div className="field"><label>{t('inventory.headers.supplier', 'Proveedor')}</label>
-                <select>{SUPPLIERS.map(s => <option key={s.id}>{s.name}</option>)}</select>
+                <select value={form.supplierId} onChange={e => setForm(f => ({ ...f, supplierId: e.target.value }))}>
+                  <option value="">—</option>
+                  {SUPPLIERS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
               </div>
-              <div className="field"><label>Costo unitario (Q)</label><input type="number" placeholder="0.00"/></div>
-              <div className="field"><label>Precio venta (Q)</label><input type="number" placeholder="0.00"/></div>
-              <div className="field"><label>Stock inicial</label><input type="number" placeholder="0"/></div>
-              <div className="field"><label>Stock mínimo</label><input type="number" placeholder="0"/></div>
+              <div className="field"><label>Costo unitario (Q)</label>
+                <input type="number" placeholder="0.00" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))}/></div>
+              <div className="field"><label>Precio venta (Q)</label>
+                <input type="number" placeholder="0.00" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))}/></div>
+              <div className="field"><label>Stock inicial</label>
+                <input type="number" placeholder="0" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} disabled={editingId != null}/></div>
+              <div className="field"><label>Stock mínimo</label>
+                <input type="number" placeholder="0" value={form.min} onChange={e => setForm(f => ({ ...f, min: e.target.value }))}/></div>
               <div className="field" style={{gridColumn:'1 / -1'}}>
                 <label>{t('common.description', 'Descripción')} / Notas</label>
-                <textarea rows="2" placeholder="Detalles, presentación, observaciones…"></textarea>
+                <textarea rows="2" placeholder="Detalles, presentación, observaciones…" value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))}></textarea>
               </div>
               <div className="row gap-8" style={{gridColumn:'1 / -1'}}>
                 <label className="row gap-6" style={{fontSize:12}}>
-                  <input type="checkbox" defaultChecked/>Producto activo en POS
+                  <input type="checkbox" checked={form.active} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))}/>Producto activo en POS
                 </label>
                 <label className="row gap-6" style={{fontSize:12}}>
-                  <input type="checkbox"/>Maneja lotes y vencimientos
+                  <input type="checkbox" checked={form.lots} onChange={e => setForm(f => ({ ...f, lots: e.target.checked }))}/>Maneja lotes y vencimientos
                 </label>
               </div>
             </div>
             <div className="modal-foot">
-              <button className="btn" onClick={() => setShowNew(false)}>{t('common.cancel', 'Cancelar')}</button>
-              <button className="btn accent" onClick={() => { setShowNew(false); pushToast && pushToast('Producto creado', 'success'); }}>
-                <Icon name="check"/>{t('inventory.newProduct', 'Nuevo producto')}
+              <button className="btn" onClick={() => setShowNew(false)} disabled={saving}>{t('common.cancel', 'Cancelar')}</button>
+              <button className="btn accent" onClick={saveProduct} disabled={saving}>
+                <Icon name="check"/>{saving ? t('common.saving', 'Guardando…') : (editingId != null ? t('common.saveChanges', 'Guardar cambios') : t('inventory.newProduct', 'Nuevo producto'))}
               </button>
             </div>
           </div>

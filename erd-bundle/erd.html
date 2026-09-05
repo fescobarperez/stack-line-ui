@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ERP MAYA — Modelo de Datos (ERD)</title>
+<title>Stackline — Modelo de Datos (ERD)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -63,11 +63,11 @@
 <body>
 <div class="wrap">
   <header class="hero">
-    <div class="kicker">ERP MAYA · Sistema Retail</div>
+    <div class="kicker">Stackline · Sistema Retail</div>
     <h1>Modelo Entidad–Relación de la base de datos</h1>
     <p class="sub">Esquema relacional normalizado y <b>multi-empresa (SaaS)</b> derivado del sistema (Inventario · POS · Facturación · Compras · Contabilidad · FEL). 24 tablas en 9 módulos. Cada ficha explica <b>por qué está diseñada así</b> y <b>por qué se relaciona</b> con las demás.</p>
     <div class="note"><b>Nota de diseño:</b> hoy los datos viven como mocks en <code>src/data/mock.js</code> (aún no hay DB física). Este ERD es el <b>esquema objetivo</b>: normaliza los arreglos anidados (ítems de venta/compra/traslado y líneas de póliza) en tablas de detalle, y convierte los campos denormalizados (nombre de cajero/sucursal) en llaves foráneas.</p>
-    <div class="note" style="background:var(--info-soft);border-color:#9dc0f5;color:#0b3d91"><b>Aislamiento multi-empresa (multi-tenant):</b> MAYA lo usan varias empresas y <b>sus datos no se mezclan</b>. La tabla raíz es <code>companies</code> (los inquilinos). <b>Toda tabla operativa lleva la columna discriminadora <code>company_id</code></b> (FK → companies); las consultas siempre filtran por ella (idealmente con Row-Level Security). Ojo con la homonimia: <code>companies</code> = empresas que usan el ERP; <code>clients</code> = clientes a quienes cada empresa vende.</div>
+    <div class="note" style="background:var(--info-soft);border-color:#9dc0f5;color:#0b3d91"><b>Aislamiento multi-empresa (multi-tenant):</b> Stackline lo usan varias empresas y <b>sus datos no se mezclan</b>. La tabla raíz es <code>companies</code> (los inquilinos). <b>Toda tabla operativa lleva la columna discriminadora <code>company_id</code></b> (FK → companies); las consultas siempre filtran por ella (idealmente con Row-Level Security). Ojo con la homonimia: <code>companies</code> = empresas que usan el ERP; <code>clients</code> = clientes a quienes cada empresa vende.</div>
     <div class="legend">
       <span class="lg"><i style="background:#1e293b"></i>Núcleo multi-empresa</span>
       <span class="lg"><i style="background:#0f766e"></i>Catálogos maestros</span>
@@ -110,7 +110,7 @@ promotions  (independiente — objetivo polimórfico por texto)</pre>
         <tr><td></td><td class="c-name">status</td><td class="c-type">TEXT</td></tr>
         <tr><td></td><td class="c-name">created_at</td><td class="c-type">TS</td></tr>
       </table>
-      <div class="why"><b>¿Por qué así?</b> Es la <b>tabla raíz del modelo multi-empresa</b>: cada fila es una empresa (inquilino) que usa MAYA. Todo dato del sistema cuelga de aquí a través de <code>company_id</code>, garantizando que la información de una empresa <b>nunca se mezcle</b> con la de otra. <code>plan</code>/<code>status</code> controlan la suscripción y si el acceso está activo o suspendido.</div>
+      <div class="why"><b>¿Por qué así?</b> Es la <b>tabla raíz del modelo multi-empresa</b>: cada fila es una empresa (inquilino) que usa Stackline. Todo dato del sistema cuelga de aquí a través de <code>company_id</code>, garantizando que la información de una empresa <b>nunca se mezcle</b> con la de otra. <code>plan</code>/<code>status</code> controlan la suscripción y si el acceso está activo o suspendido.</div>
       <div class="rel"><b>Relaciones:</b><ul><li>1 empresa → ∞ <code>establishments</code> (establecimientos SAT), ∞ <code>branches</code>, ∞ <code>users</code>, y ∞ de <b>todas las demás tablas</b> (cada una lleva <code>company_id</code>).</li><li>Es el ancla de aislamiento: las consultas filtran por <code>company_id</code> (ideal con Row-Level Security en Postgres).</li></ul></div>
     </div>
 
@@ -467,7 +467,7 @@ promotions  (independiente — objetivo polimórfico por texto)</pre>
 
   </div>
 
-  <div class="foot">ERP MAYA · Modelo de datos objetivo · 24 tablas · multi-empresa (aislamiento por <code>company_id</code>) · establecimientos SAT / FEL · Generado desde el análisis de <code>src/data/mock.js</code> y los módulos del sistema.</div>
+  <div class="foot">Stackline · Modelo de datos objetivo · 24 tablas · multi-empresa (aislamiento por <code>company_id</code>) · establecimientos SAT / FEL · Generado desde el análisis de <code>src/data/mock.js</code> y los módulos del sistema.</div>
 </div>
 </body>
 </html>

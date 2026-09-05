@@ -1,4 +1,4 @@
-// ERP MAYA — Auditoría · Log de actividad
+// Stackline — Auditoría · Log de actividad
 import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
 import { listAuditLog } from '../api/wave2.js';

@@ -1,8 +1,10 @@
-// ERP MAYA — BillingModule (ES module)
+// Stackline — BillingModule (ES module)
 // Data-driven: /api/sales (tickets). Lectura + detalle con ítems reales.
 import Icon from '../components/Icon.jsx';
+import DataTable from '../components/DataTable.jsx';
 import { Ticket } from './POS.jsx';
 import { useSales } from '../hooks/useOperations.js';
+import { useFelDocuments } from '../hooks/useAccounting.js';
 import { useBranches } from '../hooks/useMasters.js';
 import React, { useState as useStateBill, useMemo as useMemoBill } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,11 +12,15 @@ import { useTranslation } from 'react-i18next';
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const Qs = Q;
 const pad = (n) => String(n).padStart(2, '0');
+// Si hay DTE, el desglose es el certificado; si no, se deriva del total.
+const subOf = (r) => (r.fel ? Number(r.fel.taxableAmount || 0) : r.total / 1.12);
+const ivaOf = (r) => (r.fel ? Number(r.fel.tax || 0) : r.total - r.total / 1.12);
 
 // Backend Sale.Response → forma de ticket que usa el componente.
 function mapTicket(s) {
   const d = s.saleDate ? new Date(s.saleDate) : null;
   return {
+    saleId: s.id,
     id: s.docNumber || `T-${s.id}`,
     date: d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}` : '',
     cashier: '—',
@@ -30,9 +36,19 @@ function mapTicket(s) {
 
 function BillingModule({ pushToast }) {
   const { t } = useTranslation();
-  const { items: salesRaw } = useSales();
+  const { items: salesRaw, loading, reload } = useSales();
+  const { items: felDocs } = useFelDocuments();
   const { items: BRANCHES } = useBranches();
-  const TICKETS = useMemoBill(() => salesRaw.map(mapTicket), [salesRaw]);
+  // El DTE real de cada venta (o undefined si nunca se certificó).
+  const felBySale = useMemoBill(() => {
+    const m = new Map();
+    felDocs.forEach((d) => { if (d.saleId != null) m.set(d.saleId, d); });
+    return m;
+  }, [felDocs]);
+  const TICKETS = useMemoBill(
+    () => salesRaw.map((s) => ({ ...mapTicket(s), fel: felBySale.get(s.id) || null })),
+    [salesRaw, felBySale]
+  );
   const [search, setSearch] = useStateBill('');
   const [status, setStatus] = useStateBill('all');
   const [pay, setPay] = useStateBill('all');
@@ -47,6 +63,60 @@ function BillingModule({ pushToast }) {
 
   const totalDay = TICKETS.filter(ticket => ticket.status === 'paid').reduce((s, ticket) => s + ticket.total, 0);
   const totalRefund = TICKETS.filter(ticket => ticket.status === 'refunded').reduce((s, ticket) => s + ticket.total, 0);
+
+  const payIcon = (p) => (p === 'Efectivo' ? 'cash' : p === 'Tarjeta' ? 'card' : 'transfer');
+
+  // Columnas de la tabla de tickets (estándar <DataTable>).
+  const columns = [
+    { key: 'id', header: t('billing.headers.invoice', 'No. Factura'), sortable: true, mono: true,
+      render: (r) => <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{r.id}</span> },
+    { key: 'date', header: t('billing.headers.dateTime', 'Fecha & hora'), sortable: true, mono: true },
+    { key: 'branch', header: t('billing.headers.branch', 'Sucursal'), sortable: true },
+    { key: 'cashier', header: t('billing.headers.cashier', 'Cajero') },
+    { key: 'client', header: t('billing.headers.clientNit', 'Cliente · NIT'),
+      sortValue: (r) => r.fel?.receptorName || '',
+      render: (r) => (
+        <>
+          <div>{r.fel?.receptorName || 'CF · Cliente Final'}</div>
+          <div className="muted code" style={{ fontSize: 10.5 }}>NIT {r.fel?.receptorNit || 'CF'}</div>
+        </>
+      ) },
+    { key: 'items', header: t('billing.headers.items', 'Items'), align: 'right', sortable: true },
+    { key: 'pay', header: t('billing.headers.payment', 'Pago'), sortable: true,
+      render: (r) => (
+        <span className="pill"><Icon name={payIcon(r.pay)} size={10} />{r.pay}</span>
+      ) },
+    { key: 'subtotal', header: t('billing.headers.subtotal', 'Subtotal'), align: 'right', sortable: true,
+      sortValue: (r) => subOf(r), render: (r) => Q(subOf(r)) },
+    { key: 'iva', header: t('billing.headers.iva', 'IVA'), align: 'right', sortable: true, className: 'muted',
+      sortValue: (r) => ivaOf(r), render: (r) => Q(ivaOf(r)) },
+    { key: 'total', header: t('billing.headers.total', 'Total'), align: 'right', sortable: true,
+      render: (r) => <span style={{ fontWeight: 600 }}>{Q(r.total)}</span> },
+    { key: 'status', header: t('billing.headers.status', 'Estado'), sortable: true,
+      render: (r) => (
+        r.status === 'refunded'
+          ? <span className="pill danger"><span className="dot" />Anulada</span>
+          : <span className="pill success"><span className="dot" />Pagada</span>
+      ) },
+    // El estado FEL sale del DTE real: sin documento certificado no se afirma "OK".
+    { key: 'fel', header: t('billing.headers.fel', 'FEL'),
+      sortValue: (r) => r.fel?.status || '',
+      render: (r) => {
+        if (!r.fel) {
+          return <span className="pill neutral" title={t('billing.notCertified', 'Sin certificar en SAT')}>
+            <Icon name="alert" size={9} />{t('billing.pending', 'Pendiente')}
+          </span>;
+        }
+        if (r.fel.status !== 'autorizado') {
+          return <span className="pill danger" title={r.fel.status}>
+            <Icon name="alert" size={9} />{r.fel.status}
+          </span>;
+        }
+        return <span className="pill info" title={t('billing.certified', 'Certificada SAT')}>
+          <Icon name="shield" size={9} />OK
+        </span>;
+      } },
+  ];
 
   return (
     <div className="page">
@@ -111,79 +181,31 @@ function BillingModule({ pushToast }) {
         <button className="btn sm"><Icon name="calendar" size={12}/>21 May 2026</button>
       </div>
 
-      <div className="card">
-        <div className="tbl-wrap" style={{maxHeight:'60vh'}}>
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th><input type="checkbox"/></th>
-                <th>{t('billing.headers.invoice', 'No. Factura')}</th>
-                <th>{t('billing.headers.dateTime', 'Fecha & hora')}</th>
-                <th>{t('billing.headers.branch', 'Sucursal')}</th>
-                <th>{t('billing.headers.cashier', 'Cajero')}</th>
-                <th>{t('billing.headers.clientNit', 'Cliente · NIT')}</th>
-                <th className="num">{t('billing.headers.items', 'Items')}</th>
-                <th>{t('billing.headers.payment', 'Pago')}</th>
-                <th className="num">{t('billing.headers.subtotal', 'Subtotal')}</th>
-                <th className="num">{t('billing.headers.iva', 'IVA')}</th>
-                <th className="num">{t('billing.headers.total', 'Total')}</th>
-                <th>{t('billing.headers.status', 'Estado')}</th>
-                <th>{t('billing.headers.fel', 'FEL')}</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(ticket => {
-                const sub = ticket.total / 1.12;
-                const iva = ticket.total - sub;
-                return (
-                  <tr key={ticket.id} onClick={() => setSelected(ticket)} style={{cursor:'pointer'}}>
-                    <td><input type="checkbox" onClick={e=>e.stopPropagation()}/></td>
-                    <td className="code" style={{fontWeight:600, color:'var(--accent)'}}>{ticket.id}</td>
-                    <td className="code">{ticket.date}</td>
-                    <td>{ticket.branch}</td>
-                    <td>{ticket.cashier}</td>
-                    <td>
-                      <div>CF · Cliente Final</div>
-                      <div className="muted code" style={{fontSize:10.5}}>NIT CF</div>
-                    </td>
-                    <td className="num">{ticket.items}</td>
-                    <td>
-                      <span className="pill">
-                        <Icon name={ticket.pay === 'Efectivo' ? 'cash' : ticket.pay === 'Tarjeta' ? 'card' : 'transfer'} size={10}/>
-                        {ticket.pay}
-                      </span>
-                    </td>
-                    <td className="num">{Q(sub)}</td>
-                    <td className="num muted">{Q(iva)}</td>
-                    <td className="num" style={{fontWeight:600}}>{Q(ticket.total)}</td>
-                    <td>
-                      {ticket.status === 'paid' && <span className="pill success"><span className="dot"/>Pagada</span>}
-                      {ticket.status === 'refunded' && <span className="pill danger"><span className="dot"/>Anulada</span>}
-                    </td>
-                    <td>
-                      <span className="pill info" title={t('billing.certified', 'Certificada SAT')}>
-                        <Icon name="shield" size={9}/>OK
-                      </span>
-                    </td>
-                    <td>
-                      <button className="icon-btn" onClick={e=>e.stopPropagation()}><Icon name="print" size={13}/></button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div style={{padding:'10px 14px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12}}>
-          <div className="muted">{t('billing.showing', 'Mostrando {{count}} de {{total}} documentos', { count: filtered.length, total: TICKETS.length })}</div>
-          <div className="row gap-6">
-            <button className="btn sm ghost"><Icon name="chevronLeft" size={11}/></button>
-            <span className="mono muted">1 / 14</span>
-            <button className="btn sm ghost"><Icon name="chevronRight" size={11}/></button>
-          </div>
-        </div>
-      </div>
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        rowKey={(r) => r.id}
+        loading={loading}
+        selectable
+        density="compact"
+        pageSize={25}
+        defaultSort={{ key: 'date', dir: 'desc' }}
+        onRowClick={setSelected}
+        onRefresh={reload}
+        empty={t('billing.empty', 'Sin documentos emitidos')}
+        emptyIcon="receipt"
+        totals={{
+          items: filtered.reduce((a, r) => a + r.items, 0),
+          subtotal: Q(filtered.reduce((a, r) => a + subOf(r), 0)),
+          iva: Q(filtered.reduce((a, r) => a + ivaOf(r), 0)),
+          total: Q(filtered.reduce((a, r) => a + r.total, 0)),
+        }}
+        actions={(r) => (
+          <button className="icon-btn" title={t('common.print', 'Reimprimir')}>
+            <Icon name="print" size={18} />
+          </button>
+        )}
+      />
 
       {/* Detail drawer */}
       {selected && (
@@ -218,14 +240,28 @@ function BillingModule({ pushToast }) {
               <div style={{flex:1, display:'flex', flexDirection:'column', gap:10}}>
                 <div className="card">
                   <div className="card-head"><h3>{t('billing.satInfo', 'Información SAT-FEL')}</h3></div>
-                  <div className="card-body" style={{display:'grid', gridTemplateColumns:'auto 1fr', gap:'4px 10px', fontSize:12}}>
-                    <div className="muted">{t('billing.uuid', 'UUID')}</div><div className="code">0E5F4C9A-26A2-4C7D-A8B1-{selected.id.slice(-12)}</div>
-                    <div className="muted">{t('billing.serie', 'Serie')}</div><div className="code">A</div>
-                    <div className="muted">{t('billing.authNo', 'No. autorización')}</div><div className="code">{selected.id.replace('T','FEL')}</div>
-                    <div className="muted">{t('billing.certDate', 'Fecha certif.')}</div><div className="code">{selected.date}</div>
-                    <div className="muted">{t('billing.regime', 'Régimen')}</div><div>{t('billing.general', 'General')}</div>
-                    <div className="muted">{t('common.status', 'Estado')}</div><div><span className="pill success"><span className="dot"/>{t('billing.certified', 'Certificada')}</span></div>
-                  </div>
+                  {selected.fel ? (
+                    <div className="card-body" style={{display:'grid', gridTemplateColumns:'auto 1fr', gap:'4px 10px', fontSize:12}}>
+                      <div className="muted">{t('billing.uuid', 'UUID')}</div><div className="code">{selected.fel.uuid}</div>
+                      <div className="muted">{t('billing.serie', 'Serie')}</div><div className="code">{selected.fel.series}-{selected.fel.number}</div>
+                      <div className="muted">{t('billing.authNo', 'No. autorización')}</div><div className="code">{selected.fel.authorizationNumber}</div>
+                      <div className="muted">{t('billing.certDate', 'Fecha certif.')}</div>
+                      <div className="code">{selected.fel.certifiedAt ? new Date(selected.fel.certifiedAt).toLocaleString('es-GT') : '—'}</div>
+                      <div className="muted">{t('billing.regime', 'Régimen')}</div><div>{t('billing.general', 'General')}</div>
+                      <div className="muted">{t('common.status', 'Estado')}</div>
+                      <div>
+                        {selected.fel.status === 'autorizado'
+                          ? <span className="pill success"><span className="dot"/>{t('billing.certified', 'Certificada')}</span>
+                          : <span className="pill danger"><span className="dot"/>{selected.fel.status}</span>}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="card-body" style={{fontSize:12}}>
+                      <div className="muted">
+                        {t('billing.noDte', 'Esta venta no tiene DTE certificado en SAT. No se emitió factura electrónica.')}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="row gap-6">
                   <button className="btn primary" style={{flex:1}}><Icon name="print"/>{t('common.print', 'Reimprimir')}</button>

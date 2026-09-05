@@ -1,9 +1,10 @@
-// ERP MAYA — Unidades de Medida múltiples (UOM)
+// Stackline — Unidades de Medida múltiples (UOM)
 // Data-driven: catálogo de unidades → /api/uom/units (CRUD real). Las conversiones
 // por producto se editan localmente (el backend solo modela conversiones genéricas).
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
+import DataTable from '../components/DataTable.jsx';
 import { useUomUnits } from '../hooks/useOperations.js';
 import { useProducts } from '../hooks/useCatalog.js';
 import { createUnit, updateUnit } from '../api/wave2.js';
@@ -27,6 +28,15 @@ const TYPE_CLASS = {
   length: 'warning',
   area:   'success',
   pack:   'accent',
+};
+// Tipo → variante de .badge-m3 (M3)
+const TYPE_BADGE = {
+  count:  '',
+  weight: 'tertiary',
+  volume: 'primary',
+  length: 'warning',
+  area:   'success',
+  pack:   'primary',
 };
 
 // ── (catálogo y productos vienen del backend)
@@ -266,6 +276,24 @@ export default function UOM({ pushToast }) {
     setSelected(null);
   };
 
+  // Columnas de las tablas CRUD (DataTable)
+  const uomColumns = [
+    { key: 'code', header: t('common.code', 'Código'), sortable: true, render: (u) => <strong className="num">{u.code}</strong> },
+    { key: 'name', header: t('common.name', 'Nombre'), sortable: true, mono: false, render: (u) => <span className="nm">{u.name}</span> },
+    { key: 'symbol', header: t('uom.symbol', 'Símbolo'), render: (u) => <span className="sku">{u.symbol}</span> },
+    { key: 'type', header: t('common.type', 'Tipo'), sortable: true, render: (u) => <span className={`badge-m3 ${TYPE_BADGE[u.type] || ''}`}>{TYPE_LABEL[u.type] || u.type || '—'}</span> },
+    { key: 'base', header: t('uom.base', 'Base'), align: 'center', render: (u) => u.base ? <span className="badge-m3 success">{t('uom.baseLabel', 'Base')}</span> : <span className="sku">—</span> },
+    { key: 'active', header: t('common.status', 'Estado'), align: 'center', sortable: true, render: (u) => <span className={`badge-m3 ${u.active ? 'success' : ''}`}>{u.active ? t('uom.active', 'Activa') : t('uom.inactive', 'Inactiva')}</span> },
+  ];
+  const prodColumns = [
+    { key: 'sku', header: 'SKU', mono: true, render: (p) => <span className="sku">{p.sku.slice(-6)}</span> },
+    { key: 'name', header: t('common.product', 'Producto'), sortable: true, render: (p) => <span className="nm">{p.name}</span> },
+    { key: 'baseUom', header: t('uom.baseUom', 'UOM Base'), render: (p) => <strong>{p.baseUom}</strong> },
+    { key: 'purchase', header: t('uom.purchaseUom', 'UOM Compra'), render: (p) => { const c = p.convs.find(x => x.isPurchase); return c ? <span className="badge-m3">{c.uom} ×{c.factor}</span> : <span className="sku">—</span>; } },
+    { key: 'sale', header: t('uom.saleUom', 'UOM Venta'), render: (p) => p.convs.filter(c => c.isSale).map(c => <span key={c.uom} className="badge-m3" style={{ marginRight: 4 }}>{c.uom}</span>) },
+    { key: 'convs', header: t('uom.conversions', 'Conversiones'), align: 'center', sortable: true, sortValue: (p) => p.convs.length, render: (p) => <span className={`badge-m3 ${p.convs.length > 1 ? 'success' : ''}`}>{p.convs.length} UOM</span> },
+  ];
+
   return (
     <div className="page">
       <div className="page-head">
@@ -327,46 +355,19 @@ export default function UOM({ pushToast }) {
                 value={unitSearch} onChange={e => setUnitSearch(e.target.value)} />
             </div>
           </div>
-          <div className="card">
-          <div className="table-wrap" style={{ border: 'none', margin: 0 }}>
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>{t('common.code', 'Código')}</th>
-                  <th>{t('common.name', 'Nombre')}</th>
-                  <th>{t('uom.symbol', 'Símbolo')}</th>
-                  <th>{t('common.type', 'Tipo')}</th>
-                  <th>{t('uom.base', 'Base')}</th>
-                  <th>{t('common.status', 'Estado')}</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUoms.map(u => (
-                  <tr key={u.code}>
-                    <td><span className="mono" style={{ fontWeight: 700, fontSize: 12.5 }}>{u.code}</span></td>
-                    <td style={{ fontWeight: 500 }}>{u.name}</td>
-                    <td><span className="mono muted">{u.symbol}</span></td>
-                    <td><span className={`pill ${TYPE_CLASS[u.type] || 'neutral'}`}>{TYPE_LABEL[u.type] || u.type || '—'}</span></td>
-                    <td>{u.base ? <span className="pill success">{t('uom.baseLabel', 'Base')}</span> : <span className="muted">—</span>}</td>
-                    <td>
-                      <span className={`pill ${u.active ? 'success' : ''}`}>
-                        {u.active ? t('uom.active', 'Activa') : t('uom.inactive', 'Inactiva')}
-                      </span>
-                    </td>
-                    <td>
-                      {!u.base && (
-                        <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => toggleUomActive(u)}>
-                          {u.active ? t('uom.deactivate', 'Desactivar') : t('uom.activate', 'Activar')}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          </div>
+          <DataTable
+            rowKey={(u) => u.code}
+            columns={uomColumns}
+            rows={filteredUoms}
+            density="compact"
+            pageSize={12}
+            empty={t('uom.noUnits', 'Sin unidades')}
+            actions={(u) => !u.base ? (
+              <button className="btn-text" style={{ height: 32, padding: '0 10px' }} onClick={() => toggleUomActive(u)}>
+                {u.active ? t('uom.deactivate', 'Desactivar') : t('uom.activate', 'Activar')}
+              </button>
+            ) : null}
+          />
         </>
       )}
 
@@ -381,56 +382,16 @@ export default function UOM({ pushToast }) {
                 value={search} onChange={e => setSearch(e.target.value)} />
             </div>
           </div>
-          <div className="card">
-          <div className="table-wrap" style={{ border: 'none', margin: 0 }}>
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>{t('common.product', 'Producto')}</th>
-                  <th>{t('uom.baseUom', 'UOM Base')}</th>
-                  <th>{t('uom.purchaseUom', 'UOM Compra')}</th>
-                  <th>{t('uom.saleUom', 'UOM Venta')}</th>
-                  <th>{t('uom.conversions', 'Conversiones')}</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(p => {
-                  const purchaseConv = p.convs.find(c => c.isPurchase);
-                  const saleConvs    = p.convs.filter(c => c.isSale);
-                  return (
-                    <tr key={p.sku} onClick={() => openProduct(p)} style={{ cursor: 'pointer' }}>
-                      <td className="mono muted" style={{ fontSize: 11 }}>{p.sku.slice(-6)}</td>
-                      <td style={{ fontWeight: 500 }}>{p.name}</td>
-                      <td><span className="mono" style={{ fontWeight: 700 }}>{p.baseUom}</span></td>
-                      <td>
-                        {purchaseConv
-                          ? <span className="pill">{purchaseConv.uom} &nbsp;<span className="muted">×{purchaseConv.factor}</span></span>
-                          : <span className="muted">—</span>}
-                      </td>
-                      <td>
-                        {saleConvs.map(c => (
-                          <span key={c.uom} className="pill" style={{ marginRight: 4 }}>{c.uom}</span>
-                        ))}
-                      </td>
-                      <td>
-                        <span className={`pill ${p.convs.length > 1 ? 'success' : ''}`}>
-                          {p.convs.length} UOM
-                        </span>
-                      </td>
-                      <td>
-                        <button className="btn-ghost" onClick={e => { e.stopPropagation(); openProduct(p); }}>
-                          {t('common.edit', 'Editar')}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          </div>
+          <DataTable
+            rowKey={(p) => p.sku}
+            columns={prodColumns}
+            rows={filtered}
+            density="compact"
+            pageSize={12}
+            onRowClick={openProduct}
+            onEdit={openProduct}
+            empty={t('uom.noProducts', 'Sin productos')}
+          />
         </>
       )}
 
@@ -457,7 +418,7 @@ export default function UOM({ pushToast }) {
                 </span>
               </div>
 
-              <table className="tbl" style={{ marginBottom: 12 }}>
+              <table className="mtable" style={{ marginBottom: 12 }}>
                 <thead>
                   <tr>
                     <th>UOM</th>

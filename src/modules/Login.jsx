@@ -1,13 +1,14 @@
-// ERP MAYA — Login screen (ES module)
+// Stackline — Login screen (ES module)
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { login } from '../api/auth.js';
+import Logo from '../components/Logo.jsx';
 
 const DEMO_COMPANIES = {
   'FERRETERIA-01': { name: 'Ferretería El Constructor', type: 'Ferretería', tier: 'PRO' },
   'FARMACIA-GT':   { name: 'Farmacias del Valle',       type: 'Farmacia',   tier: 'PRO' },
   'SUPERMERCADO':  { name: 'Supermercado La Familia',   type: 'Retail',     tier: 'ENTERPRISE' },
-  'TIENDA-DEMO':   { name: 'Tienda Demo ERP MAYA',      type: 'Demo',       tier: 'DEMO' },
+  'TIENDA-DEMO':   { name: 'Tienda Demo Stackline',      type: 'Demo',       tier: 'DEMO' },
 };
 
 function validate(form, t) {
@@ -82,10 +83,10 @@ export default function Login({ onLogin }) {
       <div className="login-brand">
         <div className="login-brand-inner">
           <div className="login-logo">
-            <div className="login-logo-mark">M</div>
+            <Logo size={36} className="login-mark" />
             <div>
-              <div className="login-logo-name">ERP MAYA</div>
-              <div className="login-logo-tier">RETAIL · v3.2</div>
+              <div className="login-logo-name">Stackline</div>
+              <div className="login-logo-tier">STACKLINE · RETAIL v4.0</div>
             </div>
           </div>
 
@@ -116,7 +117,7 @@ export default function Login({ onLogin }) {
 
         <div className="login-brand-footer">
           <span className="login-brand-legal">
-            © 2026 ERP MAYA · Guatemala · Todos los derechos reservados
+            © 2026 Stackline · Guatemala · Todos los derechos reservados
           </span>
         </div>
       </div>

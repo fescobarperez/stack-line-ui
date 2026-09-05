@@ -1,4 +1,4 @@
-// ERP MAYA — Payroll / Planilla module (Guatemala)
+// Stackline — Payroll / Planilla module (Guatemala)
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
 import { useTranslation } from 'react-i18next';
@@ -1061,7 +1061,7 @@ function ReciboSueldo({ emp, period }) {
       boxShadow:'0 10px 40px rgba(0,0,0,0.18)',
     }}>
       <div style={{textAlign:'center', marginBottom:14}}>
-        <div style={{fontWeight:700, fontSize:14, letterSpacing:'0.06em'}}>ERP MAYA · TIENDA</div>
+        <div style={{fontWeight:700, fontSize:14, letterSpacing:'0.06em'}}>Stackline · TIENDA</div>
         <div style={{fontSize:10, color:'#555', marginTop:2, lineHeight:1.5}}>
           NIT 8745619-2 · Guatemala<br/>
           RECIBO DE SUELDO

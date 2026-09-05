@@ -1,4 +1,4 @@
-// ERP MAYA — Búsqueda global ⌘K
+// Stackline — Búsqueda global ⌘K
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from './Icon.jsx';

@@ -207,7 +207,7 @@
         "inventory": "Smart inventory",
         "inventoryDesc": "FIFO, average cost, lots, expiry dates"
       },
-      "legal": "© 2026 ERP MAYA · Guatemala · All rights reserved"
+      "legal": "© 2026 Stackline · Guatemala · All rights reserved"
     }
   },
 
@@ -602,10 +602,12 @@
 
   "fel": {
     "title": "FEL · SAT",
+    "editInConfig": "Edit in Settings",
     "tabs": {
-      "pending": "Pending",
-      "sent": "Sent",
-      "errors": "Errors"
+      "documents": "Issued DTEs",
+      "cancellations": "Cancellations",
+      "book": "Sales book",
+      "certifier": "Certifier / Issuer"
     }
   },
 

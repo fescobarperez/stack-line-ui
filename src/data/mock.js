@@ -1,7 +1,7 @@
-// ERP MAYA — Mock data (ES module)
+// Stackline — Mock data (ES module)
 // Sustituye con llamadas a /api/* cuando el backend esté listo.
 
-// ERP MAYA — Mock data
+// Stackline — Mock data
 // All data is mock for demo purposes.
 
 export const Q = (n) => `Q ${n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

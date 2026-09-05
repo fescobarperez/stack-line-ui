@@ -1,19 +1,24 @@
-// ERP MAYA — Módulo de Configuración del sistema
+// Stackline — Módulo de Configuración del sistema
 import React, { useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import { useTranslation } from 'react-i18next';
 
 const MOCK_CONFIG = {
-  legalName: 'Supermercado Maya, S.A.',
-  tradeName: 'ERP Maya Retail',
+  legalName: 'Supermercado Stackline, S.A.',
+  tradeName: 'Stackline Retail',
   nit: '4521789-3',
   address: '5a Calle 12-34, Zona 1, Guatemala, Guatemala',
   phone: '+502 2238-1100',
-  email: 'admin@mayaretail.gt',
+  email: 'admin@stackline.gt',
   felProvider: 'infile',
-  felUser: 'feluser@mayaretail.gt',
+  felUser: 'feluser@stackline.gt',
   hasFelKey: true,
   felEnvironment: 'sandbox',
+  felEndpoint: 'https://fel.infile.com.gt/api/v2',
+  felSeries: 'A',
+  felResolution: '2026-43-XX-0042',
+  satCategory: 'Definitivo IVA',
+  establishment: 'Comercio al por menor · Est. 001',
   taxRegime: 'General',
   ivaRate: '0.12',
   ticketPrefix: 'T',
@@ -21,16 +26,16 @@ const MOCK_CONFIG = {
   transferPrefix: 'TR',
   valuationMethod: 'average',
   lowStockThreshold: '0.20',
-  smtpFromEmail: 'facturas@mayaretail.gt',
+  smtpFromEmail: 'facturas@stackline.gt',
   hasSmtp: true,
 };
 
 function Section({ title, icon, children }) {
   return (
-    <div style={{ marginBottom: 28 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-        <Icon name={icon} size={14} style={{ color: 'var(--accent)' }} />
-        <span style={{ fontWeight: 700, fontSize: 13 }}>{title}</span>
+    <div className="cfg-section">
+      <div className="cfg-section-head">
+        <Icon name={icon} size={18} />
+        <span className="cfg-section-title">{title}</span>
       </div>
       <div className="form-grid">{children}</div>
     </div>
@@ -42,7 +47,7 @@ function Field({ label, hint, span = 1, children }) {
     <div className={`field${span === 2 ? ' span-2' : ''}`}>
       <label className="field-label">{label}</label>
       {children}
-      {hint && <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>{hint}</div>}
+      {hint && <div className="cfg-hint">{hint}</div>}
     </div>
   );
 }
@@ -107,7 +112,7 @@ export default function Config({ pushToast }) {
         <form style={{ flex: 1 }} onSubmit={handleSave}>
 
           {tab === 'empresa' && (
-            <div className="card" style={{ padding: 24 }}>
+            <div className="card cfg-card">
               <Section title={t('config.companyData', 'Datos de la empresa')} icon="settings">
                 <Field label={t('config.fields.legalName', 'Razón social *')} span={2}>
                   <input className="field-input" value={config.legalName} onChange={e => set('legalName', e.target.value)} required />
@@ -144,9 +149,9 @@ export default function Config({ pushToast }) {
           )}
 
           {tab === 'fel' && (
-            <div className="card" style={{ padding: 24 }}>
-              <div style={{ background: 'rgba(var(--warning-rgb,245,158,11),.1)', border: '1px solid rgba(var(--warning-rgb,245,158,11),.3)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13 }}>
-                <Icon name="alert" size={13} style={{ color: 'var(--warning)', marginRight: 6 }} />
+            <div className="card cfg-card">
+              <div className="cfg-note warn">
+                <Icon name="alert" size={18} />
                 {t('config.fel.credentialsNote', 'Las credenciales FEL se almacenan cifradas. Contacta a tu certificador SAT para obtener tu clave de API.')}
               </div>
               <Section title={t('config.fel.sectionTitle', 'Certificador FEL (SAT Guatemala)')} icon="receipt">
@@ -172,12 +177,36 @@ export default function Config({ pushToast }) {
                   <input className="field-input mono" type="password" placeholder={config.hasFelKey ? '••••••••••••••••' : t('config.fel.pasteKeyPlaceholder', 'Pegar clave API aquí')}
                     onChange={e => set('felKey', e.target.value)} autoComplete="new-password" />
                 </Field>
+                <Field label={t('config.fel.endpoint', 'Endpoint API')} span={2} hint={t('config.fel.endpointHint', 'URL del servicio de certificación del proveedor.')}>
+                  <input className="field-input mono" value={config.felEndpoint} onChange={e => set('felEndpoint', e.target.value)} />
+                </Field>
+                <Field label={t('config.fel.series', 'Serie activa')}>
+                  <input className="field-input mono" value={config.felSeries} onChange={e => set('felSeries', e.target.value)} maxLength={5} />
+                </Field>
+                <Field label={t('config.fel.resolution', 'Resolución SAT')}>
+                  <input className="field-input mono" value={config.felResolution} onChange={e => set('felResolution', e.target.value)} />
+                </Field>
+              </Section>
+
+              <Section title={t('config.fel.issuerTitle', 'Datos del emisor (SAT)')} icon="shield">
+                <Field label={t('config.fel.satCategory', 'Categoría SAT')}>
+                  <input className="field-input" value={config.satCategory} onChange={e => set('satCategory', e.target.value)} />
+                </Field>
+                <Field label={t('config.fel.establishment', 'Establecimiento')}>
+                  <input className="field-input" value={config.establishment} onChange={e => set('establishment', e.target.value)} />
+                </Field>
+                <Field label={t('config.fel.issuerNote', 'Identidad fiscal')} span={2}
+                  hint={t('config.fel.issuerHint', 'El NIT, la razón social y la dirección fiscal se editan en la pestaña Empresa; el régimen fiscal, en Impuestos.')}>
+                  <div className="cfg-readonly">
+                    {config.nit} · {config.legalName} · {config.taxRegime}
+                  </div>
+                </Field>
               </Section>
             </div>
           )}
 
           {tab === 'impuestos' && (
-            <div className="card" style={{ padding: 24 }}>
+            <div className="card cfg-card">
               <Section title={t('config.taxes.sectionTitle', 'Configuración de impuestos (Guatemala)')} icon="tag">
                 <Field label={t('config.taxes.regime', 'Régimen fiscal')}>
                   <select className="field-input" value={config.taxRegime} onChange={e => set('taxRegime', e.target.value)}>
@@ -193,8 +222,8 @@ export default function Config({ pushToast }) {
                 </Field>
               </Section>
 
-              <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
-                <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 10 }}>{t('config.taxes.preview', 'Vista previa — desglose de IVA')}</div>
+              <div className="cfg-preview">
+                <div className="cfg-preview-title">{t('config.taxes.preview', 'Vista previa — desglose de IVA')}</div>
                 {(() => {
                   const rate = parseFloat(config.ivaRate) || 0.12;
                   const salePrice = 100;
@@ -202,17 +231,17 @@ export default function Config({ pushToast }) {
                   const tax = salePrice - base;
                   return (
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13 }}>
+                      <div className="cfg-preview-row">
                         <span className="muted">{t('config.taxes.exampleSalePrice', 'Precio de venta (ejemplo)')}</span>
                         <span className="mono">Q 100.00</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13 }}>
+                      <div className="cfg-preview-row">
                         <span className="muted">{t('config.taxes.taxBase', 'Base imponible')}</span>
                         <span className="mono">Q {base.toFixed(2)}</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                      <div className="cfg-preview-row">
                         <span className="muted">{t('common.iva', 'IVA')} ({(rate * 100).toFixed(0)}%)</span>
-                        <span className="mono" style={{ color: 'var(--accent)' }}>Q {tax.toFixed(2)}</span>
+                        <span className="mono" style={{ color: 'var(--md-sys-color-primary)' }}>Q {tax.toFixed(2)}</span>
                       </div>
                     </div>
                   );
@@ -222,7 +251,7 @@ export default function Config({ pushToast }) {
           )}
 
           {tab === 'inventario' && (
-            <div className="card" style={{ padding: 24 }}>
+            <div className="card cfg-card">
               <Section title={t('config.inventory.sectionTitle', 'Parámetros de inventario')} icon="box">
                 <Field label={t('config.inventory.valuationMethod', 'Método de valoración de inventario')} span={2} hint={t('config.inventory.valuationMethodHint', 'Afecta el costo calculado para el kardex y los estados financieros.')}>
                   <select className="field-input" value={config.valuationMethod} onChange={e => set('valuationMethod', e.target.value)}>
@@ -236,9 +265,9 @@ export default function Config({ pushToast }) {
                 </Field>
               </Section>
 
-              <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
-                <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8 }}>{t('config.inventory.methodDifference', 'Diferencia entre métodos')}</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
+              <div className="cfg-preview">
+                <div className="cfg-preview-title">{t('config.inventory.methodDifference', 'Diferencia entre métodos')}</div>
+                <div className="cfg-readonly" style={{ fontFamily: 'var(--font-sans)', lineHeight: 1.7 }}>
                   <strong>{t('config.inventory.weightedAverage', 'Promedio Ponderado')}:</strong> {t('config.inventory.weightedAverageDesc', 'el costo unitario se recalcula cada vez que entra mercancía nueva. Más simple y estable.')}<br />
                   <strong>{t('config.inventory.fifo', 'PEPS')}:</strong> {t('config.inventory.fifoDesc', 'se vende primero el lote más antiguo. Refleja mejor el valor real en contextos inflacionarios. Requiere control de lotes.')}
                 </div>
@@ -247,9 +276,9 @@ export default function Config({ pushToast }) {
           )}
 
           {tab === 'smtp' && (
-            <div className="card" style={{ padding: 24 }}>
-              <div style={{ background: 'rgba(var(--accent-rgb,20,184,166),.08)', border: '1px solid rgba(var(--accent-rgb,20,184,166),.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13 }}>
-                <Icon name="bell" size={13} style={{ color: 'var(--accent)', marginRight: 6 }} />
+            <div className="card cfg-card">
+              <div className="cfg-note info">
+                <Icon name="bell" size={18} />
                 {t('config.smtp.note', 'El correo SMTP se usa para enviar facturas en PDF al cliente al momento del cierre de venta.')}
               </div>
               <Section title={t('config.smtp.sectionTitle', 'Servidor de correo saliente (SMTP)')} icon="bell">

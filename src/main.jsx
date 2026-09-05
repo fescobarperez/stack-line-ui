@@ -5,6 +5,7 @@ import './i18n/index.js';
 import App from './App.jsx';
 import Login from './modules/Login.jsx';
 import { logout } from './api/auth.js';
+import { ConfirmProvider } from './components/ConfirmDialog.jsx';
 import './styles/global.css';
 
 function Root() {
@@ -43,7 +44,9 @@ function Root() {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
-      <Root />
+      <ConfirmProvider>
+        <Root />
+      </ConfirmProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );

@@ -1,4 +1,4 @@
-// ERP MAYA — Módulo de Transferencias entre Sucursales
+// Stackline — Módulo de Transferencias entre Sucursales
 import React, { useState, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
 import { useTransfers } from '../hooks/useOperations.js';
@@ -100,7 +100,7 @@ function NewTransferModal({ branches, products, onSave, onClose }) {
                 <input className="search-input" placeholder={t('transfers.searchPlaceholder', 'Buscar producto para agregar…')} value={search} onChange={e => setSearch(e.target.value)} />
               </div>
               {matched.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: 'var(--shadow-md)', zIndex: 50, maxHeight: 200, overflowY: 'auto' }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--shape-sm)', boxShadow: 'var(--shadow-md)', zIndex: 50, maxHeight: 200, overflowY: 'auto' }}>
                   {matched.map(p => (
                     <div key={p.sku} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 13 }}
                       onClick={() => selectProduct(items.length - 1, p)}>
@@ -195,8 +195,8 @@ function TransferDetail({ transfer, onClose, onDispatch, onReceive }) {
               <React.Fragment key={s}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: i <= currentStep ? 'var(--accent)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
-                    {i < currentStep ? <Icon name="check" size={12} style={{ color: '#fff' }} /> :
-                     i === currentStep ? <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} /> : null}
+                    {i < currentStep ? <Icon name="check" size={12} style={{ color: 'var(--md-sys-color-on-primary)' }} /> :
+                     i === currentStep ? <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--md-sys-color-on-primary)' }} /> : null}
                   </div>
                   <div style={{ fontSize: 10, color: i <= currentStep ? 'var(--accent)' : 'var(--muted)', fontWeight: i === currentStep ? 600 : 400, textAlign: 'center' }}>
                     {STATUS_LABEL[s]}

@@ -1,4 +1,4 @@
-// ERP MAYA — Lógica de permisos compartida
+// Stackline — Lógica de permisos compartida
 
 export const MODULES_PERM = [
   'Punto de venta', 'Facturación', 'Inventario', 'Compras',

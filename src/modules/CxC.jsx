@@ -1,4 +1,4 @@
-// ERP MAYA — Cuentas por Cobrar (CxC) · antigüedad de saldos
+// Stackline — Cuentas por Cobrar (CxC) · antigüedad de saldos
 // Data-driven: /api/receivables/aging (hook useAging) + /api/payments (usePayments).
 import React, { useState } from 'react';
 import Icon from '../components/Icon.jsx';
@@ -109,7 +109,7 @@ export default function CxC({ pushToast }) {
           </div>
 
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="tbl-wrap"><table className="tbl">
+            <div className="tbl-wrap"><table className="mtable">
               <thead>
                 <tr>
                   <th>{t('common.client', 'Cliente')}</th>
@@ -148,7 +148,7 @@ export default function CxC({ pushToast }) {
           </div>
 
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="tbl-wrap"><table className="tbl">
+            <div className="tbl-wrap"><table className="mtable">
               <thead>
                 <tr>
                   <th>Documento</th><th>{t('common.client', 'Cliente')}</th><th>{t('common.date', 'Fecha')}</th>
@@ -185,7 +185,7 @@ export default function CxC({ pushToast }) {
 
       {tab === 'payments' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="tbl-wrap"><table className="tbl">
+          <div className="tbl-wrap"><table className="mtable">
             <thead>
               <tr>
                 <th>{t('common.date', 'Fecha')}</th><th>{t('common.client', 'Cliente')}</th>

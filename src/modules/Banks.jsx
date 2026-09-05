@@ -1,4 +1,4 @@
-// ERP MAYA — Bancos & Cuentas. Datos reales del backend (sin mock):
+// Stackline — Bancos & Cuentas. Datos reales del backend (sin mock):
 //  · Cuentas   → /api/bank-accounts (useBankAccounts + createBankAccount)
 //  · Movimientos → /api/bank-accounts/{id}/movements (merge de todas las cuentas)
 //  · Transferencias → se registran como 2 movimientos (−origen / +destino) con una
@@ -297,7 +297,7 @@ export default function Banks({ pushToast }) {
             </select>
             <button className="btn ghost sm"><Icon name="download" size={12} /> {t('common.export', 'Exportar')}</button>
           </div>
-          <table className="tbl">
+          <table className="mtable">
             <thead>
               <tr>
                 <th>{t('common.date', 'Fecha')}</th>
@@ -345,7 +345,7 @@ export default function Banks({ pushToast }) {
               <Icon name="plus" size={12} /> {t('banks.newTransfer', 'Nueva transferencia')}
             </button>
           </div>
-          <table className="tbl">
+          <table className="mtable">
             <thead>
               <tr>
                 <th>{t('common.reference', 'Referencia')}</th>
@@ -411,7 +411,7 @@ export default function Banks({ pushToast }) {
               </div>
 
               <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8 }}>{t('banks.recentMovements', 'Últimos movimientos')}</div>
-              <table className="tbl" style={{ fontSize: 11.5 }}>
+              <table className="mtable" style={{ fontSize: 11.5 }}>
                 <thead><tr><th>{t('common.date', 'Fecha')}</th><th>{t('common.description', 'Descripción')}</th><th className="num">{t('common.amount', 'Monto')}</th></tr></thead>
                 <tbody>
                   {movsDeCuenta.map(m => (
