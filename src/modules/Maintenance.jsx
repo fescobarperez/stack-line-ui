@@ -84,7 +84,7 @@ function MaintenanceModule({ pushToast }) {
       setModal(null);
       await api.reload();
     } catch (err) {
-      pushToast && pushToast('No se pudo guardar: ' + err.message, 'error');
+      pushToast && pushToast('No se pudo guardar: ' + err.message, 'danger');
     }
   };
 

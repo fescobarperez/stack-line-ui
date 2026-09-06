@@ -14,7 +14,16 @@ import { useStockMovements } from '../hooks/useOperations.js';
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const Qs = Q;
 
-const EMPTY_FORM = { name: '', sku: '', cat: '', unit: 'Unidad', supplierId: '', cost: '', price: '', stock: '', min: '', desc: '', active: true, lots: false };
+// itemType: sellable = se vende en POS · raw_material = se consume en proyectos
+// · service = mano de obra, sin existencias.
+// Etiqueta y color del tipo de artículo en la tabla.
+const ITEM_TYPES = {
+  sellable:     { label: 'POS',           variant: 'success' },
+  raw_material: { label: 'Materia prima', variant: 'info'    },
+  service:      { label: 'Servicio',      variant: 'warning' },
+};
+
+const EMPTY_FORM = { name: '', sku: '', cat: '', unit: 'Unidad', purchaseUnit: '', purchaseFactor: '', itemType: 'sellable', supplierId: '', cost: '', price: '', stock: '', min: '', desc: '', active: true, lots: false };
 
 function InventoryModule({ pushToast }) {
   const { t } = useTranslation();
@@ -82,7 +91,10 @@ function InventoryModule({ pushToast }) {
     setEditingId(p.id);
     setForm({
       name: p.name ?? '', sku: p.sku ?? '', cat: p.cat ?? firstCatId(),
-      unit: p.unit ?? 'Unidad', supplierId: p.supplierId ?? '',
+      unit: p.unit ?? 'Unidad',
+      purchaseUnit: p.purchaseUnit ?? '',
+      purchaseFactor: (p.purchaseFactor ?? 1) == 1 ? '' : String(p.purchaseFactor),
+      itemType: p.itemType ?? 'sellable', supplierId: p.supplierId ?? '',
       cost: p.cost ?? '', price: p.price ?? '', stock: p.stock ?? '', min: p.min ?? '',
       desc: p.description ?? '', active: (p.status ?? 'ACTIVE') !== 'INACTIVE', lots: !!p.lots,
     });
@@ -98,6 +110,10 @@ function InventoryModule({ pushToast }) {
       sku: form.sku.trim(),
       categoryId: form.cat || null,
       unit: form.unit,
+      // Vacío = se compra como se guarda. El backend normaliza el factor a 1.
+      purchaseUnit: form.purchaseUnit.trim() || null,
+      purchaseFactor: Number(form.purchaseFactor) || 1,
+      itemType: form.itemType,
       cost: Number(form.cost) || 0,
       price: Number(form.price) || 0,
       minStock: Number(form.min) || 0,
@@ -145,6 +161,11 @@ function InventoryModule({ pushToast }) {
       render: (p) => (<><div style={{ fontWeight: 500 }}>{p.name}</div><div className="muted" style={{ fontSize: 11 }}>{p.unit}</div></>) },
     { key: 'cat', header: t('inventory.headers.category', 'Categoría'), sortable: true,
       sortValue: (p) => catName(p.cat), render: (p) => catName(p.cat) },
+    { key: 'itemType', header: t('inventory.headers.itemType', 'Tipo'), sortable: true,
+      render: (p) => {
+        const it = ITEM_TYPES[p.itemType] || ITEM_TYPES.sellable;
+        return <span className={`badge-m3 ${it.variant}`}>{it.label}</span>;
+      } },
     { key: 'cost', header: t('inventory.headers.cost', 'Costo'), align: 'right', sortable: true, render: (p) => Q(p.cost) },
     { key: 'price', header: t('inventory.headers.price', 'Precio'), align: 'right', sortable: true,
       render: (p) => (<span style={{ fontWeight: 500 }}>{Q(p.price)}</span>) },
@@ -665,10 +686,42 @@ function InventoryModule({ pushToast }) {
                   {CATEGORIES.filter(c=>c.id!=='todos').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
+              <div className="field"><label>{t('inventory.itemType', 'Tipo de artículo')}</label>
+                <select value={form.itemType}
+                  onChange={e => setForm(f => ({ ...f, itemType: e.target.value }))}>
+                  <option value="sellable">{t('inventory.itemTypeSellable', 'Vendible (POS)')}</option>
+                  <option value="raw_material">{t('inventory.itemTypeRaw', 'Materia prima')}</option>
+                  <option value="service">{t('inventory.itemTypeService', 'Servicio / mano de obra')}</option>
+                </select>
+                <span className="cfg-hint">
+                  {form.itemType === 'sellable'
+                    ? t('inventory.itemTypeHintSellable', 'Se ofrece en el punto de venta.')
+                    : form.itemType === 'raw_material'
+                      ? t('inventory.itemTypeHintRaw', 'No se vende en POS. Su costo se imputa al consumirla en un proyecto.')
+                      : t('inventory.itemTypeHintService', 'Sin existencias. Se imputa como mano de obra.')}
+                </span>
+              </div>
               <div className="field"><label>Unidad de medida</label>
                 <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}>
                   <option>Unidad</option><option>Paquete</option><option>Kg</option><option>Libra</option><option>Litro</option>
                 </select>
+              </div>
+              {/* Solo para lo que se compra en una presentación y se gasta en
+                  otra: un paquete de 100 tornillos que se consumen de a uno.
+                  Vacío es el caso normal —comprar y guardar en lo mismo—. */}
+              <div className="field-row" style={{ gridColumn: '1 / -1' }}>
+                <div className="field"><label>Unidad de compra</label>
+                  <input value={form.purchaseUnit} placeholder="Paquete, Caja…"
+                    onChange={e => setForm(f => ({ ...f, purchaseUnit: e.target.value }))} />
+                </div>
+                <div className="field">
+                  <label>{form.purchaseUnit
+                    ? `${form.unit} por ${form.purchaseUnit.toLowerCase()}`
+                    : 'Unidades por unidad de compra'}</label>
+                  <input type="number" min="0" step="0.000001" className="mono"
+                    value={form.purchaseFactor} placeholder="1"
+                    onChange={e => setForm(f => ({ ...f, purchaseFactor: e.target.value }))} />
+                </div>
               </div>
               <div className="field"><label>{t('inventory.headers.supplier', 'Proveedor')}</label>
                 <select value={form.supplierId} onChange={e => setForm(f => ({ ...f, supplierId: e.target.value }))}>

@@ -237,7 +237,7 @@ export default function UOM({ pushToast }) {
       await updateUnit(u.id, { code: u.code, name: u.name, symbol: u.symbol, uomType: u.type, isBase: u.base, active: !u.active });
       await reloadUnits();
     } catch (err) {
-      pushToast('No se pudo actualizar la UOM: ' + err.message, 'error');
+      pushToast('No se pudo actualizar la UOM: ' + err.message, 'danger');
     }
   };
 
@@ -248,7 +248,7 @@ export default function UOM({ pushToast }) {
       setShowUomModal(false);
       pushToast(`UOM "${uom.name}" creada`, 'success');
     } catch (err) {
-      pushToast('No se pudo crear la UOM: ' + err.message, 'error');
+      pushToast('No se pudo crear la UOM: ' + err.message, 'danger');
     }
   };
 

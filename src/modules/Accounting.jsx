@@ -3,8 +3,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
+import DataTable from '../components/DataTable.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useAccounts, useJournalEntries, usePeriods } from '../hooks/useAccounting.js';
+import { createAccount, createJournalEntry } from '../api/accounting.js';
 
 const LEVEL_INDENT = { 1: 0, 2: 16, 3: 32, 4: 48, 5: 64 };
 // Jerarquía del árbol de cuentas sobre la escala M3: con solo dos pesos (400/500)
@@ -303,8 +305,8 @@ function EntryDetail({ entry, onClose, onReverse }) {
 export default function Accounting({ pushToast }) {
   const { t } = useTranslation();
   // Plan de cuentas, pólizas y períodos desde el backend (con fallback al mock).
-  const { items: apiAccounts } = useAccounts();
-  const { items: apiEntries } = useJournalEntries();
+  const { items: apiAccounts, reload: reloadAccounts } = useAccounts();
+  const { items: apiEntries, reload: reloadEntries } = useJournalEntries();
   const periods = usePeriods();
   const [tab, setTab]         = useState('plan');
   const [search, setSearch]   = useState('');
@@ -338,35 +340,58 @@ export default function Accounting({ pushToast }) {
   const openPeriod = periods.find(p => p.status === 'open');
   const totalAutoDebits = entries.filter(e => e.type === 'auto').reduce((s, e) => s + e.totalDebit, 0);
 
-  const handleNewAccount = (form) => {
-    setAccounts(prev => [...prev, { ...form, level: parseInt(form.level), allowsEntries: form.allowsEntries, isActive: true }]
-      .sort((a, b) => a.code.localeCompare(b.code)));
-    setShowNewAccount(false);
-    pushToast?.(`Cuenta ${form.code} creada`, 'success');
+  // Antes esto solo hacía setAccounts() en memoria: la cuenta desaparecía al
+  // recargar. Crear una cuenta contable no puede fingirse.
+  const handleNewAccount = async (form) => {
+    try {
+      const parent = form.parentCode
+        ? accounts.find(a => a.code === form.parentCode) : null;
+      await createAccount({
+        code: form.code.trim(),
+        name: form.name.trim(),
+        parentId: parent?.id ?? null,
+        level: parseInt(form.level) || null,
+        normalBalance: form.normalBalance,
+        allowsEntries: !!form.allowsEntries,
+      });
+      await reloadAccounts();
+      setShowNewAccount(false);
+      pushToast?.(t('accounting.accountCreated', `Cuenta ${form.code} creada`), 'success');
+    } catch (err) {
+      pushToast?.(t('accounting.accountFailed', 'No se pudo crear la cuenta: ') + err.message, 'danger');
+    }
   };
 
-  const handleNewEntry = (form) => {
-    const newEntry = {
-      id: Math.max(...entries.map(e => e.id)) + 1,
-      date: form.date,
-      periodId: parseInt(form.periodId),
-      type: 'manual',
-      description: form.description,
-      reference: form.reference || null,
-      sourceType: null,
-      totalDebit: form.totalDebit,
-      totalCredit: form.totalCredit,
-      status: 'posted',
-      lines: form.lines.filter(l => l.accountCode).map(l => ({
-        accountCode: l.accountCode,
-        name: accounts.find(a => a.code === l.accountCode)?.name || l.accountCode,
+  // Una partida de diario es libro mayor: fingir que se registró era lo más
+  // grave de la auditoría. El backend recibe accountId, no el código.
+  const handleNewEntry = async (form) => {
+    const lines = form.lines
+      .filter(l => l.accountCode)
+      .map(l => ({
+        accountId: accounts.find(a => a.code === l.accountCode)?.id ?? null,
         debit: parseFloat(l.debit) || 0,
         credit: parseFloat(l.credit) || 0,
-      })),
-    };
-    setEntries(prev => [newEntry, ...prev]);
-    setShowNewEntry(false);
-    pushToast?.(`Partida #${newEntry.id} registrada`, 'success');
+      }));
+    if (lines.some(l => l.accountId == null)) {
+      pushToast?.(t('accounting.unknownAccount', 'Hay renglones con una cuenta que no existe'), 'danger');
+      return;
+    }
+    try {
+      const saved = await createJournalEntry({
+        periodId: form.periodId ? parseInt(form.periodId) : null,
+        entryDate: form.date,
+        entryType: 'manual',
+        description: form.description,
+        reference: form.reference || null,
+        lines,
+      });
+      await reloadEntries();
+      setShowNewEntry(false);
+      pushToast?.(t('accounting.entryCreated', `Partida #${saved.id} registrada`), 'success');
+    } catch (err) {
+      // El backend rechaza la partida descuadrada o el período cerrado.
+      pushToast?.(t('accounting.entryFailed', 'No se pudo registrar la partida: ') + err.message, 'danger');
+    }
   };
 
   const handleReverse = (entry) => {
@@ -505,42 +530,35 @@ export default function Accounting({ pushToast }) {
             </select>
             <span className="muted" style={{ fontSize: 12 }}>{filteredEntries.length} {t('accounting.voucherCount', 'comprobante')}{filteredEntries.length !== 1 ? 's' : ''}</span>
           </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 60 }}>#</th>
-                  <th>{t('common.date', 'Fecha')}</th>
-                  <th>{t('common.description', 'Descripción')}</th>
-                  <th>{t('common.reference', 'Referencia')}</th>
-                  <th>{t('common.type', 'Tipo')}</th>
-                  <th className="right">{t('common.total', 'Total')}</th>
-                  <th>{t('common.status', 'Estado')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEntries.length === 0 ? (
-                  <tr><td colSpan={7} className="empty">{t('accounting.noEntries', 'Sin partidas')}</td></tr>
-                ) : filteredEntries.map(e => (
-                  <tr key={e.id} className="clickable" onClick={() => setSelected(e)}>
-                    <td className="mono muted">#{e.id}</td>
-                    <td className="mono muted">{fmtDate(e.date)}</td>
-                    <td style={{ fontWeight: 500 }}>{e.description}</td>
-                    <td className="mono muted">{e.reference || '—'}</td>
-                    <td>
-                      <span className={`badge-m3 ${e.type === 'auto' ? 'info' : 'neutral'}`}>
-                        {TYPE_LABEL[e.type]}
-                      </span>
-                    </td>
-                    <td className="right mono">{fmt(e.totalDebit)}</td>
-                    <td>
-                      <span className={`badge-m3 ${ENTRY_STATUS[e.status]}`}>{e.status}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={[
+              { key: 'id', header: '#', width: 70, mono: true, sortable: true,
+                render: (e) => `#${e.id}` },
+              { key: 'date', header: t('common.date', 'Fecha'), mono: true, sortable: true,
+                render: (e) => fmtDate(e.date) },
+              { key: 'description', header: t('common.description', 'Descripción'), sortable: true },
+              { key: 'reference', header: t('common.reference', 'Referencia'), mono: true,
+                render: (e) => e.reference || '—' },
+              { key: 'type', header: t('common.type', 'Tipo'), sortable: true,
+                render: (e) => (
+                  <span className={`badge-m3 ${e.type === 'auto' ? 'info' : 'neutral'}`}>
+                    {TYPE_LABEL[e.type]}
+                  </span>
+                ) },
+              { key: 'totalDebit', header: t('common.total', 'Total'), align: 'right', sortable: true,
+                render: (e) => <span className="num">{fmt(e.totalDebit)}</span> },
+              { key: 'status', header: t('common.status', 'Estado'), sortable: true,
+                render: (e) => <span className={`badge-m3 ${ENTRY_STATUS[e.status]}`}>{e.status}</span> },
+            ]}
+            rows={filteredEntries}
+            rowKey={(e) => e.id}
+            pageSize={15}
+            onRowClick={setSelected}
+            onRefresh={reloadEntries}
+            empty={t('accounting.noEntries', 'Sin partidas')}
+            emptyIcon="receipt"
+            totals={{ totalDebit: <span className="num">{fmt(filteredEntries.reduce((a, e) => a + Number(e.totalDebit || 0), 0))}</span> }}
+          />
         </>
       )}
 

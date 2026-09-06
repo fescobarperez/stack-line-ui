@@ -1,10 +1,11 @@
 // Stackline — Fidelización / Puntos
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { useTranslation } from 'react-i18next';
+import { listSettings, putSetting } from '../api/wave2.js';
 import { useLoyalty } from '../hooks/useLoyalty.js';
 import { addLoyaltyMovement } from '../api/wave3.js';
 
@@ -13,10 +14,17 @@ const Qs = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits
 const pts = (n) => `${Number(n).toLocaleString('es-GT')} pts`;
 
 // ── Configuración del programa ─────────────────────────────────────────────
-const CONFIG = {
+// Valores por defecto si la empresa no ha configurado los suyos. Los reales
+// viven en company_settings, igual que la tasa de IVA.
+const CONFIG_DEFAULTS = {
   puntosXQ10: 1,       // 1 punto por cada Q10 gastados
   valorPunto: 0.10,    // Q0.10 por punto al canjear
   expiracionMeses: 12,
+};
+const CONFIG_KEYS = {
+  puntosXQ10:      'loyalty.points_per_q10',
+  valorPunto:      'loyalty.point_value',
+  expiracionMeses: 'loyalty.expiry_months',
 };
 
 const TIERS = [
@@ -38,6 +46,40 @@ const TYPE_META = {
 // ── Componente ─────────────────────────────────────────────────────────────
 export default function Loyalty({ pushToast }) {
   const { t } = useTranslation();
+  // Configuración persistida en company_settings. Antes el botón "Guardar" solo
+  // lanzaba un toast: los tres campos eran defaultValue y no se leían siquiera.
+  const [CONFIG, setConfig] = useState(CONFIG_DEFAULTS);
+  const [savingCfg, setSavingCfg] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    listSettings()
+      .then((rows) => {
+        if (cancelled || !Array.isArray(rows)) return;
+        const byKey = Object.fromEntries(rows.map((r) => [r.settingKey, r.settingValue]));
+        setConfig((c) => {
+          const next = { ...c };
+          Object.entries(CONFIG_KEYS).forEach(([field, key]) => {
+            const v = parseFloat(byKey[key]);
+            if (Number.isFinite(v)) next[field] = v;
+          });
+          return next;
+        });
+      })
+      .catch(() => { /* sin conexión se queda con los valores por defecto */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const saveConfig = async () => {
+    setSavingCfg(true);
+    try {
+      await Promise.all(Object.entries(CONFIG_KEYS).map(([field, key]) =>
+        putSetting(key, { settingValue: String(CONFIG[field]), category: 'loyalty' })));
+      pushToast?.(t('loyalty.configSaved', 'Configuración guardada'), 'success');
+    } catch (err) {
+      pushToast?.(t('loyalty.configFailed', 'No se pudo guardar: ') + err.message, 'danger');
+    } finally { setSavingCfg(false); }
+  };
   const { members, txns, reload } = useLoyalty();
   const [tab, setTab]       = useState('resumen');
   const [search, setSearch] = useState('');
@@ -295,17 +337,17 @@ export default function Loyalty({ pushToast }) {
             <div style={{fontWeight: 500, fontSize: 14, marginBottom:16}}>Reglas de acumulación</div>
             <div className="field" style={{marginBottom:12}}>
               <label>Puntos por cada Q10 gastados</label>
-              <input type="number" defaultValue={CONFIG.puntosXQ10} style={{fontFamily:'var(--font-mono)'}}/>
+              <input type="number" value={CONFIG.puntosXQ10} onChange={e => setConfig(c => ({ ...c, puntosXQ10: parseFloat(e.target.value) || 0 }))} style={{fontFamily:'var(--font-mono)'}}/>
             </div>
             <div className="field" style={{marginBottom:12}}>
               <label>Valor de 1 punto al canjear (Q)</label>
-              <input type="number" defaultValue={CONFIG.valorPunto} step="0.01" style={{fontFamily:'var(--font-mono)'}}/>
+              <input type="number" value={CONFIG.valorPunto} step="0.01" onChange={e => setConfig(c => ({ ...c, valorPunto: parseFloat(e.target.value) || 0 }))} style={{fontFamily:'var(--font-mono)'}}/>
             </div>
             <div className="field" style={{marginBottom:16}}>
               <label>Expiración por inactividad (meses)</label>
-              <input type="number" defaultValue={CONFIG.expiracionMeses} style={{fontFamily:'var(--font-mono)'}}/>
+              <input type="number" value={CONFIG.expiracionMeses} onChange={e => setConfig(c => ({ ...c, expiracionMeses: parseFloat(e.target.value) || 0 }))} style={{fontFamily:'var(--font-mono)'}}/>
             </div>
-            <Button icon="check" variant="accent" full onClick={() => pushToast?.('Configuración guardada', 'success')}>{t('common.save', 'Guardar')} cambios
+            <Button icon="check" variant="accent" full disabled={savingCfg} onClick={saveConfig}>{t('common.save', 'Guardar')} cambios
             </Button>
           </div>
 
@@ -490,7 +532,7 @@ export default function Loyalty({ pushToast }) {
             </div>
             <div className="modal-foot">
               <Button onClick={() => setShowAjuste(null)}>{t('common.cancel', 'Cancelar')}</Button>
-              <Button icon="check" variant="accent" onClick={async () => { const p = parseInt(ajustePts) || 0; try { await addLoyaltyMovement(showAjuste.backendId, { movementType: p >= 0 ? 'bonus' : 'redeemed', points: p, reference: ajusteNota || 'Ajuste manual', amount: 0, }); pushToast?.(`Ajuste de ${ajustePts} pts aplicado a ${showAjuste.nombre}`, 'success'); setShowAjuste(null); reload(); } catch (err) { pushToast?.('No se pudo aplicar el ajuste: ' + err.message, 'error'); } }}>{t('common.apply', 'Aplicar')} ajuste
+              <Button icon="check" variant="accent" onClick={async () => { const p = parseInt(ajustePts) || 0; try { await addLoyaltyMovement(showAjuste.backendId, { movementType: p >= 0 ? 'bonus' : 'redeemed', points: p, reference: ajusteNota || 'Ajuste manual', amount: 0, }); pushToast?.(`Ajuste de ${ajustePts} pts aplicado a ${showAjuste.nombre}`, 'success'); setShowAjuste(null); reload(); } catch (err) { pushToast?.('No se pudo aplicar el ajuste: ' + err.message, 'danger'); } }}>{t('common.apply', 'Aplicar')} ajuste
               </Button>
             </div>
           </div>

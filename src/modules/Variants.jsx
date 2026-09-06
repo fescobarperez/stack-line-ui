@@ -82,7 +82,7 @@ export default function Variants({ pushToast }) {
       setSelected(null);
       pushToast('Variante agregada', 'success');
       reload();
-    } catch (err) { pushToast('No se pudo agregar la variante: ' + err.message, 'error'); }
+    } catch (err) { pushToast('No se pudo agregar la variante: ' + err.message, 'danger'); }
   }
 
   async function toggleVariant(group, variant) {
@@ -100,7 +100,7 @@ export default function Variants({ pushToast }) {
       });
       reload();
       setSelected(null);
-    } catch (err) { pushToast('No se pudo actualizar la variante: ' + err.message, 'error'); }
+    } catch (err) { pushToast('No se pudo actualizar la variante: ' + err.message, 'danger'); }
   }
 
   const statusBg  = { ok: 'var(--success)', low: 'var(--warning)', out: 'var(--danger)' };

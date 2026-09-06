@@ -8,6 +8,7 @@
 //   <Button variant="accent" icon="plus" onClick={crear}>Agregar cliente</Button>
 //   <Button variant="ghost" onClick={cerrar}>Cancelar</Button>
 //   <Button variant="error" icon="trash" onClick={borrar}>Eliminar</Button>
+//   <Button variant="icon" icon="print" title="Reimprimir" onClick={imprimir} />
 //   <Button size="sm" iconOnly icon="edit" title="Editar" onClick={editar} />
 //
 // El botón de "Cancelar" de un diálogo NO tiene variante propia: es `ghost`.
@@ -29,8 +30,18 @@ const VARIANT = {
 const SIZE      = { sm: 'sm', md: '', lg: 'lg' };   // 32 · 40 · 48 px
 const ICON_SIZE = { sm: 16, md: 18, lg: 20 };
 
+/**
+ * `variant="icon"` no es un modificador de .btn: usa .icon-btn, que es otra
+ * clase completa —redonda, sin borde, con state layer—. Es la acción de fila
+ * y de barra de herramientas, la que debe pasar desapercibida.
+ *
+ * No confundir con `iconOnly`, que sí es un .btn con borde y menos padding:
+ * ese es para una acción con peso propio que solo lleva icono.
+ */
+const ICON_VARIANT = 'icon';
+
 export default function Button({
-  variant = 'outlined',
+  variant = 'outlined',   // …| icon — .icon-btn: acción de fila, sin borde
   size = 'md',
   icon = null,        // icono delante del texto
   iconRight = null,   // icono detrás
@@ -40,9 +51,24 @@ export default function Button({
   children,
   ...rest             // onClick, disabled, type, title, style, aria-*, key…
 }) {
+  const isz = ICON_SIZE[size] || 18;
+
+  if (variant === ICON_VARIANT) {
+    // Sin texto por definición: lo que se pase como children se ignora, y el
+    // nombre accesible sale del title.
+    return (
+      <button
+        className={['icon-btn', SIZE[size] || '', className].filter(Boolean).join(' ')}
+        aria-label={rest['aria-label'] || rest.title}
+        {...rest}
+      >
+        {icon && <Icon name={icon} size={isz} />}
+      </button>
+    );
+  }
+
   const cls = ['btn', SIZE[size] || '', VARIANT[variant] || '',
                iconOnly && 'icon', full && 'full', className];
-  const isz = ICON_SIZE[size] || 18;
   return (
     <button className={cls.filter(Boolean).join(' ')} {...rest}>
       {icon && <Icon name={icon} size={isz} />}

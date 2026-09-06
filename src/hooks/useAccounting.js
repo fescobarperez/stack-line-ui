@@ -28,7 +28,19 @@ function makeHook(fetcher) {
 }
 
 export const useAccounts = makeHook(listAccounts);
-export const useJournalEntries = makeHook(listJournalEntries);
+// El backend devuelve entryDate/entryType; la pantalla lee date/type. Sin este
+// mapeo la fecha salía como "undefi" (fmtDate sobre undefined).
+function mapEntry(e) {
+  return {
+    ...e,
+    date: e.entryDate ?? e.date ?? null,
+    type: e.entryType ?? e.type ?? 'manual',
+    // El backend manda accountName; la pantalla lee `name`. Mismo desajuste
+    // que entryDate: sin esto el nombre de la cuenta salía vacío.
+    lines: (e.lines ?? []).map((l) => ({ ...l, name: l.accountName ?? l.name ?? null })),
+  };
+}
+export const useJournalEntries = makeHook(async () => (rows(await listJournalEntries())).map(mapEntry));
 export const useFelDocuments = makeHook(listFelDocuments);
 
 // Períodos contables (para selectores).

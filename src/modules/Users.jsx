@@ -102,7 +102,7 @@ export default function Users({ pushToast }) {
       await reloadUsers();
       pushToast('Estado de usuario actualizado', 'success');
     } catch (err) {
-      pushToast('No se pudo actualizar el estado: ' + err.message, 'error');
+      pushToast('No se pudo actualizar el estado: ' + err.message, 'danger');
     }
   };
 
@@ -139,7 +139,7 @@ export default function Users({ pushToast }) {
       pushToast(editingUser ? 'Usuario actualizado' : 'Usuario creado', 'success');
       setShowUserModal(false);
     } catch (err) {
-      pushToast('No se pudo guardar el usuario: ' + err.message, 'error');
+      pushToast('No se pudo guardar el usuario: ' + err.message, 'danger');
     }
   };
 
@@ -185,7 +185,7 @@ export default function Users({ pushToast }) {
       pushToast(editingRole ? 'Rol actualizado' : 'Rol creado', 'success');
       setShowRoleModal(false);
     } catch (err) {
-      pushToast('No se pudo guardar el rol: ' + err.message, 'error');
+      pushToast('No se pudo guardar el rol: ' + err.message, 'danger');
     }
   };
 
@@ -324,7 +324,10 @@ export default function Users({ pushToast }) {
             ]}
             actions={(u) => (
               <>
-                <button className="icon-btn" style={{ width: 32, height: 32 }} title={t('users.resetPassword', 'Restablecer contraseña')} onClick={() => pushToast('Correo de restablecimiento enviado', 'success')}><Icon name="lock" size={18} /></button>
+                <button className="icon-btn" disabled
+                  title={t('users.resetPasswordPending', 'Restablecer contraseña — pendiente de implementar')}
+                  aria-label={t('users.resetPassword', 'Restablecer contraseña')}
+                ><Icon name="shield" size={16} /></button>
                 <button className="icon-btn" style={{ width: 32, height: 32 }} title={t('users.editUser', 'Editar usuario')} onClick={() => openEditUser(u)}><Icon name="edit" size={18} /></button>
                 <button className="icon-btn" style={{ width: 32, height: 32 }} title={u.status === 'active' ? t('users.deactivateUser', 'Desactivar usuario') : t('users.activateUser', 'Activar usuario')} onClick={() => toggleUserStatus(u)}><Icon name={u.status === 'active' ? 'x' : 'check'} size={18} /></button>
               </>

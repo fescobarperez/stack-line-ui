@@ -26,6 +26,7 @@ function mapHistory(history) {
 export function mapQuote(q) {
   return {
     backendId: q.id,
+    projectId: q.projectId ?? null,
     id: q.docNumber,
     date: q.quoteDate,
     validUntil: q.validUntil,
@@ -42,6 +43,7 @@ export function mapQuote(q) {
 export function mapRfq(q) {
   return {
     backendId: q.id,
+    projectId: q.projectId ?? null,
     id: q.docNumber,
     date: q.quoteDate,
     deadline: q.deadline,

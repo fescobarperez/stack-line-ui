@@ -97,7 +97,7 @@ export default function CostCenters({ pushToast }) {
       pushToast(`Centro "${form.name}" ${editTarget ? 'actualizado' : 'creado'}`, 'success');
       setShowModal(false);
     } catch (err) {
-      pushToast('No se pudo guardar el centro: ' + err.message, 'error');
+      pushToast('No se pudo guardar el centro: ' + err.message, 'danger');
     }
   };
 
@@ -106,7 +106,7 @@ export default function CostCenters({ pushToast }) {
       await updateCostCenter(c.id, toApi({ ...c, active: !c.active }));
       await reload();
     } catch (err) {
-      pushToast('No se pudo cambiar el estado: ' + err.message, 'error');
+      pushToast('No se pudo cambiar el estado: ' + err.message, 'danger');
     }
   };
 

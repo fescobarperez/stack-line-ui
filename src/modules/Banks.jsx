@@ -148,7 +148,7 @@ export default function Banks({ pushToast }) {
       setShowNuevaCuenta(false);
       await reloadAccounts();
     } catch (err) {
-      pushToast((t('banks.accountCreateError', 'No se pudo crear la cuenta') + ': ' + err.message), 'error');
+      pushToast((t('banks.accountCreateError', 'No se pudo crear la cuenta') + ': ' + err.message), 'danger');
     } finally { setSaving(false); }
   };
 
@@ -165,7 +165,7 @@ export default function Banks({ pushToast }) {
       await reloadAccounts();
       await reloadMovements();
     } catch (err) {
-      pushToast((t('banks.transferError', 'No se pudo registrar la transferencia') + ': ' + err.message), 'error');
+      pushToast((t('banks.transferError', 'No se pudo registrar la transferencia') + ': ' + err.message), 'danger');
     } finally { setSaving(false); }
   };
 

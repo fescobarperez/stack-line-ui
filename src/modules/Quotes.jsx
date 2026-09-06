@@ -1,7 +1,11 @@
 // Stackline — Cotizaciones a clientes + RFQ a proveedores
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
+import { useTaxRate } from '../hooks/useOperations.js';
+import { projectFromQuote } from '../api/projects.js';
+import { getClientByNit } from '../api/partners.js';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import { useClientQuotes, useSupplierRfqs, mapQuote, mapRfq } from '../hooks/useQuotes.js';
@@ -19,11 +23,14 @@ const STATUS_CLASS  = { borrador: 'neutral', enviada: 'info',    aprobada: 'succ
 const RFQ_LABEL = { solicitada: 'Solicitada', recibida: 'Recibida', aprobada: 'Aprobada', rechazada: 'Rechazada', convertida: 'Conv. a OC' };
 const RFQ_CLASS  = { solicitada: 'info',       recibida: 'warning',  aprobada: 'success',  rechazada: 'danger',    convertida: 'success'    };
 
-function computeTotals(items) {
+// El IVA va INCLUIDO en el precio, igual que lo calcula el backend
+// (tax = total × tasa/(100+tasa)). Antes esto lo sumaba por encima con un 12%
+// fijo, así que la vista previa y la cotización guardada no coincidían.
+function computeTotals(items, taxRate = 12) {
   const lines    = items.map(i => ({ ...i, lineTotal: i.qty * (i.unitPrice || 0) * (1 - (i.discount || 0) / 100) }));
-  const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
-  const iva      = subtotal * 0.12;
-  return { lines, subtotal, iva, total: subtotal + iva };
+  const total    = lines.reduce((s, l) => s + l.lineTotal, 0);
+  const iva      = total * (taxRate / (100 + taxRate));
+  return { lines, subtotal: total - iva, iva, total, taxRate };
 }
 
 // ── Mock: cotizaciones a clientes ─────────────────────────────────────────────
@@ -38,9 +45,34 @@ const newRfqId = () => `RFQ-2026-${String(_nextRfqId++).padStart(5, '0')}`;
 
 const EMPTY_ITEM = () => ({ id: Date.now(), name: '', qty: 1, uom: 'UN', unitPrice: 0, discount: 0 });
 
-function CreateModal({ onSave, onClose }) {
+function CreateModal({ onSave, onClose, initialClient }) {
+  const taxRate = useTaxRate();
   const { t } = useTranslation();
-  const [client,    setClient]    = useState({ name: '', nit: '', email: '', contact: '' });
+  // `initialClient` llega desde el botón «Cotizar» de la lista de clientes.
+  const [client,    setClient]    = useState(
+    initialClient || { name: '', nit: '', email: '', contact: '', id: null });
+  // Estado del autocompletado por NIT: idle · searching · found · new
+  const [nitLookup, setNitLookup] = useState(initialClient?.id ? 'found' : 'idle');
+
+  // Al salir del campo NIT se busca el cliente. Si existe, se rellenan sus datos
+  // y queda asociado por id; si no, se avisa de que se creará al guardar.
+  const lookupNit = async () => {
+    const nit = client.nit.trim();
+    if (!nit || nit.toUpperCase() === 'CF') { setNitLookup('idle'); return; }
+    setNitLookup('searching');
+    try {
+      const c = await getClientByNit(nit);
+      setClient((prev) => ({
+        ...prev, id: c.id, name: c.name || prev.name,
+        email: c.email || prev.email, contact: c.phone || prev.contact,
+      }));
+      setNitLookup('found');
+    } catch {
+      // 404: no existe. El backend lo creará con lo que se capture.
+      setClient((prev) => ({ ...prev, id: null }));
+      setNitLookup('new');
+    }
+  };
   const [validDays, setValidDays] = useState(15);
   const [notes,     setNotes]     = useState('');
   const [items,     setItems]     = useState([EMPTY_ITEM()]);
@@ -50,7 +82,7 @@ function CreateModal({ onSave, onClose }) {
   const addItem    = () => setItems(prev => [...prev, EMPTY_ITEM()]);
   const removeItem = id => setItems(prev => prev.filter(i => i.id !== id));
 
-  const { lines, subtotal, iva, total } = computeTotals(items);
+  const { lines, subtotal, iva, total } = computeTotals(items, taxRate);
   const validDate = new Date(today);
   validDate.setDate(validDate.getDate() + validDays);
   const validUntil = validDate.toISOString().slice(0, 10);
@@ -84,7 +116,23 @@ function CreateModal({ onSave, onClose }) {
               </div>
               <div className="field-group">
                 <label className="field-label">NIT</label>
-                <input className="field-input" value={client.nit} onChange={e => setC('nit', e.target.value)} placeholder="0000000-0" />
+                <input className="field-input" value={client.nit}
+                  onChange={e => { setC('nit', e.target.value); setNitLookup('idle'); }}
+                  onBlur={lookupNit}
+                  placeholder="0000000-0" />
+                {nitLookup === 'searching' && (
+                  <span className="cfg-hint">{t('quotes.nitSearching', 'Buscando cliente…')}</span>
+                )}
+                {nitLookup === 'found' && (
+                  <span className="cfg-hint" style={{ color: 'var(--success)' }}>
+                    <Icon name="check" size={14} /> {t('quotes.nitFound', 'Cliente existente: datos autocompletados')}
+                  </span>
+                )}
+                {nitLookup === 'new' && (
+                  <span className="cfg-hint" style={{ color: 'var(--warning)' }}>
+                    <Icon name="plus" size={14} /> {t('quotes.nitNew', 'NIT no registrado: se creará el cliente al guardar')}
+                  </span>
+                )}
               </div>
               <div className="field-group">
                 <label className="field-label">{t('common.email', 'Correo electrónico')}</label>
@@ -155,7 +203,7 @@ function CreateModal({ onSave, onClose }) {
           </div>
 
           <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '12px 16px', alignSelf: 'flex-end', minWidth: 260 }}>
-            {[[t('quotes.subtotalNoIva', 'Subtotal (sin IVA)'), Q(subtotal)], [t('common.iva', 'IVA') + ' (12%)', Q(iva)]].map(([l, v]) => (
+            {[[t('quotes.subtotalNoIva', 'Subtotal (sin IVA)'), Q(subtotal)], [`${t('common.iva', 'IVA')} (${taxRate}%)`, Q(iva)]].map(([l, v]) => (
               <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, color: 'var(--text-2)' }}>
                 <span>{l}</span><span className="mono">{v}</span>
               </div>
@@ -186,6 +234,7 @@ function CreateModal({ onSave, onClose }) {
 const EMPTY_RITEM = () => ({ id: Date.now(), name: '', qty: 1, uom: 'UN' });
 
 function CreateRFQModal({ onSave, onClose }) {
+  const taxRate = useTaxRate();
   const { t } = useTranslation();
   const [supplier, setSupplier] = useState({ name: '', nit: '', email: '', contact: '' });
   const [deadline, setDeadline] = useState('');
@@ -306,13 +355,43 @@ function CreateRFQModal({ onSave, onClose }) {
 
 export default function Quotes({ pushToast }) {
   const { t } = useTranslation();
+  const taxRate = useTaxRate();
+  const navigate = useNavigate();
+  const location = useLocation();
+  // Cliente traído desde «Cotizar» en la lista de clientes.
+  const [prefillClient, setPrefillClient] = useState(location.state?.newQuoteFor || null);
+  const [converting, setConverting] = useState(false);
+
+  // Un proyecto nace de una cotización aprobada, y solo una vez: el backend
+  // congela el monto contratado y rechaza la segunda conversión.
+  const convertToProject = async (quote) => {
+    setConverting(true);
+    try {
+      // backendId es el id numérico; `id` es el número de documento (COT-…).
+      const p = await projectFromQuote(quote.backendId, {
+        name: `${quote.client?.name || quote.clientName || ''} — ${quote.id}`.trim(),
+      });
+      pushToast?.(t('quotes.projectCreated', `Proyecto ${p.code} creado`), 'success');
+      navigate('/projects');
+    } catch (err) {
+      pushToast?.(err.message, 'danger');
+    } finally {
+      setConverting(false);
+    }
+  };
   const [quoteType, setQuoteType] = useState('cliente');
 
   // — cotizaciones a clientes —
   const { items: quotes, reload: reloadQuotes } = useClientQuotes();
   const [selected,     setSelected]     = useState(null);
   const [drawerTab,    setDrawerTab]    = useState('detail');
-  const [showCreate,   setShowCreate]   = useState(false);
+  const [showCreate,   setShowCreate]   = useState(Boolean(location.state?.newQuoteFor));
+
+  // Limpia el estado de la ruta tras abrir: si no, recargar o volver atrás
+  // reabriría el diálogo con el mismo cliente.
+  useEffect(() => {
+    if (location.state?.newQuoteFor) navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, navigate]);
   const [statusFilter, setStatusFilter] = useState('');
   const [search,       setSearch]       = useState('');
 
@@ -336,8 +415,8 @@ export default function Quotes({ pushToast }) {
 
   // — KPIs clientes —
   const pipeline    = quotes.filter(q => ['borrador', 'enviada', 'aprobada'].includes(q.status));
-  const pipelineAmt = pipeline.reduce((s, q) => s + computeTotals(q.items).total, 0);
-  const approvedAmt = quotes.filter(q => q.status === 'aprobada').reduce((s, q) => s + computeTotals(q.items).total, 0);
+  const pipelineAmt = pipeline.reduce((s, q) => s + computeTotals(q.items, taxRate).total, 0);
+  const approvedAmt = quotes.filter(q => q.status === 'aprobada').reduce((s, q) => s + computeTotals(q.items, taxRate).total, 0);
 
   const filtered = useMemo(() => quotes.filter(q => {
     if (statusFilter && q.status !== statusFilter) return false;
@@ -348,20 +427,27 @@ export default function Quotes({ pushToast }) {
     return true;
   }), [quotes, statusFilter, search]);
 
-  const updateStatus = async (id, newStatus, entry) => {
+  // `okMsg` se avisa DENTRO del try: antes las llamadas hacían
+  // `updateStatus(...); pushToast('éxito')` sin esperar, así que un fallo de
+  // red o un rechazo del backend se anunciaban como éxito igualmente.
+  const updateStatus = async (id, newStatus, entry, okMsg, okTone = 'success') => {
     const q = quotes.find(x => x.id === id);
-    if (!q) return;
+    if (!q) { pushToast(t('quotes.notFound', 'No se encontró la cotización'), 'danger'); return; }
     try {
       const full = await updateQuoteStatus(q.backendId, { status: newStatus, note: entry, actor: '' });
       setSelected(mapQuote(full));
       reloadQuotes();
-    } catch (err) { pushToast('No se pudo actualizar el estado: ' + err.message, 'error'); }
+      if (okMsg) pushToast(okMsg, okTone);
+    } catch (err) { pushToast('No se pudo actualizar el estado: ' + err.message, 'danger'); }
   };
 
   const submitQuote = async (draft) => {
     try {
       await apiCreateQuote({
         partyType: 'client',
+        // clientId cuando el NIT ya existía; si no, el backend crea el cliente
+        // con estos datos. Sin uno u otro la cotización no se puede convertir.
+        clientId: draft.client.id ?? null,
         clientName: draft.client.name, clientNit: draft.client.nit,
         clientEmail: draft.client.email, clientContact: draft.client.contact,
         quoteDate: draft.date, validUntil: draft.validUntil,
@@ -371,7 +457,7 @@ export default function Quotes({ pushToast }) {
       setShowCreate(false);
       pushToast('Cotización creada como borrador', 'success');
       reloadQuotes();
-    } catch (err) { pushToast('No se pudo crear la cotización: ' + err.message, 'error'); }
+    } catch (err) { pushToast('No se pudo crear la cotización: ' + err.message, 'danger'); }
   };
   const openDrawer  = async (q) => {
     setSelected(q); setDrawerTab('detail');
@@ -393,14 +479,15 @@ export default function Quotes({ pushToast }) {
     return true;
   }), [rfqs, rfqFilter, rfqSearch]);
 
-  const updateRfqStatus = async (id, newStatus, entry) => {
+  const updateRfqStatus = async (id, newStatus, entry, okMsg, okTone = 'success') => {
     const r = rfqs.find(x => x.id === id);
-    if (!r) return;
+    if (!r) { pushToast(t('quotes.rfqNotFound', 'No se encontró la solicitud'), 'danger'); return; }
     try {
       const full = await updateQuoteStatus(r.backendId, { status: newStatus, note: entry, actor: '' });
       setSelectedRfq(mapRfq(full));
       reloadRfqs();
-    } catch (err) { pushToast('No se pudo actualizar el estado: ' + err.message, 'error'); }
+      if (okMsg) pushToast(okMsg, okTone);
+    } catch (err) { pushToast('No se pudo actualizar el estado: ' + err.message, 'danger'); }
   };
 
   const submitRfq = async (draft) => {
@@ -416,7 +503,7 @@ export default function Quotes({ pushToast }) {
       setShowCreateRfq(false);
       pushToast('Solicitud creada — esperando respuesta del proveedor', 'success');
       reloadRfqs();
-    } catch (err) { pushToast('No se pudo crear la solicitud: ' + err.message, 'error'); }
+    } catch (err) { pushToast('No se pudo crear la solicitud: ' + err.message, 'danger'); }
   };
   const openRfqDrawer = async (r) => {
     setSelectedRfq(r); setRfqDrawerTab('detail');
@@ -515,7 +602,7 @@ export default function Quotes({ pushToast }) {
                 </thead>
                 <tbody>
                   {filtered.map(q => {
-                    const { total }  = computeTotals(q.items);
+                    const { total }  = computeTotals(q.items, taxRate);
                     const isExpired  = q.validUntil < today && !['convertida', 'rechazada', 'vencida'].includes(q.status);
                     return (
                       <tr key={q.id} onClick={() => openDrawer(q)} style={{ cursor: 'pointer' }}>
@@ -600,7 +687,7 @@ export default function Quotes({ pushToast }) {
                 </thead>
                 <tbody>
                   {filteredRfqs.map(r => {
-                    const { total }   = computeTotals(r.items);
+                    const { total }   = computeTotals(r.items, taxRate);
                     const hasPrices   = r.items.some(i => i.unitPrice > 0);
                     const isOverdue   = r.deadline && r.deadline < today && ['solicitada', 'recibida'].includes(r.status);
                     return (
@@ -656,7 +743,7 @@ export default function Quotes({ pushToast }) {
 
             <div className="drawer-body">
               {drawerTab === 'detail' && (() => {
-                const { lines, subtotal, iva, total } = computeTotals(selQuote.items);
+                const { lines, subtotal, iva, total } = computeTotals(selQuote.items, taxRate);
                 return (
                   <>
                     <div className="detail-grid" style={{ marginBottom: 16 }}>
@@ -704,7 +791,7 @@ export default function Quotes({ pushToast }) {
                     </table>
 
                     <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginBottom: 14 }}>
-                      {[[t('quotes.subtotalNoIva', 'Subtotal sin IVA'), Q(subtotal)], [t('common.iva', 'IVA') + ' (12%)', Q(iva)]].map(([l, v]) => (
+                      {[[t('quotes.subtotalNoIva', 'Subtotal sin IVA'), Q(subtotal)], [`${t('common.iva', 'IVA')} (${taxRate}%)`, Q(iva)]].map(([l, v]) => (
                         <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5, color: 'var(--text-2)' }}>
                           <span>{l}</span><span className="mono">{v}</span>
                         </div>
@@ -746,23 +833,36 @@ export default function Quotes({ pushToast }) {
               <Button variant="ghost" onClick={() => setSelected(null)}>{t('common.close', 'Cerrar')}</Button>
               <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
                 {selQuote.status === 'borrador' && (
-                  <Button onClick={() => { updateStatus(selQuote.id, 'enviada', 'Enviada al cliente por correo electrónico'); pushToast('Cotización enviada', 'success'); }}>
+                  <Button onClick={() => { updateStatus(selQuote.id, 'enviada', 'Enviada al cliente por correo electrónico', 'Cotización enviada'); }}>
                     {t('quotes.sendToClient', 'Enviar al cliente')}
                   </Button>
                 )}
                 {selQuote.status === 'enviada' && (
                   <>
-                    <Button style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => { updateStatus(selQuote.id, 'rechazada', 'Rechazada'); pushToast('Cotización rechazada', 'danger'); }}>
+                    <Button style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => { updateStatus(selQuote.id, 'rechazada', 'Rechazada', 'Cotización rechazada', 'danger'); }}>
                       {t('quotes.reject', 'Rechazar')}
                     </Button>
-                    <Button onClick={() => { updateStatus(selQuote.id, 'aprobada', 'Aprobada por el cliente'); pushToast('Cotización aprobada', 'success'); }}>
+                    <Button onClick={() => { updateStatus(selQuote.id, 'aprobada', 'Aprobada por el cliente', 'Cotización aprobada'); }}>
                       {t('quotes.markApproved', 'Marcar aprobada')}
                     </Button>
                   </>
                 )}
                 {selQuote.status === 'aprobada' && (
-                  <Button icon="receipt" onClick={() => { const fid = `T-2026-0${Math.floor(Math.random() * 9000 + 1000)}`; updateStatus(selQuote.id, 'convertida', `Convertida a venta — Factura FEL ${fid}`); pushToast(`Factura FEL ${fid} generada`, 'success'); }}>{t('quotes.convertToSale', 'Convertir a venta')}
+                  <Button icon="receipt" onClick={() => { const fid = `T-2026-0${Math.floor(Math.random() * 9000 + 1000)}`; updateStatus(selQuote.id, 'convertida', `Convertida a venta — Factura FEL ${fid}`, `Factura FEL ${fid} generada`); }}>{t('quotes.convertToSale', 'Convertir a venta')}
                   </Button>
+                )}
+                {selQuote.status === 'aprobada' && (
+                  selQuote.projectId ? (
+                    <Button icon="box" onClick={() => navigate('/projects')}>
+                      {t('quotes.viewProject', 'Ver proyecto')}
+                    </Button>
+                  ) : (
+                    <Button icon="box" variant="accent" disabled={converting}
+                      title={t('quotes.toProjectHint', 'Crea un proyecto para dar seguimiento al costo y el margen')}
+                      onClick={() => convertToProject(selQuote)}>
+                      {converting ? t('quotes.converting', 'Creando…') : t('quotes.toProject', 'Crear proyecto')}
+                    </Button>
+                  )
                 )}
               </div>
             </div>
@@ -793,7 +893,7 @@ export default function Quotes({ pushToast }) {
             <div className="drawer-body">
               {rfqDrawerTab === 'detail' && (() => {
                 const hasPrices = selRfq.items.some(i => i.unitPrice > 0);
-                const { lines, subtotal, iva, total } = computeTotals(selRfq.items);
+                const { lines, subtotal, iva, total } = computeTotals(selRfq.items, taxRate);
                 return (
                   <>
                     <div className="detail-grid" style={{ marginBottom: 16 }}>
@@ -859,7 +959,7 @@ export default function Quotes({ pushToast }) {
 
                     {hasPrices && (
                       <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginBottom: 14 }}>
-                        {[[t('quotes.subtotalNoIva', 'Subtotal sin IVA'), Q(subtotal)], [t('common.iva', 'IVA') + ' (12%)', Q(iva)]].map(([l, v]) => (
+                        {[[t('quotes.subtotalNoIva', 'Subtotal sin IVA'), Q(subtotal)], [`${t('common.iva', 'IVA')} (${taxRate}%)`, Q(iva)]].map(([l, v]) => (
                           <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5, color: 'var(--text-2)' }}>
                             <span>{l}</span><span className="mono">{v}</span>
                           </div>
@@ -902,22 +1002,22 @@ export default function Quotes({ pushToast }) {
               <Button variant="ghost" onClick={() => setSelectedRfq(null)}>{t('common.close', 'Cerrar')}</Button>
               <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
                 {selRfq.status === 'solicitada' && (
-                  <Button onClick={() => { updateRfqStatus(selRfq.id, 'recibida', 'Cotización recibida del proveedor'); pushToast('Respuesta registrada', 'success'); }}>
+                  <Button onClick={() => { updateRfqStatus(selRfq.id, 'recibida', 'Cotización recibida del proveedor', 'Respuesta registrada'); }}>
                     {t('quotes.registerResponse', 'Registrar respuesta')}
                   </Button>
                 )}
                 {selRfq.status === 'recibida' && (
                   <>
-                    <Button style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => { updateRfqStatus(selRfq.id, 'rechazada', 'Cotización rechazada — condiciones no aceptadas'); pushToast('Cotización rechazada', 'danger'); }}>
+                    <Button style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => { updateRfqStatus(selRfq.id, 'rechazada', 'Cotización rechazada — condiciones no aceptadas', 'Cotización rechazada', 'danger'); }}>
                       {t('quotes.reject', 'Rechazar')}
                     </Button>
-                    <Button onClick={() => { updateRfqStatus(selRfq.id, 'aprobada', 'Cotización aprobada — mejor precio y condiciones'); pushToast('Cotización aprobada', 'success'); }}>
+                    <Button onClick={() => { updateRfqStatus(selRfq.id, 'aprobada', 'Cotización aprobada — mejor precio y condiciones', 'Cotización aprobada'); }}>
                       {t('quotes.approve', 'Aprobar')}
                     </Button>
                   </>
                 )}
                 {selRfq.status === 'aprobada' && (
-                  <Button icon="truck" onClick={() => { const ocNum = `OC-2026-${String(Math.floor(Math.random() * 900 + 100)).padStart(5, '0')}`; updateRfqStatus(selRfq.id, 'convertida', `Convertida a orden de compra — ${ocNum}`); pushToast(`${ocNum} generada`, 'success'); }}>{t('quotes.convertToPO', 'Convertir a OC')}
+                  <Button icon="truck" onClick={() => { const ocNum = `OC-2026-${String(Math.floor(Math.random() * 900 + 100)).padStart(5, '0')}`; updateRfqStatus(selRfq.id, 'convertida', `Convertida a orden de compra — ${ocNum}`, `${ocNum} generada`); }}>{t('quotes.convertToPO', 'Convertir a OC')}
                   </Button>
                 )}
               </div>
@@ -926,7 +1026,8 @@ export default function Quotes({ pushToast }) {
         </div>
       )}
 
-      {showCreate    && <CreateModal    onSave={submitQuote} onClose={() => setShowCreate(false)}    />}
+      {showCreate    && <CreateModal    onSave={submitQuote} initialClient={prefillClient}
+                                        onClose={() => { setShowCreate(false); setPrefillClient(null); }} />}
       {showCreateRfq && <CreateRFQModal onSave={submitRfq}   onClose={() => setShowCreateRfq(false)} />}
     </div>
   );

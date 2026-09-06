@@ -3,8 +3,12 @@ import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
+import DataTable from '../components/DataTable.jsx';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useClients } from '../hooks/useMasters.js';
+import { createClient, updateClient } from '../api/partners.js';
+import { createPayment } from '../api/receivables.js';
 import { usePayments } from '../hooks/useOperations.js';
 
 const TYPE_LABEL = { CF: 'CF', minorista: 'Minorista', mayorista: 'Mayorista', exento: 'Exento' };
@@ -258,33 +262,24 @@ function ClientDetail({ client, payments, onClose, onEdit, onPayment }) {
 
       {tab === 'cxc' && (
         <div className="drawer-body" style={{ overflowY: 'auto', padding: 0 }}>
-          {clientPayments.length === 0 ? (
-            <div className="empty" style={{ padding: '40px 20px' }}>
-              <Icon name="cash" size={24} style={{ opacity: 0.3, marginBottom: 8 }} />
-              <div>{t('clients.drawer.noPayments', 'Sin pagos registrados')}</div>
-            </div>
-          ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>{t('clients.drawer.paymentHeaders.date', 'Fecha')}</th>
-                  <th>{t('clients.drawer.paymentHeaders.method', 'Forma de pago')}</th>
-                  <th>{t('clients.drawer.paymentHeaders.reference', 'Referencia')}</th>
-                  <th className="right">{t('clients.drawer.paymentHeaders.amount', 'Monto')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clientPayments.map(p => (
-                  <tr key={p.id}>
-                    <td className="mono muted">{p.date}</td>
-                    <td>{METHOD_LABEL[p.paymentMethod] || p.paymentMethod}</td>
-                    <td className="mono muted">{p.reference || '—'}</td>
-                    <td className="right mono" style={{ color: 'var(--success)', fontWeight: 500 }}>+{fmt(p.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <DataTable
+            columns={[
+              { key: 'date', header: t('clients.drawer.paymentHeaders.date', 'Fecha'), mono: true, sortable: true },
+              { key: 'paymentMethod', header: t('clients.drawer.paymentHeaders.method', 'Forma de pago'),
+                render: (p) => METHOD_LABEL[p.paymentMethod] || p.paymentMethod },
+              { key: 'reference', header: t('clients.drawer.paymentHeaders.reference', 'Referencia'), mono: true,
+                render: (p) => p.reference || '—' },
+              { key: 'amount', header: t('clients.drawer.paymentHeaders.amount', 'Monto'),
+                align: 'right', sortable: true,
+                render: (p) => <span className="num" style={{ color: 'var(--success)' }}>+{fmt(p.amount)}</span> },
+            ]}
+            rows={clientPayments}
+            rowKey={(p) => p.id}
+            density="compact"
+            empty={t('clients.drawer.noPayments', 'Sin pagos registrados')}
+            emptyIcon="cash"
+            totals={{ amount: <span className="num">{fmt(clientPayments.reduce((a, p) => a + Number(p.amount || 0), 0))}</span> }}
+          />
         </div>
       )}
     </div>
@@ -295,8 +290,9 @@ function ClientDetail({ client, payments, onClose, onEdit, onPayment }) {
 export default function Clients({ pushToast }) {
   const { t } = useTranslation();
   // Clientes y pagos desde el backend (con fallback automático al mock).
-  const { items: apiClients } = useClients();
-  const { items: paymentsRaw } = usePayments();
+  const navigate = useNavigate();
+  const { items: apiClients, reload: reloadClients } = useClients();
+  const { items: paymentsRaw, reload: reloadPayments } = usePayments();
   const CLIENT_PAYMENTS = useMemo(
     () => paymentsRaw.map(p => ({ ...p, date: p.paymentDate || p.date, paymentMethod: p.method || p.paymentMethod })),
     [paymentsRaw],
@@ -328,35 +324,79 @@ export default function Clients({ pushToast }) {
   const totalBalance = clients.reduce((s, c) => s + c.balance, 0);
   const totalCreditLimit = clients.filter(c => c.clientType !== 'CF').reduce((s, c) => s + c.creditLimit, 0);
 
-  const handleSaveNew = (form) => {
-    const newClient = {
-      id: Math.max(...clients.map(c => c.id)) + 1,
-      ...form,
-      creditLimit: parseFloat(form.creditLimit) || 0,
-      paymentTerms: parseInt(form.paymentTerms) || 0,
-      balance: 0,
-      status: 'active',
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
-    setClients(prev => [...prev, newClient]);
-    setShowNew(false);
-    pushToast?.('Cliente creado correctamente', 'success');
+  // Antes esto solo hacía setClients() en memoria y mostraba el toast: el
+  // cliente desaparecía al recargar y nunca llegaba a la base.
+  const handleSaveNew = async (form) => {
+    try {
+      await createClient({
+        name: form.name, nit: form.nit || null, clientType: form.clientType,
+        address: form.address || null, phone: form.phone || null, email: form.email || null,
+        creditLimit: parseFloat(form.creditLimit) || 0,
+        paymentTerms: parseInt(form.paymentTerms) || 0,
+        status: 'active',
+      });
+      await reloadClients();
+      setShowNew(false);
+      pushToast?.(t('clients.created', 'Cliente creado correctamente'), 'success');
+    } catch (err) {
+      pushToast?.(t('clients.createFailed', 'No se pudo crear el cliente: ') + err.message, 'danger');
+    }
   };
 
-  const handleSaveEdit = (form) => {
-    setClients(prev => prev.map(c => c.id === selected.id ? { ...c, ...form, creditLimit: parseFloat(form.creditLimit) || 0, paymentTerms: parseInt(form.paymentTerms) || 0 } : c));
-    setSelected(prev => ({ ...prev, ...form, creditLimit: parseFloat(form.creditLimit) || 0, paymentTerms: parseInt(form.paymentTerms) || 0 }));
-    setEditing(false);
-    pushToast?.('Cliente actualizado', 'success');
+  const handleSaveEdit = async (form) => {
+    try {
+      await updateClient(selected.id, {
+        name: form.name, nit: form.nit || null, clientType: form.clientType,
+        address: form.address || null, phone: form.phone || null, email: form.email || null,
+        creditLimit: parseFloat(form.creditLimit) || 0,
+        paymentTerms: parseInt(form.paymentTerms) || 0,
+        status: selected.status,
+      });
+      await reloadClients();
+      setSelected(prev => ({ ...prev, ...form,
+        creditLimit: parseFloat(form.creditLimit) || 0,
+        paymentTerms: parseInt(form.paymentTerms) || 0 }));
+      setEditing(false);
+      pushToast?.(t('clients.updated', 'Cliente actualizado'), 'success');
+    } catch (err) {
+      pushToast?.(t('clients.updateFailed', 'No se pudo actualizar: ') + err.message, 'danger');
+    }
   };
 
-  const handlePayment = (form) => {
+  // Antes solo restaba el saldo en memoria: al recargar reaparecía la deuda y
+  // el pago no existía en cuentas por cobrar. El backend descuenta el saldo del
+  // cliente dentro de la misma transacción que registra el pago.
+  const handlePayment = async (form) => {
     const amount = parseFloat(form.amount);
-    setClients(prev => prev.map(c => c.id === selected.id ? { ...c, balance: Math.max(0, c.balance - amount) } : c));
-    setSelected(prev => ({ ...prev, balance: Math.max(0, prev.balance - amount) }));
-    setShowPayment(false);
-    pushToast?.(`Pago de ${fmt(amount)} registrado`, 'success');
+    if (!(amount > 0)) {
+      pushToast?.(t('clients.payment.invalidAmount', 'El monto debe ser mayor a cero'), 'danger');
+      return;
+    }
+    try {
+      await createPayment({
+        clientId: selected.id,
+        amount,
+        paymentDate: form.paymentDate || new Date().toISOString().slice(0, 10),
+        method: form.paymentMethod,
+        reference: form.reference || null,
+        notes: form.notes || null,
+      });
+      // El drawer lee de `clients` (ver selectedClient), así que la recarga
+      // basta. Calcularlo aquí además duplicaba la regla: el backend NO acota
+      // en cero y esto sí, con lo que parpadeaba un saldo distinto al real.
+      await Promise.all([reloadClients(), reloadPayments()]);
+      setShowPayment(false);
+      pushToast?.(t('clients.payment.done', `Pago de ${fmt(amount)} registrado`), 'success');
+    } catch (err) {
+      pushToast?.(t('clients.payment.failed', 'No se pudo registrar el pago: ') + err.message, 'danger');
+    }
   };
+
+  // Cotizar a un cliente: navega a Cotizaciones llevando sus datos en el estado
+  // de la ruta, y allí se abre el diálogo con el formulario ya relleno.
+  const quoteClient = (c) => navigate('/quotes', {
+    state: { newQuoteFor: { id: c.id, name: c.name, nit: c.nit, email: c.email, contact: c.phone } },
+  });
 
   const selectedClient = selected ? clients.find(c => c.id === selected.id) || selected : null;
 
@@ -443,91 +483,101 @@ export default function Clients({ pushToast }) {
           </div>
 
           <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>{t('common.client', 'Cliente')}</th>
-                  <th>NIT</th>
-                  <th>{t('common.type', 'Tipo')}</th>
-                  <th>Contacto</th>
-                  <th className="right">Límite crédito</th>
-                  <th className="right">{t('clients.drawer.labels.pendingBalance', 'Saldo pendiente')}</th>
-                  <th>{t('common.status', 'Estado')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="empty">{t('common.noResults', 'Sin resultados')}</td></tr>
-                ) : filtered.map(c => (
-                  <tr key={c.id} className="clickable" onClick={() => { setSelected(c); setEditing(false); }}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div className="avatar" style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }}>{initials(c.name)}</div>
-                        <span style={{ fontWeight: 500 }}>{c.name}</span>
+            <DataTable
+              columns={[
+                { key: 'name', header: t('common.client', 'Cliente'), sortable: true,
+                  render: (c) => (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div className="avatar" style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }}>
+                        {initials(c.name)}
                       </div>
-                    </td>
-                    <td className="mono muted">{c.nit}</td>
-                    <td><span className="badge-m3 neutral">{TYPE_LABEL[c.clientType]}</span></td>
-                    <td className="muted">{c.phone || c.email || '—'}</td>
-                    <td className="right mono muted">{c.creditLimit> 0 ? fmt(c.creditLimit) : '—'}</td>
-                    <td className="right mono" style={{ color: c.balance> 0 ? 'var(--danger)' : 'var(--muted)', fontWeight: c.balance > 0 ? 600 : 400 }}>
+                      <span style={{ fontWeight: 500 }}>{c.name}</span>
+                    </div>
+                  ) },
+                { key: 'nit', header: 'NIT', mono: true, sortable: true },
+                { key: 'clientType', header: t('common.type', 'Tipo'), sortable: true,
+                  render: (c) => <span className="badge-m3 neutral">{TYPE_LABEL[c.clientType]}</span> },
+                { key: 'contact', header: 'Contacto',
+                  render: (c) => <span className="muted">{c.phone || c.email || '—'}</span> },
+                { key: 'creditLimit', header: 'Límite crédito', align: 'right', sortable: true,
+                  render: (c) => <span className="num">{c.creditLimit > 0 ? fmt(c.creditLimit) : '—'}</span> },
+                { key: 'balance', header: t('clients.drawer.labels.pendingBalance', 'Saldo pendiente'),
+                  align: 'right', sortable: true,
+                  render: (c) => (
+                    <span className="num" style={{ color: c.balance > 0 ? 'var(--danger)' : 'var(--muted)' }}>
                       {fmt(c.balance)}
-                    </td>
-                    <td><span className={`badge-m3 ${STATUS_CLASS[c.status]}`}>{STATUS_LABEL[c.status]}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </span>
+                  ) },
+                { key: 'status', header: t('common.status', 'Estado'), sortable: true,
+                  render: (c) => <span className={`badge-m3 ${STATUS_CLASS[c.status]}`}>{STATUS_LABEL[c.status]}</span> },
+              ]}
+              rows={filtered}
+              rowKey={(c) => c.id}
+              pageSize={15}
+              onRowClick={(c) => { setSelected(c); setEditing(false); }}
+              onRefresh={reloadClients}
+              empty={t('common.noResults', 'Sin resultados')}
+              emptyIcon="user"
+              actions={(c) => (
+                <Button variant="icon" icon="receipt"
+                  title={t('clients.quote', 'Cotizar')}
+                  onClick={() => quoteClient(c)} />
+              )}
+            />
           </div>
         </>
       )}
 
       {tab === 'cxc' && (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>{t('common.client', 'Cliente')}</th>
-                <th>{t('common.type', 'Tipo')}</th>
-                <th className="right">Límite crédito</th>
-                <th className="right">{t('clients.drawer.labels.pendingBalance', 'Saldo pendiente')}</th>
-                <th className="right">% utilizado</th>
-                <th>Plazo</th>
-                <th>{t('common.actions', 'Acciones')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cxcClients.length === 0 ? (
-                <tr><td colSpan={7} className="empty">No hay cuentas por cobrar pendientes</td></tr>
-              ) : cxcClients.map(c => {
+        <DataTable
+          columns={[
+            { key: 'name', header: t('common.client', 'Cliente'), sortable: true,
+              render: (c) => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div className="avatar" style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }}>
+                    {initials(c.name)}
+                  </div>
+                  <span style={{ fontWeight: 500 }}>{c.name}</span>
+                </div>
+              ) },
+            { key: 'clientType', header: t('common.type', 'Tipo'), sortable: true,
+              render: (c) => <span className="badge-m3 neutral">{TYPE_LABEL[c.clientType]}</span> },
+            { key: 'creditLimit', header: 'Límite crédito', align: 'right', sortable: true,
+              render: (c) => <span className="num">{c.creditLimit > 0 ? fmt(c.creditLimit) : '—'}</span> },
+            { key: 'balance', header: t('clients.drawer.labels.pendingBalance', 'Saldo pendiente'),
+              align: 'right', sortable: true,
+              render: (c) => <span className="num" style={{ color: 'var(--danger)' }}>{fmt(c.balance)}</span> },
+            { key: 'pct', header: '% utilizado', align: 'right',
+              sortValue: (c) => (c.creditLimit > 0 ? c.balance / c.creditLimit : 0),
+              render: (c) => {
                 const pct = c.creditLimit > 0 ? (c.balance / c.creditLimit * 100) : 0;
                 return (
-                  <tr key={c.id} className="clickable" onClick={() => { setSelected(c); setEditing(false); }}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div className="avatar" style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }}>{initials(c.name)}</div>
-                        <span style={{ fontWeight: 500 }}>{c.name}</span>
-                      </div>
-                    </td>
-                    <td><span className="badge-m3 neutral">{TYPE_LABEL[c.clientType]}</span></td>
-                    <td className="right mono muted">{c.creditLimit> 0 ? fmt(c.creditLimit) : '—'}</td>
-                    <td className="right mono" style={{ color: 'var(--danger)', fontWeight: 500 }}>{fmt(c.balance)}</td>
-                    <td className="right">
-                      <span className={`badge-m3 ${pct > 90 ? 'danger' : pct > 70 ? 'warning' : 'success'}`}>
-                        {pct.toFixed(0)}%
-                      </span>
-                    </td>
-                    <td className="muted">{c.paymentTerms> 0 ? `${c.paymentTerms} días` : 'Contado'}</td>
-                    <td>
-                      <Button size="sm" icon="cash" onClick={e => { e.stopPropagation(); setSelected(c); setShowPayment(true); }}>{t('clients.payment.title', 'Pago')}
-                      </Button>
-                    </td>
-                  </tr>
+                  <span className={`badge-m3 ${pct > 90 ? 'danger' : pct > 70 ? 'warning' : 'success'}`}>
+                    {pct.toFixed(0)}%
+                  </span>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
+              } },
+            { key: 'paymentTerms', header: 'Plazo', sortable: true,
+              render: (c) => <span className="muted">{c.paymentTerms > 0 ? `${c.paymentTerms} días` : 'Contado'}</span> },
+          ]}
+          rows={cxcClients}
+          rowKey={(c) => c.id}
+          pageSize={15}
+          onRowClick={(c) => { setSelected(c); setEditing(false); }}
+          empty="No hay cuentas por cobrar pendientes"
+          emptyIcon="check"
+          totals={{ balance: <span className="num">{fmt(cxcClients.reduce((a, c) => a + Number(c.balance || 0), 0))}</span> }}
+          actions={(c) => (
+            <>
+              <Button variant="icon" icon="cash"
+                title={t('clients.payment.title', 'Registrar pago')}
+                onClick={() => { setSelected(c); setShowPayment(true); }} />
+              <Button variant="icon" icon="receipt"
+                title={t('clients.quote', 'Cotizar')}
+                onClick={() => quoteClient(c)} />
+            </>
+          )}
+        />
       )}
 
       {/* Panel lateral — detalle o edición */}

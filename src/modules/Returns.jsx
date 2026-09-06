@@ -61,7 +61,7 @@ export default function Returns({ pushToast }) {
       pushToast('Nota de crédito emitida y autorizada por FEL', 'success');
       reloadNotes();
     } catch (err) {
-      pushToast('No se pudo emitir la nota de crédito: ' + err.message, 'error');
+      pushToast('No se pudo emitir la nota de crédito: ' + err.message, 'danger');
     }
   }
 
@@ -71,7 +71,7 @@ export default function Returns({ pushToast }) {
       pushToast(t('returns.retrySent', 'NC re-enviada — autorizada por SAT'), 'success');
       reloadNotes();
     } catch (err) {
-      pushToast('No se pudo reintentar el envío FEL: ' + err.message, 'error');
+      pushToast('No se pudo reintentar el envío FEL: ' + err.message, 'danger');
     }
   }
 

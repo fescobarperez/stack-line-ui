@@ -6,6 +6,7 @@ import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { usePurchaseOrders } from '../hooks/useOperations.js';
+import { useProjects } from '../hooks/useOperations.js';
 import { createPurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder } from '../api/purchasing.js';
 import { useSuppliers } from '../hooks/useMasters.js';
 import { useBranches } from '../hooks/useMasters.js';
@@ -112,6 +113,10 @@ function ReceiveModal({ po, onSave, onClose }) {
 function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
   const { t } = useTranslation();
   const [supplierId, setSupplierId] = useState('');
+  // Imputar la OC a un proyecto la cuenta como COMPROMETIDO; pasa a ejecutado
+  // cuando llegue la factura del proveedor.
+  const [projectId, setProjectId] = useState('');
+  const { items: projects } = useProjects();
   const [branchId, setBranchId]     = useState('');
   const [notes, setNotes]           = useState('');
   const [items, setItems]           = useState([{ sku: '', name: '', qtyOrdered: 1, unitCost: '' }]);
@@ -139,7 +144,7 @@ function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!valid) return;
-    onSave({ supplierId, branchId, notes, items: usable, total });
+    onSave({ supplierId, branchId, projectId, notes, items: usable, total });
   };
 
   return (
@@ -158,6 +163,17 @@ function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
                   <option value="">{t('purchases.noSupplier', '— Sin asignar —')}</option>
                   {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
+              </div>
+              <div className="field">
+                <label className="field-label">{t('purchases.project', 'Proyecto')}</label>
+                <select className="field-input" value={projectId} onChange={e => setProjectId(e.target.value)}>
+                  <option value="">{t('purchases.noProject', '— Ninguno —')}</option>
+                  {projects.filter(p => p.status === 'open')
+                    .map(p => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+                </select>
+                <span className="cfg-hint">
+                  {t('purchases.projectHint', 'Se contabiliza como comprometido hasta que llegue la factura.')}
+                </span>
               </div>
               <div className="field">
                 <label className="field-label">{t('purchases.destBranch', 'Sucursal destino *')}</label>
@@ -444,12 +460,13 @@ export default function Purchases({ pushToast }) {
     colTotal, colStatus,
   ];
 
-  const handleNewOC = async ({ supplierId, branchId, notes, items }) => {
+  const handleNewOC = async ({ supplierId, branchId, projectId, notes, items }) => {
     setSaving(true);
     try {
       const po = await createPurchaseOrder({
         supplierId: supplierId ? Number(supplierId) : null,
         branchId: Number(branchId),
+        projectId: projectId ? Number(projectId) : null,
         orderDate: new Date().toISOString().slice(0, 10),
         notes,
         items: items.map((item) => ({

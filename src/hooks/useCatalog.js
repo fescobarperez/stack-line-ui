@@ -18,17 +18,19 @@ function mapProduct(p) {
     stock: p.stock ?? 0,
     min: p.minStock ?? 0,
     unit: p.unit,
+    itemType: p.itemType ?? 'sellable',
+    tracksStock: p.tracksStock ?? true,
     status: p.status,
   };
 }
 
-export function useProducts({ search = '' } = {}) {
+export function useProducts({ search = '', itemType = '' } = {}) {
   const [state, setState] = useState({ items: [], loading: true, error: null });
 
   const reload = useCallback(async () => {
     setState((s) => ({ ...s, loading: true }));
     try {
-      const page = await listProducts({ search });
+      const page = await listProducts({ search, itemType });
       const rows = Array.isArray(page) ? page : (page.content ?? []);
       // Existencias reales: suma de product_stock por producto (todas las sucursales/lotes).
       const stockByProduct = {};
@@ -43,7 +45,7 @@ export function useProducts({ search = '' } = {}) {
     } catch (err) {
       setState({ items: [], loading: false, error: err });
     }
-  }, [search]);
+  }, [search, itemType]);
 
   useEffect(() => { reload(); }, [reload]);
 

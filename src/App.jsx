@@ -32,6 +32,7 @@ import Transfers from './modules/Transfers.jsx';
 import CxC from './modules/CxC.jsx';
 import CxP from './modules/CxP.jsx';
 import Audit from './modules/Audit.jsx';
+import Projects from './modules/Projects.jsx';
 import Authorizations from './modules/Authorizations.jsx';
 import Returns from './modules/Returns.jsx';
 import Variants from './modules/Variants.jsx';
@@ -79,6 +80,7 @@ const NAV = [
     items: [
       { id: 'reports', label: 'Reportería',  icon: 'chart'    },
       { id: 'quotes',      label: 'Cotizaciones', icon: 'receipt', badge: 2 },
+      { id: 'projects',    label: 'Proyectos',    icon: 'box'              },
       { id: 'promotions',  label: 'Promociones',  icon: 'tag'              },
     ],
   },
@@ -133,6 +135,7 @@ const MODULE_MAP = {
   cxc:          CxC,
   cxp:          CxP,
   authorizations: Authorizations,
+  projects:     Projects,
   audit:        Audit,
   returns:      Returns,
   variants:     Variants,

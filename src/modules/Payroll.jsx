@@ -132,7 +132,7 @@ export default function Payroll({ pushToast }) {
       pushToast && pushToast(`Planilla ${periodLabel} generada — ${period.employeeCount} empleados procesados`, 'success');
       reloadHistory();
     } catch (err) {
-      pushToast && pushToast('No se pudo generar la planilla: ' + err.message, 'error');
+      pushToast && pushToast('No se pudo generar la planilla: ' + err.message, 'danger');
     } finally { setGenBusy(false); }
   };
 
@@ -146,7 +146,7 @@ export default function Payroll({ pushToast }) {
       setGenPeriod(null);
       reloadHistory();
     } catch (err) {
-      pushToast && pushToast('No se pudo cerrar la planilla: ' + err.message, 'error');
+      pushToast && pushToast('No se pudo cerrar la planilla: ' + err.message, 'danger');
     } finally { setGenBusy(false); }
   };
 
@@ -156,7 +156,7 @@ export default function Payroll({ pushToast }) {
       const data = type === 'igss' ? await payrollIgssReport(periodId) : await payrollIsrReport(periodId);
       setReport({ type, data });
     } catch (err) {
-      pushToast && pushToast('No se pudo obtener el reporte: ' + err.message, 'error');
+      pushToast && pushToast('No se pudo obtener el reporte: ' + err.message, 'danger');
     }
   };
 
@@ -171,7 +171,7 @@ export default function Payroll({ pushToast }) {
       setShowEmpModal(false);
       reloadEmployees();
     } catch (err) {
-      pushToast && pushToast('No se pudo crear el empleado: ' + err.message, 'error');
+      pushToast && pushToast('No se pudo crear el empleado: ' + err.message, 'danger');
     }
   };
 
@@ -242,7 +242,7 @@ export default function Payroll({ pushToast }) {
       }
       await openReport(period.id, type);
     } catch (err) {
-      pushToast && pushToast('No se pudo generar el reporte: ' + err.message, 'error');
+      pushToast && pushToast('No se pudo generar el reporte: ' + err.message, 'danger');
     } finally { setGenBusy(false); }
   };
 

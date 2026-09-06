@@ -1,8 +1,23 @@
 // Stackline — Módulo de Configuración del sistema
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import { useTranslation } from 'react-i18next';
+import { listSettings, putSetting } from '../api/wave2.js';
+
+// Clave en company_settings de cada campo. Lo que no esté aquí no se persiste.
+// `tax.iva_rate` es la que consume TaxService en el backend.
+const SETTING_KEYS = {
+  nit: 'company.nit', address: 'company.address', phone: 'company.phone', email: 'company.email',
+  felProvider: 'fel.provider', felUser: 'fel.user', felEnvironment: 'fel.environment',
+  felEndpoint: 'fel.endpoint', felSeries: 'fel.series', felResolution: 'fel.resolution',
+  satCategory: 'fel.sat_category', establishment: 'fel.establishment',
+  taxRegime: 'tax.regime', ivaRate: 'tax.iva_rate',
+  ticketPrefix: 'seq.ticket_prefix', ocPrefix: 'seq.oc_prefix', transferPrefix: 'seq.transfer_prefix',
+  valuationMethod: 'inventory.valuation_method', lowStockThreshold: 'inventory.low_stock_threshold',
+  smtpFromEmail: 'mail.from',
+};
+const CATEGORY_OF = (key) => key.split('.')[0];
 
 const MOCK_CONFIG = {
   legalName: 'Supermercado Stackline, S.A.',
@@ -21,7 +36,7 @@ const MOCK_CONFIG = {
   satCategory: 'Definitivo IVA',
   establishment: 'Comercio al por menor · Est. 001',
   taxRegime: 'General',
-  ivaRate: '0.12',
+  ivaRate: '12',   // porcentaje, no fracción
   ticketPrefix: 'T',
   ocPrefix: 'OC',
   transferPrefix: 'TR',
@@ -58,13 +73,45 @@ export default function Config({ pushToast }) {
   const [tab, setTab] = useState('empresa');
   const [config, setConfig] = useState(MOCK_CONFIG);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Carga lo guardado. Antes la pantalla arrancaba siempre con los valores de
+  // ejemplo y no reflejaba nada de lo que hubiera en la base.
+  useEffect(() => {
+    let cancelled = false;
+    listSettings()
+      .then((rows) => {
+        if (cancelled || !Array.isArray(rows)) return;
+        const byKey = Object.fromEntries(rows.map((r) => [r.settingKey, r.settingValue]));
+        setConfig((c) => {
+          const next = { ...c };
+          Object.entries(SETTING_KEYS).forEach(([field, key]) => {
+            if (byKey[key] != null) next[field] = byKey[key];
+          });
+          return next;
+        });
+      })
+      .catch(() => { /* sin conexión se queda con los valores por defecto */ });
+    return () => { cancelled = true; };
+  }, []);
 
   const set = (k, v) => { setConfig(prev => ({ ...prev, [k]: v })); setSaved(false); };
 
-  const handleSave = (e) => {
+  // Antes esto solo mostraba un toast de éxito sin guardar nada: se podía
+  // poner el IVA al 5% y seguía facturando al 12%.
+  const handleSave = async (e) => {
     e.preventDefault();
-    setSaved(true);
-    pushToast?.('Configuración guardada correctamente', 'success');
+    setSaving(true);
+    try {
+      await Promise.all(Object.entries(SETTING_KEYS).map(([field, key]) =>
+        putSetting(key, { settingValue: String(config[field] ?? ''), category: CATEGORY_OF(key) })));
+      setSaved(true);
+      pushToast?.(t('config.saved', 'Configuración guardada correctamente'), 'success');
+    } catch (err) {
+      pushToast?.(t('config.saveFailed', 'No se pudo guardar: ') + err.message, 'danger');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const TABS = [
@@ -83,7 +130,7 @@ export default function Config({ pushToast }) {
           <div className="page-subtitle">{t('config.subtitle', 'Datos de la empresa, credenciales FEL, impuestos y parámetros globales')}</div>
         </div>
         <div className="page-head-actions">
-          <Button icon="check" variant="accent" onClick={handleSave}>{t('config.saveChanges', 'Guardar cambios')}
+          <Button icon="check" variant="accent" onClick={handleSave} disabled={saving}>{saving ? t('config.saving', 'Guardando…') : t('config.saveChanges', 'Guardar cambios')}
           </Button>
         </div>
       </div>
@@ -215,17 +262,20 @@ export default function Config({ pushToast }) {
                     <option value="Exento">{t('config.taxes.regimeExempt', 'Exento de IVA')}</option>
                   </select>
                 </Field>
-                <Field label={t('config.taxes.ivaRate', 'Tasa IVA')} hint={t('config.taxes.ivaRateHint', '0.12 = 12% · 0.05 = 5%')}>
-                  <input className="field-input mono" value={config.ivaRate}
+                <Field label={t('config.taxes.ivaRate', 'Tasa IVA (%)')}
+                  hint={t('config.taxes.ivaRateHint', 'Porcentaje: 12 = 12%. Se aplica a ventas y cotizaciones nuevas.')}>
+                  <input className="field-input mono" type="number" min="0" max="100" step="0.001"
+                    value={config.ivaRate}
                     onChange={e => set('ivaRate', e.target.value)}
-                    placeholder="0.12" />
+                    placeholder="12" />
                 </Field>
               </Section>
 
               <div className="cfg-preview">
                 <div className="cfg-preview-title">{t('config.taxes.preview', 'Vista previa — desglose de IVA')}</div>
                 {(() => {
-                  const rate = parseFloat(config.ivaRate) || 0.12;
+                  const pct  = parseFloat(config.ivaRate);
+                  const rate = (Number.isFinite(pct) ? pct : 12) / 100;
                   const salePrice = 100;
                   const base = salePrice / (1 + rate);
                   const tax = salePrice - base;

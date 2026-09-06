@@ -8,6 +8,8 @@ import { listPurchaseInvoices, listSupplierPayments, listUnits } from '../api/wa
 import { listBankAccounts, listAssets } from '../api/wave3.js';
 import { listCashRegisters, listSales, listCashPoints, listPendingRegisters } from '../api/pos.js';
 import { listPendingAuthorizations, listAuthLevels } from '../api/authorizations.js';
+import { getSetting } from '../api/wave2.js';
+import { listProjects } from '../api/projects.js';
 import { listMovements } from '../api/inventory.js';
 
 const EMPTY_AGING = {
@@ -58,6 +60,8 @@ export const useBankAccounts = makeListHook(listBankAccounts);
 export const useCashRegisters = makeListHook(() => listCashRegisters());
 // Cajas físicas: cada fila trae `openSessionId` si ya está ocupada.
 export const useCashPoints = makeListHook(() => listCashPoints());
+// Proyectos con sus cuatro cifras de seguimiento.
+export const useProjects = makeListHook(listProjects);
 // Bandeja de autorizaciones pendientes.
 export const usePendingAuthorizations = makeListHook(listPendingAuthorizations);
 // Niveles de autoridad configurados por la empresa.
@@ -82,4 +86,21 @@ export function useAging() {
   }, []);
   useEffect(() => { reload(); }, [reload]);
   return { ...state, reload };
+}
+
+// Tasa de IVA configurada por la empresa (porcentaje). El backend es la
+// autoridad: aquí solo se usa para previsualizar antes de guardar.
+export function useTaxRate() {
+  const [rate, setRate] = useState(12);
+  useEffect(() => {
+    let cancelled = false;
+    getSetting('tax.iva_rate')
+      .then((s) => {
+        const v = parseFloat(s?.settingValue);
+        if (!cancelled && Number.isFinite(v)) setRate(v < 1 && v > 0 ? v * 100 : v);
+      })
+      .catch(() => { /* sin conexión se queda con 12 */ });
+    return () => { cancelled = true; };
+  }, []);
+  return rate;
 }

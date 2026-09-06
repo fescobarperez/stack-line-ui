@@ -297,7 +297,7 @@ export default function Transfers({ pushToast }) {
       .map(i => ({ productId: PRODUCTS.find(p => p.sku === i.sku)?.id, quantity: Number(i.qty) }))
       .filter(l => l.productId && l.quantity > 0);
     if (!fromBranchId || !toBranchId || lines.length === 0) {
-      pushToast?.('Datos incompletos para el traslado', 'error');
+      pushToast?.('Datos incompletos para el traslado', 'danger');
       return;
     }
     try {
@@ -309,7 +309,7 @@ export default function Transfers({ pushToast }) {
       setShowNew(false);
       pushToast?.('Transferencia creada', 'success');
     } catch (err) {
-      pushToast?.('No se pudo crear el traslado: ' + err.message, 'error');
+      pushToast?.('No se pudo crear el traslado: ' + err.message, 'danger');
     }
   };
 
@@ -320,7 +320,7 @@ export default function Transfers({ pushToast }) {
       setSelected(null);
       pushToast?.(`${transfer.id} despachada`, 'success');
     } catch (err) {
-      pushToast?.('No se pudo despachar: ' + err.message, 'error');
+      pushToast?.('No se pudo despachar: ' + err.message, 'danger');
     }
   };
 
@@ -331,7 +331,7 @@ export default function Transfers({ pushToast }) {
       setSelected(null);
       pushToast?.(`${transfer.id} recibida y stock actualizado`, 'success');
     } catch (err) {
-      pushToast?.('No se pudo recibir: ' + err.message, 'error');
+      pushToast?.('No se pudo recibir: ' + err.message, 'danger');
     }
   };
 

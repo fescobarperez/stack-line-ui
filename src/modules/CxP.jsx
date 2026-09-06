@@ -143,7 +143,7 @@ export default function CxP({ pushToast }) {
       setPayModal(null);
       pushToast(`Pago de ${Q(amt)} registrado — ${payModal.id}`, 'success');
     } catch (err) {
-      pushToast('No se pudo registrar el pago: ' + err.message, 'error');
+      pushToast('No se pudo registrar el pago: ' + err.message, 'danger');
     }
   }
 

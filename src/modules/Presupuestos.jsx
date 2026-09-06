@@ -39,6 +39,23 @@ function dptStats(d) {
 // ── Componente principal ───────────────────────────────────────────────────
 export default function Presupuestos({ pushToast }) {
   const { t } = useTranslation();
+  const [creatingPeriod, setCreatingPeriod] = useState(false);
+
+  // Antes esto solo lanzaba el toast: el período no se creaba en ningún sitio.
+  // El año nuevo es el siguiente al último registrado, o el actual si no hay.
+  const createPeriod = async () => {
+    const years = PERIODOS.map(p => Number(p.año)).filter(Number.isFinite);
+    const year = years.length ? Math.max(...years) + 1 : new Date().getFullYear();
+    setCreatingPeriod(true);
+    try {
+      await createBudget({ year, name: `Presupuesto ${year}`, status: 'draft', lines: [] });
+      await reload();
+      pushToast?.(t('presupuestos.periodCreated', `Período ${year} creado`), 'success');
+    } catch (err) {
+      // El backend rechaza un año duplicado (uq_budgets_year).
+      pushToast?.(t('presupuestos.periodFailed', 'No se pudo crear el período: ') + err.message, 'danger');
+    } finally { setCreatingPeriod(false); }
+  };
   const { depts: DPTOS, periods: PERIODOS, budgetId, year: budgetYear, reload } = useBudget();
   const [tab, setTab]           = useState('resumen');
   const [deptFiltro, setDeptFiltro] = useState('ingresos');
@@ -67,7 +84,7 @@ export default function Presupuestos({ pushToast }) {
       pushToast?.('Línea agregada', 'success');
       setShowModal(false); setMCode(''); setMName(''); setMAmount('');
       reload();
-    } catch (err) { pushToast?.('No se pudo agregar la línea: ' + err.message, 'error'); }
+    } catch (err) { pushToast?.('No se pudo agregar la línea: ' + err.message, 'danger'); }
   }
 
   const stats = useMemo(() => Object.fromEntries(DPTOS.map(d => [d.id, dptStats(d)])), [DPTOS]);
@@ -422,7 +439,7 @@ export default function Presupuestos({ pushToast }) {
         <div className="card" style={{padding:0, overflow:'hidden'}}>
           <div style={{padding:'12px 16px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
             <span style={{fontWeight: 500, fontSize: 14}}>{t('presupuestos.budgetPeriods', 'Períodos presupuestarios')}</span>
-            <Button size="sm" icon="plus" variant="accent" onClick={() => pushToast?.('Nuevo período creado', 'success')}>{t('presupuestos.newPeriod', 'Nuevo período')}
+            <Button size="sm" icon="plus" variant="accent" disabled={creatingPeriod} onClick={createPeriod}>{t('presupuestos.newPeriod', 'Nuevo período')}
             </Button>
           </div>
           <table className="mtable">

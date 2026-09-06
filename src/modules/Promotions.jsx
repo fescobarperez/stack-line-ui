@@ -167,7 +167,7 @@ export default function Promotions({ pushToast }) {
       setForm(NEW_DEFAULTS);
       setStep(1);
       reload();
-    } catch (err) { pushToast && pushToast('No se pudo crear la promoción: ' + err.message, 'error'); }
+    } catch (err) { pushToast && pushToast('No se pudo crear la promoción: ' + err.message, 'danger'); }
   };
 
   const handleToggle = async (promo) => {
@@ -177,7 +177,7 @@ export default function Promotions({ pushToast }) {
       pushToast && pushToast(`Promoción ${nextStatus === 'active' ? 'activada' : 'pausada'}`, 'success');
       setSelPromo(null);
       reload();
-    } catch (err) { pushToast && pushToast('No se pudo actualizar la promoción: ' + err.message, 'error'); }
+    } catch (err) { pushToast && pushToast('No se pudo actualizar la promoción: ' + err.message, 'danger'); }
   };
 
   return (

@@ -74,7 +74,7 @@ export default function StockCount({ pushToast }) {
       setSelected(mapSession(full));
       reloadSessions();
       pushToast('Conteo enviado a revisión', 'success');
-    } catch (err) { pushToast('No se pudo finalizar el conteo: ' + err.message, 'error'); }
+    } catch (err) { pushToast('No se pudo finalizar el conteo: ' + err.message, 'danger'); }
   }
 
   async function applyAdjustments(sess) {
@@ -85,7 +85,7 @@ export default function StockCount({ pushToast }) {
       setSelected(null);
       reloadSessions();
       pushToast(`${disc} ajustes de inventario aplicados`, 'success');
-    } catch (err) { pushToast('No se pudo aplicar los ajustes: ' + err.message, 'error'); }
+    } catch (err) { pushToast('No se pudo aplicar los ajustes: ' + err.message, 'danger'); }
   }
 
   async function handleCreate(session) {
@@ -102,7 +102,7 @@ export default function StockCount({ pushToast }) {
       setNewModal(false);
       pushToast('Sesión creada — se tomó foto del stock de la sucursal', 'success');
       reloadSessions();
-    } catch (err) { pushToast('No se pudo crear la sesión: ' + err.message, 'error'); }
+    } catch (err) { pushToast('No se pudo crear la sesión: ' + err.message, 'danger'); }
   }
 
   const activeSessions    = sessions.filter(s => ['in_progress', 'review', 'scheduled'].includes(s.status));

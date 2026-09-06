@@ -39,7 +39,7 @@ export default function CxC({ pushToast }) {
 
   async function submitPayment() {
     const amt = parseFloat(payForm.amount);
-    if (!amt || amt <= 0) { pushToast('Ingresa un monto válido', 'error'); return; }
+    if (!amt || amt <= 0) { pushToast('Ingresa un monto válido', 'danger'); return; }
     try {
       await createPayment({
         clientId: payModal.clientId, saleId: payModal.saleId, amount: amt,
@@ -51,7 +51,7 @@ export default function CxC({ pushToast }) {
       setPayModal(null);
       setPayForm({ amount: '', method: 'efectivo', reference: '' });
     } catch (err) {
-      pushToast('No se pudo registrar el abono: ' + err.message, 'error');
+      pushToast('No se pudo registrar el abono: ' + err.message, 'danger');
     }
   }
 
@@ -95,6 +95,16 @@ export default function CxC({ pushToast }) {
           valueColor={'var(--success)'}
           value={Q(cobrado)}
           foot="Abonos registrados"
+        />
+        {/* Los anticipos NO se restan del total: uno es lo que te deben, el otro
+            dinero del cliente que tienes. Netearlos en un solo número escondería
+            las dos cosas. `netReceivable` es la diferencia y cuadra con el saldo
+            de Clientes; se muestra al pie para que se vea de dónde sale. */}
+        <StatCard
+          icon="card" tone="sec"
+          label="Anticipos a cuenta"
+          value={Q(aging.unapplied)}
+          foot={<>Neto por cobrar {Q(aging.netReceivable)}</>}
         />
       </div>
 

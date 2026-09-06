@@ -295,10 +295,10 @@ export default function FEL({ pushToast }) {
             }}
             actions={(d) => (
               <>
-                <button className="icon-btn" title={t('common.download', 'Descargar XML')}
-                  onClick={() => pushToast?.(`Descargando ${d.serie}-${d.numero}.xml`, '')}><Icon name="download" size={18}/></button>
-                <button className="icon-btn" title={t('common.sendEmail', 'Reenviar correo')}
-                  onClick={() => pushToast?.(`DTE reenviado a ${d.receptor}`, 'success')}><Icon name="transfer" size={18}/></button>
+                <button className="icon-btn" disabled
+                  title={t('fel.downloadPending', 'Descargar XML — pendiente de implementar')}><Icon name="download" size={18}/></button>
+                <button className="icon-btn" disabled
+                  title={t('fel.resendPending', 'Reenviar DTE — pendiente de implementar')}><Icon name="transfer" size={18}/></button>
                 {d.estado === 'autorizado' && d.tipo === 'FACT' && (
                   <button className="icon-btn" title="Anular" style={{color:'var(--md-sys-color-error)'}}
                     onClick={() => { setShowAnul(d); setMotivoAnul(''); }}><Icon name="x" size={18}/></button>
@@ -542,9 +542,9 @@ export default function FEL({ pushToast }) {
               )}
 
               <div className="fel-actions">
-                <Button icon="download" onClick={() => pushToast?.(`Descargando XML…`, '')}>XML
+                <Button icon="download" disabled title={t('fel.downloadPending', 'Pendiente de implementar')}>XML
                 </Button>
-                <Button icon="transfer" onClick={() => pushToast?.(`DTE reenviado`, 'success')}>Reenviar
+                <Button icon="transfer" disabled title={t('fel.resendPending', 'Pendiente de implementar')}>Reenviar
                 </Button>
                 {drawer.estado === 'autorizado' && drawer.tipo === 'FACT' && (
                   <Button variant="danger-outline" onClick={() => { setDrawer(null); setShowAnul(drawer); setMotivoAnul(''); }}>
@@ -591,7 +591,11 @@ export default function FEL({ pushToast }) {
             </div>
             <div className="modal-foot">
               <Button onClick={() => setShowAnul(null)}>{t('common.cancel', 'Cancelar')}</Button>
-              <Button icon="check" variant="danger" disabled={!motivoAnul.trim()} onClick={() => { pushToast?.(`DTE ${showAnul.serie}-${showAnul.numero} anulado`, 'success'); setShowAnul(null); }}>{t('common.confirm', 'Confirmar')} anulación
+              {/* Anular un DTE es una operación fiscal ante el SAT: requiere llamar
+                  al certificador. Deshabilitado hasta implementarlo — antes solo
+                  mostraba "anulado" sin anular nada. */}
+              <Button icon="check" variant="error" disabled
+                title={t('fel.annulPending', 'Anulación ante el SAT — pendiente de implementar')}>{t('common.confirm', 'Confirmar')} anulación
               </Button>
             </div>
           </div>

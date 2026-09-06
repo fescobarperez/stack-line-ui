@@ -276,7 +276,7 @@ export default function CashRegister({ pushToast }) {
     } catch (err) {
       // El backend devuelve 409 con el motivo: caja ocupada, turno de ayer
       // sin cerrar, o el cajero ya tiene otra caja abierta.
-      pushToast?.(err.message, 'error');
+      pushToast?.(err.message, 'danger');
     }
   };
 
@@ -287,7 +287,7 @@ export default function CashRegister({ pushToast }) {
       setClosing(null);
       pushToast?.(t('cash.closedSuccess', 'Caja cerrada correctamente'), 'success');
     } catch (err) {
-      pushToast?.('No se pudo cerrar la caja: ' + err.message, 'error');
+      pushToast?.('No se pudo cerrar la caja: ' + err.message, 'danger');
     }
   };
 

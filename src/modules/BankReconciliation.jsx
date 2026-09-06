@@ -41,7 +41,7 @@ export default function BankReconciliation({ pushToast }) {
 
   async function submitRec() {
     const bal = parseFloat(recForm.bankBalance);
-    if (Number.isNaN(bal)) { pushToast?.('Ingresa el saldo del extracto', 'error'); return; }
+    if (Number.isNaN(bal)) { pushToast?.('Ingresa el saldo del extracto', 'danger'); return; }
     try {
       await reconcileBank(accountId, { statementDate: recForm.statementDate, bankBalance: bal, notes: recForm.notes || null });
       await loadDetail();
@@ -49,7 +49,7 @@ export default function BankReconciliation({ pushToast }) {
       setRecForm({ statementDate: new Date().toISOString().slice(0, 10), bankBalance: '', notes: '' });
       pushToast?.('Conciliación registrada', 'success');
     } catch (err) {
-      pushToast?.('No se pudo conciliar: ' + err.message, 'error');
+      pushToast?.('No se pudo conciliar: ' + err.message, 'danger');
     }
   }
 

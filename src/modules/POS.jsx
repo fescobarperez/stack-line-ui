@@ -3,22 +3,25 @@
 // (POST /api/sales) contra la caja abierta y descuenta stock en el backend.
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
-import { applyPromotions } from '../data/promotions.js';
+import { applyPromotions } from '../api/marketing.js';
 import { useProducts, useCategories } from '../hooks/useCatalog.js';
 import { useCashRegisters } from '../hooks/useOperations.js';
 import { sessionUser } from '../api/auth.js';
 import useAuthorization from '../hooks/useAuthorization.js';
 import AuthorizationDialog from '../components/AuthorizationDialog.jsx';
 import { createSale } from '../api/pos.js';
-import React, { useState as useStatePOS, useMemo as useMemoPOS } from 'react';
+import React, { useState as useStatePOS, useMemo as useMemoPOS, useEffect as useEffectPOS } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const EMPTY_PROMOS = { promotions: [], lines: [], totalDiscount: 0 };
 const PAY_METHOD_MAP = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia' };
 
 function POSModule({ pushToast }) {
   const { t } = useTranslation();
-  const { items: products, reload: reloadProducts } = useProducts();
+  // Solo vendibles: la materia prima se consume en proyectos y los servicios
+  // (mano de obra) no se cobran por caja.
+  const { items: products, reload: reloadProducts } = useProducts({ itemType: 'sellable' });
   const rawCats = useCategories();
   const CATEGORIES = useMemoPOS(() => [{ id: 'todos', name: 'Todos', icon: '' }, ...rawCats], [rawCats]);
   const { items: registers } = useCashRegisters();
@@ -70,10 +73,47 @@ function POSModule({ pushToast }) {
     setCart(c => c.map(i => i.sku === sku ? { ...i, qty: Math.max(0, i.qty + delta) } : i).filter(i => i.qty > 0));
   const removeItem = (sku) => setCart(c => c.filter(i => i.sku !== sku));
 
-  const { appliedPromos, totalPromoDiscount, cartWithPromos } = useMemoPOS(
-    () => applyPromotions(cart, client.type),
-    [cart, client.type]
-  );
+  // Las promociones las calcula el backend contra el catálogo real. Antes se
+  // evaluaban en el navegador sobre tres promociones quemadas, así que las que
+  // se configuraban en /promotions no se aplicaban nunca.
+  const [promoResult, setPromoResult] = useStatePOS(EMPTY_PROMOS);
+  useEffectPOS(() => {
+    if (!cart.length) { setPromoResult(EMPTY_PROMOS); return undefined; }
+    let cancelled = false;
+    applyPromotions({
+      clientType: client.type,
+      branchId: openRegister?.branchId ?? null,
+      items: cart.map((i) => ({
+        productId: products.find((p) => p.sku === i.sku)?.id ?? null,
+        name: i.name, category: i.cat,
+        quantity: i.qty, unitPrice: i.price,
+      })).filter((i) => i.productId != null),
+    })
+      .then((r) => { if (!cancelled) setPromoResult(r); })
+      // Si el motor falla no se bloquea la venta: se cobra sin promociones.
+      .catch(() => { if (!cancelled) setPromoResult(EMPTY_PROMOS); });
+    return () => { cancelled = true; };
+  }, [cart, client.type, products, openRegister]);
+
+  const appliedPromos = promoResult.promotions || [];
+  const totalPromoDiscount = Number(promoResult.totalDiscount || 0);
+  // Descuento por renglón, para pintar el precio efectivo en el carrito.
+  const lineDiscount = useMemoPOS(() => {
+    const m = new Map();
+    (promoResult.lines || []).forEach((l) => m.set(l.productId, l));
+    return m;
+  }, [promoResult]);
+  const cartWithPromos = useMemoPOS(() => cart.map((i) => {
+    const pid = products.find((p) => p.sku === i.sku)?.id;
+    const l = pid != null ? lineDiscount.get(pid) : null;
+    const disc = Number(l?.discount || 0);
+    return {
+      ...i,
+      promoTag: disc > 0 ? l.promotionId : null,
+      promoPrice: disc > 0 && i.qty > 0 ? (i.price * i.qty - disc) / i.qty : null,
+      freeQty: 0,
+    };
+  }), [cart, products, lineDiscount]);
 
   const subtotal    = cart.reduce((s, i) => s + i.price * i.qty, 0);
   // Acotado al subtotal: sin esto un 150% o un monto mayor da un total negativo.
@@ -130,11 +170,15 @@ function POSModule({ pushToast }) {
     // Mapea el carrito a líneas con productId real (precio base; las promos son del front).
     const items = cart.map((i) => {
       const product = products.find((p) => p.sku === i.sku);
+      // El descuento de promoción viene del motor del backend, ya repartido
+      // por renglón y con el id real de la promoción que lo originó.
+      const l = product ? lineDiscount.get(product.id) : null;
+      const disc = Number(l?.discount || 0);
       return {
         productId: product?.id, quantity: i.qty, unitPrice: i.price,
-        // Las promos aún no se persisten: su id sigue siendo el del mock del front
-        // (ver src/data/promotions.js), no el de la tabla `promotions`.
-        discount: 0, discountSource: 'none', promotionId: null,
+        discount: disc,
+        discountSource: disc > 0 ? 'promo' : 'none',
+        promotionId: disc > 0 ? l.promotionId : null,
       };
     });
     if (items.some((it) => !it.productId)) {

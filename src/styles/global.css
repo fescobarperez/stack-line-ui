@@ -538,6 +538,8 @@ html, body {
 .icon-btn:hover { color: var(--md-sys-color-on-surface); }
 .icon-btn:disabled { opacity: .38; cursor: not-allowed; }
 .icon-btn:disabled::after { opacity: 0; }
+/* Variante compacta para filas densas; .icon-btn base son 40px. */
+.icon-btn.sm { width: 32px; height: 32px; }
 
 /* Contador sobre un .icon-btn (notificaciones, autorizaciones). label-small. */
 .icon-btn-badge {
@@ -737,6 +739,23 @@ html, body {
 .card-body.flush { padding: 0; }
 
 /* ===== Stat tiles ===== */
+/* Tarjetas de KPI dentro de un drawer: versión compacta.
+   Con el tamaño de página cinco tarjetas no caben en una fila y la quinta se
+   descolgaba sola. Aquí se encogen lo justo para que entren todas juntas, y
+   por debajo de ~800px la rejilla reparte en dos filas por su cuenta. */
+.drawer .stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+  gap: 12px;
+}
+.drawer .kpi { padding: 14px; }
+.drawer .kpi-top { gap: 8px; margin-bottom: 10px; }
+.drawer .kpi-ic { width: 32px; height: 32px; border-radius: var(--shape-sm); }
+/* El tamaño del icono lo fija StatCard por prop; aquí se acota por CSS. */
+.drawer .kpi-ic svg, .drawer .kpi-ic .msi { width: 18px; height: 18px; font-size: 18px; }
+/* label-medium y title-large: un escalón menos que en una página. */
+.drawer .kpi-label { font: 500 12px/16px var(--font-sans); letter-spacing: .5px; }
+.drawer .kpi-val   { font: 400 22px/28px var(--font-sans); letter-spacing: 0; }
+.drawer .kpi-foot  { margin-top: 6px; }
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -818,6 +837,18 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
 /* ===== Form fields ===== */
 .field {
   display: flex; flex-direction: column; gap: 4px;
+}
+/* Dos campos cortos por fila. Un diálogo ancho con una sola columna de
+   inputs deja el de fecha o el de monto estirados a todo el ancho, que se
+   ve peor que el diálogo angosto; en pantalla chica vuelven a apilarse. */
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (max-width: 560px) {
+  .field-row { grid-template-columns: 1fr; }
 }
 /* label-medium — sentence case, igual que .stat .label y .detail-label */
 .field label {
@@ -2869,6 +2900,9 @@ table.tbl tfoot td {
 }
 
 /* Contenedor con borde + estados + paginación (para <DataTable>) */
+/* Dos DataTable seguidas necesitan aire: el className del componente va a la
+   <table>, no al contenedor, así que una clase utilitaria no serviría aquí. */
+.datatable + .datatable { margin-top: 20px; }
 .datatable {
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--shape-md);

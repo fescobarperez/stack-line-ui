@@ -20,3 +20,6 @@ export const getSupplier = (id) => api.get(`/api/suppliers/${id}`);
 export const createSupplier = (data) => api.post('/api/suppliers', data);
 export const updateSupplier = (id, data) => api.put(`/api/suppliers/${id}`, data);
 export const deleteSupplier = (id) => api.del(`/api/suppliers/${id}`);
+
+/** Busca un cliente por NIT para autocompletar. Lanza 404 si no existe. */
+export const getClientByNit = (nit) => api.get(`/api/clients/by-nit/${encodeURIComponent(nit)}`);

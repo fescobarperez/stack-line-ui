@@ -9,5 +9,8 @@ export function listPayments({ clientId, page = 0, size = 50 } = {}) {
 export const getPayment = (id) => api.get(`/api/payments/${id}`);
 export const createPayment = (data) => api.post('/api/payments', data);
 
+/** Deja constancia de que el recibo se imprimió. Reimprimir no lo cambia. */
+export const markReceiptPrinted = (id) => api.post(`/api/payments/${id}/printed`);
+
 // Antigüedad de saldos (CxC aging)
 export const getAging = () => api.get('/api/receivables/aging');
