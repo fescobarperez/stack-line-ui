@@ -1,0 +1,31 @@
+# Stackline — proxy y estático.
+#
+# SITE_ADDRESS decide el modo:
+#   :80                        HTTP simple, sin certificado (solo pruebas)
+#   1.2.3.4.sslip.io           HTTPS automático con Let's Encrypt, sin comprar
+#                              dominio: sslip.io resuelve cualquier IP embebida
+#                              en el nombre, y eso le basta al ACME challenge.
+{$SITE_ADDRESS::80} {
+	encode gzip zstd
+
+	# La API va al backend. Debe ir ANTES del handler del estático: si no, la
+	# regla de SPA se tragaría /api/... y devolvería el index.html.
+	handle /api/* {
+		reverse_proxy {$API_UPSTREAM:backend:8080}
+	}
+
+	handle {
+		root * /srv
+		# La aplicación es una SPA con rutas del lado del cliente: cualquier
+		# ruta desconocida devuelve index.html y React decide qué mostrar.
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}
