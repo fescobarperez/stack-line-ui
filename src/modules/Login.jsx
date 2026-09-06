@@ -9,6 +9,7 @@ const DEMO_COMPANIES = {
   'FARMACIA-GT':   { name: 'Farmacias del Valle',       type: 'Farmacia',   tier: 'PRO' },
   'SUPERMERCADO':  { name: 'Supermercado La Familia',   type: 'Retail',     tier: 'ENTERPRISE' },
   'TIENDA-DEMO':   { name: 'Tienda Demo Stackline',      type: 'Demo',       tier: 'DEMO' },
+  'STACKLINE':     { name: 'Stackline',                   type: 'ERP',        tier: 'DEV' },
 };
 
 function validate(form, t) {
