@@ -4,6 +4,7 @@ import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
+import { deliverSale } from '../api/pos.js';
 import { Ticket } from './POS.jsx';
 import { useSales } from '../hooks/useOperations.js';
 import { useFelDocuments } from '../hooks/useAccounting.js';
@@ -31,6 +32,9 @@ function mapTicket(s) {
     pay: s.paymentMethod || '—',
     total: Number(s.total || 0),
     status: s.status || 'paid',
+    credit: !!s.credit,
+    deliveredAt: s.deliveredAt || null,
+    deliveredTo: s.deliveredTo || null,
     _items: s.items || [],
     _saleDate: s.saleDate,
   };
@@ -68,10 +72,38 @@ function BillingModule({ pushToast }) {
 
   const payIcon = (p) => (p === 'Efectivo' ? 'cash' : p === 'Tarjeta' ? 'card' : 'transfer');
 
+  // Entrega del impreso original. Se pregunta quién lo recibe porque casi
+  // nunca es el cliente en persona —va un mensajero, o alguien de compras—
+  // y esa es justo la constancia que sirve si después lo reclaman.
+  const handleDeliver = async (r) => {
+    const who = window.prompt(
+      t('billing.deliverPrompt', '¿Quién recibe el original? (opcional)'), '');
+    if (who === null) return;   // canceló
+    try {
+      await deliverSale(r.saleId, who);
+      pushToast?.(t('billing.delivered', 'Entrega registrada'), 'success');
+      reload();
+    } catch (err) {
+      pushToast?.(err.message, 'danger');
+    }
+  };
+
   // Columnas de la tabla de tickets (estándar <DataTable>).
   const columns = [
     { key: 'id', header: t('billing.headers.invoice', 'No. Factura'), sortable: true, mono: true,
-      render: (r) => <span style={{ fontWeight: 500, color: 'var(--accent)' }}>{r.id}</span> },
+      render: (r) => (
+        <>
+          <span style={{ fontWeight: 500, color: 'var(--accent)' }}>{r.id}</span>
+          {/* Solo importa en las de crédito: una de contado se entrega en el
+              mostrador y nadie la retiene. */}
+          {r.credit && !r.deliveredAt && (
+            <span className="badge-m3 accent" style={{ marginLeft: 6 }}
+              title={t('billing.heldHint', 'El original no se ha entregado al cliente')}>
+              {t('billing.held', 'retenida')}
+            </span>
+          )}
+        </>
+      ) },
     { key: 'date', header: t('billing.headers.dateTime', 'Fecha & hora'), sortable: true, mono: true },
     { key: 'branch', header: t('billing.headers.branch', 'Sucursal'), sortable: true },
     { key: 'cashier', header: t('billing.headers.cashier', 'Cajero') },
@@ -206,9 +238,14 @@ function BillingModule({ pushToast }) {
           total: Q(filtered.reduce((a, r) => a + r.total, 0)),
         }}
         actions={(r) => (
-          <button className="icon-btn" title={t('common.print', 'Reimprimir')}>
-            <Icon name="print" size={18} />
-          </button>
+          <>
+            {r.credit && !r.deliveredAt && (
+              <Button variant="icon" icon="check"
+                title={t('billing.deliver', 'Entregar original al cliente')}
+                onClick={() => handleDeliver(r)} />
+            )}
+            <Button variant="icon" icon="print" title={t('common.print', 'Reimprimir')} />
+          </>
         )}
       />
 

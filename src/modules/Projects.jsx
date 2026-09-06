@@ -15,10 +15,11 @@ import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import DataTable from '../components/DataTable.jsx';
 import StatCard from '../components/StatCard.jsx';
-import { useProjects } from '../hooks/useOperations.js';
+import { useProjects, useAging, useBankAccounts } from '../hooks/useOperations.js';
 import { getProject, addProjectCost, deleteProjectCost, setProjectStatus } from '../api/projects.js';
 import { createPayment } from '../api/receivables.js';
 import { createSale } from '../api/pos.js';
+import { printReceipt } from '../lib/receipt.js';
 import { consumeMaterial } from '../api/projects.js';
 import { useProducts } from '../hooks/useCatalog.js';
 import { useBranches } from '../hooks/useMasters.js';
@@ -27,6 +28,9 @@ import AuthorizationDialog from '../components/AuthorizationDialog.jsx';
 import { useTranslation } from 'react-i18next';
 
 const Q = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// Debe coincidir con BANK_METHODS de PaymentService.
+const NEEDS_BANK = new Set(['transferencia', 'deposito']);
 
 const STATUS = {
   draft:     { label: 'Borrador',  variant: 'neutral' },
@@ -410,9 +414,19 @@ function InvoiceModal({ project, onDone, onClose, pushToast }) {
 
 function PaymentModal({ project, onDone, onClose, pushToast }) {
   const { t } = useTranslation();
-  const [form, setForm] = useState({ amount: '', method: 'efectivo', reference: '', paymentDate: '' });
+  const [form, setForm] = useState({
+    amount: '', method: 'efectivo', reference: '', paymentDate: '',
+    bankAccountId: '', saleId: '',
+  });
   const [busy, setBusy] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const { items: BANK_ACCOUNTS } = useBankAccounts();
+
+  // Documentos abiertos de este cliente. Aplicar el cobro a uno hace que baje
+  // la antigüedad de ese documento; dejarlo "a cuenta" baja el saldo del
+  // cliente pero no señala cuál factura se está pagando.
+  const { data: aging } = useAging();
+  const openDocs = ((aging?.invoices) || []).filter((i) => i.clientId === project.clientId);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -425,10 +439,12 @@ function PaymentModal({ project, onDone, onClose, pushToast }) {
       await createPayment({
         clientId: project.clientId,
         projectId: project.id,
+        saleId: form.saleId ? Number(form.saleId) : null,
         amount,
         paymentDate: form.paymentDate || new Date().toISOString().slice(0, 10),
         method: form.method,
         reference: form.reference || null,
+        bankAccountId: form.bankAccountId ? Number(form.bankAccountId) : null,
       });
       pushToast?.(t('projects.paymentAdded', 'Cobro registrado'), 'success');
       onDone();
@@ -461,11 +477,45 @@ function PaymentModal({ project, onDone, onClose, pushToast }) {
                 <select className="field-input" value={form.method} onChange={(e) => set('method', e.target.value)}>
                   <option value="efectivo">Efectivo</option>
                   <option value="transferencia">Transferencia</option>
+                  <option value="deposito">Depósito</option>
                   <option value="cheque">Cheque</option>
                   <option value="tarjeta">Tarjeta</option>
                 </select>
               </div>
             </div>
+            {/* El backend exige la cuenta en transferencia y depósito: sin ella
+                el cobro baja CxC pero no aparece en ningún extracto. */}
+            {NEEDS_BANK.has(form.method) && (
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label className="field-label">{t('projects.bankAccount', 'Cuenta bancaria')} *</label>
+                <select className="field-input" value={form.bankAccountId}
+                  onChange={(e) => set('bankAccountId', e.target.value)}>
+                  <option value="">{t('common.select', 'Seleccionar…')}</option>
+                  {BANK_ACCOUNTS.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.bankName || a.accountCode} · {a.accountNumber || a.alias} ({a.currency})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {/* Aplicar a un documento hace que baje la antigüedad de ESA
+                factura. Sin documento el cobro queda a cuenta: baja el saldo
+                del cliente pero no dice cuál factura se está pagando. */}
+            {openDocs.length > 0 && (
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label className="field-label">{t('projects.applyTo', 'Aplicar a documento')}</label>
+                <select className="field-input" value={form.saleId}
+                  onChange={(e) => set('saleId', e.target.value)}>
+                  <option value="">{t('projects.onAccount', 'A cuenta (sin documento)')}</option>
+                  {openDocs.map((d) => (
+                    <option key={d.saleId} value={d.saleId}>
+                      {d.docNumber} · pendiente {Q(d.outstanding)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="field-row" style={{ marginBottom: 0 }}>
               <div className="field">
                 <label className="field-label">{t('projects.reference', 'Referencia')}</label>
@@ -638,6 +688,8 @@ function ProjectDrawer({ project, onClose, onChanged, pushToast }) {
           <DataTable
             title={t('projects.payments', 'Cobros')}
             columns={[
+              { key: 'receiptNumber', header: t('cxc.receipt', 'Recibo'), sortable: true,
+                render: (x) => <span className="mono">{x.receiptNumber || '—'}</span> },
               { key: 'paymentDate', header: t('common.date', 'Fecha'), sortable: true },
               { key: 'method', header: t('projects.method', 'Método'), sortable: true,
                 render: (x) => <span className="badge-m3">{x.method || '—'}</span> },
@@ -646,6 +698,11 @@ function ProjectDrawer({ project, onClose, onChanged, pushToast }) {
               { key: 'amount', header: t('projects.amount', 'Monto'), align: 'right', sortable: true,
                 render: (x) => <span className="num">{Q(x.amount)}</span> },
             ]}
+            actions={(x) => (
+              <Button variant="icon" icon="print"
+                title={t('cxc.printReceipt', 'Imprimir recibo')}
+                onClick={() => printReceipt({ ...x, clientName: project.clientName })} />
+            )}
             rows={project.payments || []}
             rowKey={(x) => x.id}
             density="compact"

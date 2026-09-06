@@ -8,6 +8,7 @@
 // Se imprime en una ventana aparte con solo este contenido — mismo patrón que
 // las boletas de Payroll — para no mandar la aplicación entera a la impresora.
 import { markReceiptPrinted } from '../api/receivables.js';
+import { sessionCompany } from '../api/auth.js';
 
 const money = (n) =>
   `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -53,7 +54,8 @@ const esc = (v) => String(v ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>':
  * y negarle el recibo al cliente por un error de red sería peor que perder el
  * dato de cuándo se imprimió.
  */
-export function printReceipt(payment, company = {}) {
+export function printReceipt(payment, company) {
+  const co = company || sessionCompany() || {};
   const w = window.open('', '_blank', 'width=720,height=640');
   if (!w) { alert('Permite las ventanas emergentes para imprimir.'); return; }
 
@@ -61,9 +63,9 @@ export function printReceipt(payment, company = {}) {
     <div class="doc">
       <div class="head">
         <div>
-          <h1>${esc(company.name || 'Recibo de caja')}</h1>
-          ${company.nit ? `<div class="sub">NIT ${esc(company.nit)}</div>` : ''}
-          ${company.address ? `<div class="sub">${esc(company.address)}</div>` : ''}
+          <h1>${esc(co.name || 'Recibo de caja')}</h1>
+          ${co.nit ? `<div class="sub">NIT ${esc(co.nit)}</div>` : ''}
+          ${co.address ? `<div class="sub">${esc(co.address)}</div>` : ''}
         </div>
         <div class="right">
           <div class="tag">RECIBO DE CAJA</div>

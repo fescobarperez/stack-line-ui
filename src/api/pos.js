@@ -25,3 +25,7 @@ export function listSales({ page = 0, size = 50 } = {}) {
 }
 export const getSale = (id) => api.get(`/api/sales/${id}`);
 export const createSale = (data) => api.post('/api/sales', data);
+
+/** Registra que el impreso original salió hacia el cliente. */
+export const deliverSale = (id, deliveredTo) =>
+  api.post(`/api/sales/${id}/deliver`, { deliveredTo: deliveredTo || null });

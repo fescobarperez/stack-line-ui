@@ -53,6 +53,11 @@ export function sessionUser() {
   try { return JSON.parse(sessionStorage.getItem('maya_session'))?.user || null; } catch { return null; }
 }
 
+/** Empresa de la sesión activa. La usa el encabezado de los documentos impresos. */
+export function sessionCompany() {
+  try { return JSON.parse(sessionStorage.getItem('maya_session'))?.company || null; } catch { return null; }
+}
+
 export function logout() {
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem('companyId');
