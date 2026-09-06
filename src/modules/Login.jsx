@@ -4,12 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { login } from '../api/auth.js';
 import Logo from '../components/Logo.jsx';
 
-const DEMO_COMPANIES = {
-  'FERRETERIA-01': { name: 'Ferretería El Constructor', type: 'Ferretería', tier: 'PRO' },
-  'FARMACIA-GT':   { name: 'Farmacias del Valle',       type: 'Farmacia',   tier: 'PRO' },
-  'SUPERMERCADO':  { name: 'Supermercado La Familia',   type: 'Retail',     tier: 'ENTERPRISE' },
-  'TIENDA-DEMO':   { name: 'Tienda Demo Stackline',      type: 'Demo',       tier: 'DEMO' },
-  'STACKLINE':     { name: 'Stackline',                   type: 'ERP',        tier: 'DEV' },
+// Empresas conocidas: al escribir el código aparece una tarjeta de vista
+// previa, que confirma que se tecleó bien antes de mandar la contraseña.
+// Solo empresas reales — las inventadas se fueron con los accesos demo.
+const KNOWN_COMPANIES = {
+  'TIENDA-DEMO': { name: 'Tienda Demo Stackline', type: 'Demo', tier: 'DEMO' },
+  'STACKLINE':   { name: 'Stackline',             type: 'ERP',  tier: 'DEV' },
 };
 
 function validate(form, t) {
@@ -43,7 +43,7 @@ export default function Login({ onLogin }) {
 
   useEffect(() => {
     const code = form.companyCode.trim().toUpperCase();
-    setCompanyPreview(DEMO_COMPANIES[code] || null);
+    setCompanyPreview(KNOWN_COMPANIES[code] || null);
   }, [form.companyCode]);
 
   const set = (field, value) => {
@@ -245,26 +245,6 @@ export default function Login({ onLogin }) {
               )}
             </button>
           </form>
-
-          <div className="login-demo-hint">
-            <span className="login-demo-label">{t('login.demoAccess')}</span>
-            <div className="login-demo-codes">
-              {Object.entries(DEMO_COMPANIES).map(([code, co]) => (
-                <button
-                  key={code}
-                  type="button"
-                  className="login-demo-chip"
-                  onClick={() => {
-                    set('companyCode', code);
-                    set('email', 'admin@' + code.toLowerCase().replace(/-/g, '') + '.com');
-                    set('password', 'demo123');
-                  }}
-                >
-                  {code}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

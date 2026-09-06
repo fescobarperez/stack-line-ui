@@ -184,7 +184,6 @@
     "submitting": "Verificando…",
     "showPassword": "Mostrar contraseña",
     "hidePassword": "Ocultar contraseña",
-    "demoAccess": "Accesos demo",
     "errors": {
       "companyRequired": "Ingresa el código de tu empresa",
       "companyNotFound": "Código de empresa no encontrado",
