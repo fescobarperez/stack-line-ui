@@ -2,8 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
-import { useTaxRate } from '../hooks/useOperations.js';
-import { projectFromQuote } from '../api/projects.js';
+import { useTaxRate, useProjects } from '../hooks/useOperations.js';
 import { getClientByNit } from '../api/partners.js';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
@@ -45,7 +44,7 @@ const newRfqId = () => `RFQ-2026-${String(_nextRfqId++).padStart(5, '0')}`;
 
 const EMPTY_ITEM = () => ({ id: Date.now(), name: '', qty: 1, uom: 'UN', unitPrice: 0, discount: 0 });
 
-function CreateModal({ onSave, onClose, initialClient }) {
+function CreateModal({ onSave, onClose, initialClient, projects, initialProjectId }) {
   const taxRate = useTaxRate();
   const { t } = useTranslation();
   // `initialClient` llega desde el botón «Cotizar» de la lista de clientes.
@@ -75,6 +74,7 @@ function CreateModal({ onSave, onClose, initialClient }) {
   };
   const [validDays, setValidDays] = useState(15);
   const [notes,     setNotes]     = useState('');
+  const [projectId, setProjectId] = useState(initialProjectId ? String(initialProjectId) : '');
   const [items,     setItems]     = useState([EMPTY_ITEM()]);
   const setC = (k, v) => setClient(c => ({ ...c, [k]: v }));
 
@@ -82,7 +82,7 @@ function CreateModal({ onSave, onClose, initialClient }) {
   const addItem    = () => setItems(prev => [...prev, EMPTY_ITEM()]);
   const removeItem = id => setItems(prev => prev.filter(i => i.id !== id));
 
-  const { lines, subtotal, iva, total } = computeTotals(items, taxRate);
+  const { subtotal, iva, total } = computeTotals(items, taxRate);
   const validDate = new Date(today);
   validDate.setDate(validDate.getDate() + validDays);
   const validUntil = validDate.toISOString().slice(0, 10);
@@ -91,7 +91,7 @@ function CreateModal({ onSave, onClose, initialClient }) {
 
   const handleSave = () => {
     onSave({
-      id: newId(), date: today, validUntil, client, createdBy: 'Carlos Méndez',
+      id: newId(), date: today, validUntil, client, projectId: projectId ? Number(projectId) : null, createdBy: 'Carlos Méndez',
       status: 'borrador', notes,
       items: items.map((i, idx) => ({ ...i, id: idx + 1 })),
       history: [{ ts: `${today} ${new Date().toTimeString().slice(0, 5)}`, user: 'Carlos Méndez', action: 'Cotización creada' }],
@@ -143,6 +143,17 @@ function CreateModal({ onSave, onClose, initialClient }) {
                 <input className="field-input" value={client.contact} onChange={e => setC('contact', e.target.value)} placeholder={t('quotes.contactPlaceholder', 'Nombre del contacto')} />
               </div>
             </div>
+          </div>
+
+          <div className="field-group">
+            <label className="field-label">Proyecto</label>
+            <select className="field-input" value={projectId} onChange={e => setProjectId(e.target.value)}>
+              <option value="">Asignar automáticamente a “Proyecto general”</option>
+              {(projects || []).filter(p => p.clientId == null || p.clientId === client.id).map(project => (
+                <option key={project.id} value={project.id}>{project.code} · {project.name}</option>
+              ))}
+            </select>
+            <div className="cfg-hint">Puedes seleccionar un proyecto existente; si lo dejas automático, se reutiliza el proyecto general de este cliente.</div>
           </div>
 
           <div className="field-group" style={{ maxWidth: 220 }}>
@@ -234,7 +245,6 @@ function CreateModal({ onSave, onClose, initialClient }) {
 const EMPTY_RITEM = () => ({ id: Date.now(), name: '', qty: 1, uom: 'UN' });
 
 function CreateRFQModal({ onSave, onClose }) {
-  const taxRate = useTaxRate();
   const { t } = useTranslation();
   const [supplier, setSupplier] = useState({ name: '', nit: '', email: '', contact: '' });
   const [deadline, setDeadline] = useState('');
@@ -356,29 +366,14 @@ function CreateRFQModal({ onSave, onClose }) {
 export default function Quotes({ pushToast }) {
   const { t } = useTranslation();
   const taxRate = useTaxRate();
+  const { items: projects } = useProjects();
   const navigate = useNavigate();
   const location = useLocation();
   // Cliente traído desde «Cotizar» en la lista de clientes.
   const [prefillClient, setPrefillClient] = useState(location.state?.newQuoteFor || null);
-  const [converting, setConverting] = useState(false);
 
-  // Un proyecto nace de una cotización aprobada, y solo una vez: el backend
-  // congela el monto contratado y rechaza la segunda conversión.
-  const convertToProject = async (quote) => {
-    setConverting(true);
-    try {
-      // backendId es el id numérico; `id` es el número de documento (COT-…).
-      const p = await projectFromQuote(quote.backendId, {
-        name: `${quote.client?.name || quote.clientName || ''} — ${quote.id}`.trim(),
-      });
-      pushToast?.(t('quotes.projectCreated', `Proyecto ${p.code} creado`), 'success');
-      navigate('/projects');
-    } catch (err) {
-      pushToast?.(err.message, 'danger');
-    } finally {
-      setConverting(false);
-    }
-  };
+  // El proyecto se crea antes o durante la cotización; la aprobación solo cambia
+  // si la asociación entra al agregado del proyecto.
   const [quoteType, setQuoteType] = useState('cliente');
 
   // — cotizaciones a clientes —
@@ -445,6 +440,7 @@ export default function Quotes({ pushToast }) {
     try {
       await apiCreateQuote({
         partyType: 'client',
+        projectId: draft.projectId,
         // clientId cuando el NIT ya existía; si no, el backend crea el cliente
         // con estos datos. Sin uno u otro la cotización no se puede convertir.
         clientId: draft.client.id ?? null,
@@ -857,11 +853,7 @@ export default function Quotes({ pushToast }) {
                       {t('quotes.viewProject', 'Ver proyecto')}
                     </Button>
                   ) : (
-                    <Button icon="box" variant="accent" disabled={converting}
-                      title={t('quotes.toProjectHint', 'Crea un proyecto para dar seguimiento al costo y el margen')}
-                      onClick={() => convertToProject(selQuote)}>
-                      {converting ? t('quotes.converting', 'Creando…') : t('quotes.toProject', 'Crear proyecto')}
-                    </Button>
+                    <span className="badge-m3 warning">Proyecto pendiente de asignar</span>
                   )
                 )}
               </div>
@@ -1027,6 +1019,7 @@ export default function Quotes({ pushToast }) {
       )}
 
       {showCreate    && <CreateModal    onSave={submitQuote} initialClient={prefillClient}
+                                        projects={projects} initialProjectId={location.state?.projectId}
                                         onClose={() => { setShowCreate(false); setPrefillClient(null); }} />}
       {showCreateRfq && <CreateRFQModal onSave={submitRfq}   onClose={() => setShowCreateRfq(false)} />}
     </div>

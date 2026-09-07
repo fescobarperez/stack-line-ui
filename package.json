@@ -14,21 +14,23 @@
     "start": "concurrently -k -n web,api -c blue,green \"npm run dev\" \"npm run server\""
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0",
+    "@minoru/react-dnd-treeview": "3.5.4",
     "i18next": "^24.2.3",
+    "i18next-browser-languagedetector": "^8.0.5",
+    "react": "^18.3.1",
+    "react-dnd": "16.0.1",
+    "react-dom": "^18.3.1",
     "react-i18next": "^15.4.1",
-    "i18next-browser-languagedetector": "^8.0.5"
+    "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^5.4.10",
     "eslint": "^9.13.0",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1"
+    "vite": "^5.4.10"
   },
   "engines": {
     "node": ">=20"

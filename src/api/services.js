@@ -31,6 +31,7 @@ export const SERVICES = {
 // ⚠️ El proxy de dev (vite.config.js) espeja este mismo mapeo.
 export const ROUTES = [
   // ── core · catálogo + inventario ──────────────────────────────────
+  { prefix: '/api/projects',          service: 'core' },
   { prefix: '/api/product-variants', service: 'core' },
   { prefix: '/api/products',         service: 'core' },
   { prefix: '/api/categories',       service: 'core' },

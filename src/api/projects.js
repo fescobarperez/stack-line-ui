@@ -5,10 +5,6 @@ export const listProjects = () => api.get('/api/projects');
 export const getProject = (id) => api.get(`/api/projects/${id}`);
 export const createProject = (data) => api.post('/api/projects', data);
 
-/** Convierte una cotización aprobada en proyecto. Una sola vez por cotización. */
-export const projectFromQuote = (quoteId, data) =>
-  api.post(`/api/projects/from-quote/${quoteId}`, data || {});
-
 export const addProjectCost = (id, data) => api.post(`/api/projects/${id}/costs`, data);
 export const deleteProjectCost = (id, costId) => api.del(`/api/projects/${id}/costs/${costId}`);
 /** `note` justifica cerrar con costo sin facturar; en los demás casos sobra. */

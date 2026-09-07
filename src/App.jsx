@@ -21,6 +21,7 @@ import Dashboard from './modules/Dashboard.jsx';
 import POS from './modules/POS.jsx';
 import Billing from './modules/Billing.jsx';
 import Inventory from './modules/Inventory.jsx';
+import Catalog from './modules/Catalog.jsx';
 import Reports from './modules/Reports.jsx';
 import Maintenance from './modules/Maintenance.jsx';
 import Clients from './modules/Clients.jsx';
@@ -68,6 +69,7 @@ const NAV = [
     section: 'INVENTARIO',
     items: [
       { id: 'inventory',  label: 'Productos y stock', icon: 'box',      alert: 5 },
+      { id: 'catalog',    label: 'Catálogo de productos', icon: 'folder' },
       { id: 'variants',    label: 'Variantes',              icon: 'settings'          },
       { id: 'stockcount', label: 'Conteo físico',          icon: 'check'             },
       { id: 'uom',        label: 'Unidades de Medida',     icon: 'settings'          },
@@ -123,6 +125,7 @@ const MODULE_MAP = {
   pos:          POS,
   billing:      Billing,
   inventory:    Inventory,
+  catalog:      Catalog,
   purchases:    Purchases,
   reports:      Reports,
   maintenance:  Maintenance,

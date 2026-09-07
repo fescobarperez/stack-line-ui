@@ -1,0 +1,33 @@
+.tree {
+  flex: 1;
+  min-height: 460px;
+  overflow: auto;
+}
+
+.tree :global([role="list"]) {
+  min-width: 600px;
+}
+
+.cost {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex: none;
+}
+
+.rootActions {
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.rootActions :global(.btn) {
+  width: auto;
+  min-width: auto;
+  padding-left: 9px;
+  padding-right: 9px;
+}
