@@ -8,7 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import { useClientQuotes, useSupplierRfqs, mapQuote, mapRfq } from '../hooks/useQuotes.js';
-import { getQuote, getQuoteCharges, createQuote as apiCreateQuote, updateQuoteStatus } from '../api/wave2.js';
+import { getQuote, getQuoteCharges, createQuote as apiCreateQuote, updateQuoteStatus, listSettings } from '../api/wave2.js';
 import { sessionCompany } from '../api/auth.js';
 import { renderQuotePdfWindow } from '../lib/quotePdf.js';
 import QuoteBuilderModal from '../components/QuoteBuilderModal.jsx';
@@ -283,9 +283,20 @@ export default function Quotes({ pushToast }) {
     setGeneratingPdf(true);
     try {
       const charges = await getQuoteCharges(selQuote.backendId);
+      let branding;
+      try {
+        const rows = await listSettings();
+        const byKey = Object.fromEntries((rows || []).map((r) => [r.settingKey, r.settingValue]));
+        branding = {
+          logoUrl: byKey['company.logo_url'] || '',
+          primaryColor: byKey['brand.primary_color'] || '',
+          secondaryColor: byKey['brand.secondary_color'] || '',
+        };
+      } catch { /* sin settings, el PDF usa el logo y colores por defecto */ }
       renderQuotePdfWindow(popup, selQuote, {
         company: sessionCompany(),
         charges,
+        branding,
         taxRate: Number(selQuote.taxRate || taxRate || 12),
       });
       pushToast(t('quotes.pdfReady', 'PDF generado. Revisa la ventana de impresión para guardarlo.'), 'success');
