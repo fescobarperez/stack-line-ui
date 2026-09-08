@@ -1,10 +1,11 @@
 // Stackline — Cuentas por Cobrar (CxC) · antigüedad de saldos
 // Data-driven: /api/receivables/aging (hook useAging) + /api/payments (usePayments).
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useAging, usePayments, useBankAccounts } from '../hooks/useOperations.js';
+import { useAccounts } from '../hooks/useAccounting.js';
 import { createPayment } from '../api/receivables.js';
 import { printReceipt } from '../lib/receipt.js';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +15,9 @@ const BUCKET_ORDER = ['current', '1-30', '31-60', '61-90', '90+'];
 // Debe coincidir con BANK_METHODS de PaymentService: efectivo va a la caja y
 // la tarjeta liquida después, por una vía que este cobro no conoce.
 const NEEDS_BANK = new Set(['transferencia', 'deposito']);
+// Efectivo y cheque entran a una cuenta de caja (detalle, saldo débito).
+const CASH_METHODS = new Set(['efectivo', 'cheque']);
+const isCashAccount = (a) => a.allowsEntries && a.normalBalance === 'debit';
 const BUCKET_CLASS = { current: 'success', '1-30': 'warning', '31-60': 'warning', '61-90': 'danger', '90+': 'danger' };
 const BUCKET_LABEL = { current: 'Por vencer', '1-30': '1–30 días', '31-60': '31–60 días', '61-90': '61–90 días', '90+': '90+ días' };
 const STATUS_LABEL = { open: 'Abierta', partial: 'Parcial', overdue: 'Vencida' };
@@ -27,7 +31,19 @@ export default function CxC({ pushToast }) {
   const [search, setSearch] = useState('');
   const [payModal, setPayModal] = useState(null); // invoice
   const { items: BANK_ACCOUNTS } = useBankAccounts();
-  const [payForm, setPayForm] = useState({ amount: '', method: 'efectivo', reference: '', bankAccountId: '' });
+  const { items: ACCOUNTS } = useAccounts();
+  const CASH_ACCOUNTS = (ACCOUNTS || []).filter(isCashAccount);
+  const [payForm, setPayForm] = useState({ amount: '', method: 'efectivo', reference: '', bankAccountId: '', cashAccountId: '' });
+
+  // Autoselección de la caja: 110101 (Caja) si existe, si no la primera cuenta
+  // de detalle de activo. Funciona sin intervención pero deja cambiarla.
+  useEffect(() => {
+    if (!payModal || !CASH_METHODS.has(payForm.method)) return;
+    if (payForm.cashAccountId) return;
+    if (!CASH_ACCOUNTS.length) return;
+    const preferida = CASH_ACCOUNTS.find((a) => a.code === '110101') || CASH_ACCOUNTS[0];
+    setPayForm((f) => ({ ...f, cashAccountId: String(preferida.id) }));
+  }, [payModal, payForm.method, payForm.cashAccountId, CASH_ACCOUNTS]);
 
   const { data: aging, source, reload: reloadAging } = useAging();
   const { items: payments, reload: reloadPayments } = usePayments();
@@ -50,12 +66,13 @@ export default function CxC({ pushToast }) {
         clientId: payModal.clientId, saleId: payModal.saleId, amount: amt,
         method: payForm.method, reference: payForm.reference || null,
         bankAccountId: payForm.bankAccountId ? Number(payForm.bankAccountId) : null,
+        cashAccountId: payForm.cashAccountId ? Number(payForm.cashAccountId) : null,
         paymentDate: new Date().toISOString().slice(0, 10),
       });
       await Promise.all([reloadAging(), reloadPayments()]);
       pushToast(`Abono de ${Q(amt)} registrado`, 'success');
       setPayModal(null);
-      setPayForm({ amount: '', method: 'efectivo', reference: '', bankAccountId: '' });
+      setPayForm({ amount: '', method: 'efectivo', reference: '', bankAccountId: '', cashAccountId: '' });
     } catch (err) {
       pushToast('No se pudo registrar el abono: ' + err.message, 'danger');
     }
@@ -290,6 +307,25 @@ export default function CxC({ pushToast }) {
                       </option>
                     ))}
                   </select>
+                </div>
+              )}
+              {/* Efectivo y cheque entran a una cuenta de caja. Elegir cuál
+                  resuelve el error 'posting.cash' sin ir a Configuración. */}
+              {CASH_METHODS.has(payForm.method) && (
+                <div className="field">
+                  <label>Cuenta de caja</label>
+                  {CASH_ACCOUNTS.length > 0 ? (
+                    <select value={payForm.cashAccountId}
+                      onChange={(e) => setPayForm((f) => ({ ...f, cashAccountId: e.target.value }))}>
+                      {CASH_ACCOUNTS.map((a) => (
+                        <option key={a.id} value={a.id}>{a.code} · {a.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="muted" style={{ fontSize: 12, color: 'var(--danger)' }}>
+                      No hay cuentas de caja de detalle. Crea una cuenta de activo (débito) en Contabilidad.
+                    </div>
+                  )}
                 </div>
               )}
               <div className="field">

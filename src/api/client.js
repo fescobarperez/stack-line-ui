@@ -37,27 +37,33 @@ export class ApiError extends Error {
 
 async function request(path, { method = 'GET', body, headers } = {}) {
   const token = getToken();
-  const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
-    body: body != null ? JSON.stringify(body) : undefined,
-  });
+  try {
+    const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...headers,
+      },
+      body: body != null ? JSON.stringify(body) : undefined,
+    });
 
-  if (!res.ok) {
-    let detail;
-    try { detail = await res.json(); } catch { detail = null; }
-    // Token inválido/expirado en cualquier endpoint que no sea el propio login:
-    // cerramos sesión y volvemos al login.
-    if (res.status === 401 && path !== LOGIN_PATH) {
-      clearSessionAndRedirect();
+    if (!res.ok) {
+      let detail;
+      try { detail = await res.json(); } catch { detail = null; }
+      // Token inválido/expirado en cualquier endpoint que no sea el propio login:
+      // cerramos sesión y volvemos al login.
+      if (res.status === 401 && path !== LOGIN_PATH) {
+        clearSessionAndRedirect();
+      }
+      throw new ApiError(res.status, detail?.message || res.statusText);
     }
-    throw new ApiError(res.status, detail?.message || res.statusText);
+    return res.status === 204 ? null : res.json();
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    const service = resolveBaseUrl(path) || 'mismo origen';
+    throw new ApiError(0, `No se pudo conectar con ${service}. Verifica que el backend esté activo.`);
   }
-  return res.status === 204 ? null : res.json();
 }
 
 export const api = {

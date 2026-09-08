@@ -1,0 +1,65 @@
+.tree {
+  min-height: 260px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cost {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.inlineFolder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.inlineFolder input {
+  flex: 1;
+  min-width: 0;
+}
+
+.selectionStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+@media (max-width: 680px) {
+  .selectionStatus {
+    align-items: stretch;
+    flex-direction: column;
+    margin-left: 0;
+  }
+}
+
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  background: var(--surface-2);
+}
+
+.sectionHead > :global(.body-small) {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}

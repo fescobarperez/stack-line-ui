@@ -1,0 +1,123 @@
+.root {
+  min-width: 0;
+}
+
+.root :global(ul),
+.root :global(li) {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.root :global(li)::marker {
+  content: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 45px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  cursor: grab;
+  user-select: none;
+  transition: background .12s ease, border-color .12s ease, opacity .12s ease;
+}
+
+.row:active {
+  cursor: grabbing;
+}
+
+.row:hover {
+  background-color: var(--md-sys-color-surface-container);
+}
+
+.toggle,
+.toggleSpacer {
+  width: 22px;
+  min-width: 22px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  border-radius: var(--r-sm);
+}
+
+.toggle:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.label strong {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.label small,
+.label :global(.muted) {
+  color: var(--muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.dragPreview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+}
+
+.selected {
+  background-color: var(--md-sys-color-primary-container);
+  box-shadow: inset 3px 0 var(--md-sys-color-primary);
+}
+
+.row.selected:hover {
+  background-color: var(--md-sys-color-primary-container);
+}
+
+.dropTarget {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+  background-color: var(--md-sys-color-primary-container);
+}
+
+.dragging {
+  opacity: .45;
+}

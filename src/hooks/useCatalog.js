@@ -18,19 +18,27 @@ function mapProduct(p) {
     stock: p.stock ?? 0,
     min: p.minStock ?? 0,
     unit: p.unit,
+    purchaseUnit: p.purchaseUnit,
+    purchaseFactor: p.purchaseFactor,
     itemType: p.itemType ?? 'sellable',
     tracksStock: p.tracksStock ?? true,
     status: p.status,
+    suppliers: (p.suppliers ?? []).map((supplier) => ({
+      supplierId: supplier.supplierId,
+      supplierName: supplier.supplierName,
+      unitCost: supplier.unitCost,
+      preferred: supplier.preferred,
+    })),
   };
 }
 
-export function useProducts({ search = '', itemType = '' } = {}) {
+export function useProducts({ search = '', itemType = '', size = 50 } = {}) {
   const [state, setState] = useState({ items: [], loading: true, error: null });
 
   const reload = useCallback(async () => {
     setState((s) => ({ ...s, loading: true }));
     try {
-      const page = await listProducts({ search, itemType });
+      const page = await listProducts({ search, itemType, size });
       const rows = Array.isArray(page) ? page : (page.content ?? []);
       // Existencias reales: suma de product_stock por producto (todas las sucursales/lotes).
       const stockByProduct = {};
@@ -45,7 +53,7 @@ export function useProducts({ search = '', itemType = '' } = {}) {
     } catch (err) {
       setState({ items: [], loading: false, error: err });
     }
-  }, [search, itemType]);
+  }, [search, itemType, size]);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -76,4 +84,20 @@ export function useCategories() {
       .catch(() => setCategories([]));
   }, []);
   return categories;
+}
+
+// Catálogo jerárquico: expone reload para que crear/mover categorías refresque el árbol.
+export function useCategoryTree() {
+  const [state, setState] = useState({ items: [], loading: true, error: null });
+  const reload = useCallback(async () => {
+    setState((current) => ({ ...current, loading: true }));
+    try {
+      const rows = await listCategories();
+      setState({ items: Array.isArray(rows) ? rows : (rows?.content ?? []), loading: false, error: null });
+    } catch (error) {
+      setState({ items: [], loading: false, error });
+    }
+  }, []);
+  useEffect(() => { reload(); }, [reload]);
+  return { ...state, reload };
 }

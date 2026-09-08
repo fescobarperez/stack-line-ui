@@ -94,8 +94,8 @@ function InventoryModule({ pushToast }) {
       unit: p.unit ?? 'Unidad',
       purchaseUnit: p.purchaseUnit ?? '',
       purchaseFactor: (p.purchaseFactor ?? 1) == 1 ? '' : String(p.purchaseFactor),
-      itemType: p.itemType ?? 'sellable', supplierId: p.supplierId ?? '',
-      cost: p.cost ?? '', price: p.price ?? '', stock: p.stock ?? '', min: p.min ?? '',
+      itemType: p.itemType ?? 'sellable', supplierId: p.supplierId ?? p.suppliers?.[0]?.supplierId ?? '',
+      cost: p.cost ?? p.suppliers?.[0]?.unitCost ?? '', price: p.price ?? '', stock: p.stock ?? '', min: p.min ?? '',
       desc: p.description ?? '', active: (p.status ?? 'ACTIVE') !== 'INACTIVE', lots: !!p.lots,
     });
     setShowNew(true);
@@ -103,6 +103,10 @@ function InventoryModule({ pushToast }) {
   const saveProduct = async () => {
     if (!form.name.trim() || !form.sku.trim()) {
       if (pushToast) pushToast('Nombre y SKU son obligatorios', 'danger');
+      return;
+    }
+    if (form.itemType === 'raw_material' && (!form.supplierId || !(Number(form.cost) > 0))) {
+      if (pushToast) pushToast('La materia prima requiere proveedor y costo para ese proveedor', 'danger');
       return;
     }
     const payload = {
@@ -116,6 +120,8 @@ function InventoryModule({ pushToast }) {
       itemType: form.itemType,
       cost: Number(form.cost) || 0,
       price: Number(form.price) || 0,
+      supplierId: form.itemType === 'raw_material' && form.supplierId ? Number(form.supplierId) : null,
+      supplierCost: form.itemType === 'raw_material' ? Number(form.cost) || null : null,
       minStock: Number(form.min) || 0,
       status: form.active ? 'ACTIVE' : 'INACTIVE',
     };

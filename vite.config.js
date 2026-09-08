@@ -23,6 +23,7 @@ export default defineConfig(({ mode }) => {
   // Los prefijos más específicos van primero (gana la primera coincidencia).
   const ROUTE_MAP = {
     // core · catálogo + inventario
+    '/api/projects': 'core',
     '/api/product-variants': 'core',
     '/api/products': 'core',
     '/api/categories': 'core',
