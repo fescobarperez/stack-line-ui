@@ -25,6 +25,18 @@ export const getQuote = (id) => api.get(`/api/quotes/${id}`);
 export const createQuote = (data) => api.post('/api/quotes', data);
 export const updateQuoteStatus = (id, data) => api.put(`/api/quotes/${id}/status`, data);
 
+// Gastos/cargos de la cotización (fixed/percent). Cada llamada devuelve el
+// resumen recalculado { materialsCost, fixedTotal, subtotalCost, percentTotal, total, charges[] }.
+export const getQuoteCharges = (id) => api.get(`/api/quotes/${id}/charges`);
+export const addQuoteCharge = (id, data) => api.post(`/api/quotes/${id}/charges`, data);
+export const deleteQuoteCharge = (id, chargeId) => api.del(`/api/quotes/${id}/charges/${chargeId}`);
+
+// Plan de pagos y cobros de la cotización. quoteTotal es el total operativo
+// con IVA (subtotal + cargos manuales + impuesto); devuelve { quoteTotal, planTotal, remaining, balanced, collected, pending, terms[], payments[] }.
+export const getQuotePlan = (id) => api.get(`/api/quotes/${id}/plan`);
+export const addQuotePaymentTerm = (id, data) => api.post(`/api/quotes/${id}/plan/terms`, data);
+export const deleteQuotePaymentTerm = (id, termId) => api.del(`/api/quotes/${id}/plan/terms/${termId}`);
+
 // ── Toma física ───────────────────────────────────────────────────────
 export const listStockCounts = (opts) => api.get(`/api/stock-counts?${paged(opts)}`);
 export const getStockCount = (id) => api.get(`/api/stock-counts/${id}`);

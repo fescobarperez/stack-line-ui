@@ -16,18 +16,20 @@ import InlineCreate from '../components/InlineCreate.jsx';
 import DataTable from '../components/DataTable.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useProjects, useAging, useBankAccounts } from '../hooks/useOperations.js';
+import { useAccounts } from '../hooks/useAccounting.js';
 import { getProject, createProject, addProjectCost, deleteProjectCost, setProjectStatus } from '../api/projects.js';
 import { createPayment } from '../api/receivables.js';
 import { createSale } from '../api/pos.js';
 import { printReceipt } from '../lib/receipt.js';
 import { consumeMaterial } from '../api/projects.js';
 import ProjectMaterialsPanel from '../components/ProjectMaterialsPanel.jsx';
+import QuoteBuilderModal from '../components/QuoteBuilderModal.jsx';
 import { useProducts } from '../hooks/useCatalog.js';
 import { useBranches, useClients } from '../hooks/useMasters.js';
 import { createClient } from '../api/partners.js';
 import useAuthorization from '../hooks/useAuthorization.js';
 import AuthorizationDialog from '../components/AuthorizationDialog.jsx';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 const Q = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -36,6 +38,12 @@ const aggregateMargin = (project) => Number(project.contracted || 0) - aggregate
 
 // Debe coincidir con BANK_METHODS de PaymentService.
 const NEEDS_BANK = new Set(['transferencia', 'deposito']);
+// Métodos que entran a una cuenta de caja (no a un banco). El cheque se trata
+// como caja: está en la gaveta hasta que se deposite.
+const CASH_METHODS = new Set(['efectivo', 'cheque']);
+// Una cuenta de caja/activo donde puede entrar el efectivo: cuenta de detalle
+// con saldo normal débito.
+const isCashAccount = (a) => a.allowsEntries && a.normalBalance === 'debit';
 
 const STATUS = {
   draft:     { label: 'Borrador',  variant: 'neutral' },
@@ -421,11 +429,24 @@ function PaymentModal({ project, onDone, onClose, pushToast }) {
   const { t } = useTranslation();
   const [form, setForm] = useState({
     amount: '', method: 'efectivo', reference: '', paymentDate: '',
-    bankAccountId: '', saleId: '',
+    bankAccountId: '', cashAccountId: '', saleId: '',
   });
   const [busy, setBusy] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const { items: BANK_ACCOUNTS } = useBankAccounts();
+  const { items: ACCOUNTS } = useAccounts();
+  const CASH_ACCOUNTS = (ACCOUNTS || []).filter(isCashAccount);
+
+  // Autoselección de la caja: preferimos la cuenta 110101 (Caja) si existe, si
+  // no la primera cuenta de detalle de activo. Así el flujo funciona sin que el
+  // usuario tenga que elegir, pero deja cambiarla.
+  useEffect(() => {
+    if (!CASH_METHODS.has(form.method)) return;
+    if (form.cashAccountId) return;
+    if (!CASH_ACCOUNTS.length) return;
+    const preferida = CASH_ACCOUNTS.find((a) => a.code === '110101') || CASH_ACCOUNTS[0];
+    set('cashAccountId', String(preferida.id));
+  }, [form.method, form.cashAccountId, CASH_ACCOUNTS]);
 
   // Documentos abiertos de este cliente. Aplicar el cobro a uno hace que baje
   // la antigüedad de ese documento; dejarlo "a cuenta" baja el saldo del
@@ -450,6 +471,7 @@ function PaymentModal({ project, onDone, onClose, pushToast }) {
         method: form.method,
         reference: form.reference || null,
         bankAccountId: form.bankAccountId ? Number(form.bankAccountId) : null,
+        cashAccountId: form.cashAccountId ? Number(form.cashAccountId) : null,
       });
       pushToast?.(t('projects.paymentAdded', 'Cobro registrado'), 'success');
       onDone();
@@ -502,6 +524,26 @@ function PaymentModal({ project, onDone, onClose, pushToast }) {
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+            {/* Efectivo y cheque entran a una cuenta de caja. Elegir cuál es lo
+                que resuelve el error 'posting.cash' sin ir a Configuración: la
+                cuenta elegida es contra la que se asienta el débito del cobro. */}
+            {CASH_METHODS.has(form.method) && (
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label className="field-label">{t('projects.cashAccount', 'Cuenta de caja')}</label>
+                {CASH_ACCOUNTS.length > 0 ? (
+                  <select className="field-input" value={form.cashAccountId}
+                    onChange={(e) => set('cashAccountId', e.target.value)}>
+                    {CASH_ACCOUNTS.map((a) => (
+                      <option key={a.id} value={a.id}>{a.code} · {a.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="field-hint" style={{ color: 'var(--danger)' }}>
+                    {t('projects.noCashAccount', 'No hay cuentas de caja de detalle. Crea una cuenta de activo (débito) en Contabilidad.')}
+                  </div>
+                )}
               </div>
             )}
             {/* Aplicar a un documento hace que baje la antigüedad de ESA
@@ -639,6 +681,7 @@ function ProjectDrawer({ project, onClose, onChanged, pushToast }) {
   const [costModal, setCostModal] = useState(false);
   const [payModal, setPayModal] = useState(false);
   const [consumeModal, setConsumeModal] = useState(false);
+  const [quoteBuilder, setQuoteBuilder] = useState(false);
   const [materialsCost, setMaterialsCost] = useState(0);
   const [materialsLoading, setMaterialsLoading] = useState(true);
   const st = STATUS[project.status] || { label: project.status, variant: 'neutral' };
@@ -777,39 +820,71 @@ function ProjectDrawer({ project, onClose, onChanged, pushToast }) {
           <ProjectMaterialsPanel project={project} pushToast={pushToast} onMaterialsTotalChange={setMaterialsCost} onMaterialsLoadingChange={setMaterialsLoading} />
 
           <DataTable
-            title={t('projects.costs', 'Cargos')}
+            title={t('projects.quotes', 'Cotizaciones asociadas')}
             columns={[
-              { key: 'source', header: t('projects.source', 'Origen'), sortable: true,
-                render: (c) => {
-                  if (c.isMaterialsTotal) return <span className="badge-m3"><Icon name="box" size={14} />Materiales</span>;
-                  const src = SOURCES[c.source] || SOURCES.other;
-                  return <span className="badge-m3"><Icon name={src.icon} size={14} />{src.label}</span>;
+              { key: 'docNumber', header: t('projects.quote', 'Cotización'), sortable: true,
+                render: (q) => <strong>{q.docNumber}</strong> },
+              { key: 'status', header: t('common.status', 'Estado'), sortable: true,
+                render: (q) => {
+                  const cls = STATUS[q.status]?.variant || 'neutral';
+                  const label = STATUS[q.status]?.label || q.status;
+                  return <span className={`badge-m3 ${cls}`}>{label}</span>;
                 } },
-              { key: 'description', header: t('common.description', 'Descripción'),
-                render: (c) => c.description || '—' },
-              { key: 'costDate', header: t('common.date', 'Fecha'), sortable: true },
-              { key: 'amount', header: t('projects.amount', 'Monto'), align: 'right', sortable: true,
-                render: (c) => <span className="num">{Q(c.amount)}</span> },
+              { key: 'included', header: t('projects.included', 'En agregado'), align: 'center',
+                render: (q) => q.included ? <Icon name="check" size={15} /> : <span className="muted">—</span> },
+              { key: 'operatingCost', header: t('projects.operatingCosts', 'Costos'), align: 'right',
+                render: (q) => <span className="num">{Q(q.operatingCost)}</span> },
+              { key: 'profitAmount', header: t('projects.profit', 'Ganancia'), align: 'right',
+                render: (q) => <span className="num" style={{ color: 'var(--success)' }}>{Q(q.profitAmount)}</span> },
+              { key: 'subtotal', header: t('quotes.subtotalNoIva', 'Subtotal'), align: 'right', sortable: true,
+                render: (q) => <span className="num">{Q(q.subtotal)}</span> },
+              { key: 'tax', header: t('common.iva', 'IVA'), align: 'right',
+                render: (q) => <span className="num muted">{Q(q.tax)}</span> },
+              { key: 'total', header: t('common.total', 'Total'), align: 'right', sortable: true,
+                render: (q) => <span className="num" style={{ fontWeight: 600 }}>{Q(q.total)}</span> },
+              { key: 'actions', header: '', align: 'right',
+                render: (q) => (
+                  <Button size="sm" variant="ghost" icon="eye"
+                    onClick={(e) => { e.stopPropagation(); navigate('/quotes', { state: { openQuoteId: q.quoteId } }); }}>
+                    {t('projects.viewQuote', 'Ver cotización')}
+                  </Button>
+                ) },
             ]}
-            rows={costRows}
-            rowKey={(c) => c.id}
+            rows={project.quotes || []}
+            rowKey={(q) => q.quoteId}
             density="compact"
-            empty={t('projects.noCosts', 'Sin cargos todavía')}
+            empty={t('projects.noQuotes', 'Este proyecto aún no tiene cotizaciones. Créalas desde la pantalla de Cotizaciones eligiendo este proyecto.')}
             emptyIcon="receipt"
-            totals={{ amount: <span className="num">{Q(costTotal)}</span> }}
-            toolbar={project.status === 'open' && (
-              <>
-                <Button size="sm" icon="box" onClick={() => setConsumeModal(true)}>
-                  {t('projects.consumeMaterial', 'Consumir material')}
-                </Button>
-                <Button size="sm" icon="plus" variant="accent" onClick={() => setCostModal(true)}>
-                  {t('projects.addCost', 'Registrar cargo')}
-                </Button>
-              </>
-            )}
-            actions={project.status === 'open' ? (c) => c.isMaterialsTotal ? null : (
-              <Button variant="icon" icon="trash" title="Eliminar cargo" onClick={() => removeCost(c.id)} />
-            ) : undefined}
+          />
+
+          {/* Gastos derivados: por cada cotización, materiales + cargos. */}
+          <DataTable
+            title={t('projects.operatingCosts', 'Costos operativos')}
+            columns={[
+              { key: 'quote', header: t('projects.quote', 'Cotización'),
+                render: (r) => r.quoteDoc ? <span className="badge-m3 info">{r.quoteDoc}</span> : '' },
+              { key: 'concept', header: t('common.description', 'Concepto'),
+                render: (r) => r.kind === 'materials'
+                  ? <span className="badge-m3"><Icon name="box" size={13} /> {t('quotes.materials', 'Materiales')}</span>
+                  : <span>{r.description}{r.category ? <span className="muted"> · {r.category}</span> : ''}</span> },
+              { key: 'calc', header: t('quotes.chargeCalc', 'Cálculo'),
+                render: (r) => r.kind === 'materials'
+                  ? <span className="muted">{t('quotes.derived', 'derivado')}</span>
+                  : (r.calcType === 'percent' ? <span className="muted">%</span> : <span className="muted">{t('quotes.fixed', 'fijo')}</span>) },
+              { key: 'amount', header: t('projects.amount', 'Monto'), align: 'right',
+                render: (r) => <span className="num">{Q(r.amount)}</span> },
+            ]}
+            rows={(project.quotes || []).flatMap((q) => {
+              const rows = [];
+              if (Number(q.materialsCost || 0) !== 0) rows.push({ id: `m-${q.quoteId}`, quoteDoc: q.docNumber, kind: 'materials', amount: q.materialsCost });
+              (q.charges || []).forEach((c, i) => rows.push({ id: `c-${q.quoteId}-${i}`, quoteDoc: rows.length ? '' : q.docNumber, kind: 'charge', description: c.description, category: c.category, calcType: c.calcType, amount: c.computedAmount }));
+              return rows;
+            })}
+            rowKey={(r) => r.id}
+            density="compact"
+            empty={t('projects.noOperatingCosts', 'Sin costos operativos. Se derivan de los materiales y cargos de las cotizaciones del proyecto.')}
+            emptyIcon="cash"
+            totals={{ amount: <span className="num">{Q((project.quotes || []).reduce((s, q) => s + Number(q.expenseTotal || 0), 0))}</span> }}
           />
 
           <DataTable
@@ -820,6 +895,12 @@ function ProjectDrawer({ project, onClose, onChanged, pushToast }) {
               { key: 'paymentDate', header: t('common.date', 'Fecha'), sortable: true },
               { key: 'method', header: t('projects.method', 'Método'), sortable: true,
                 render: (x) => <span className="badge-m3">{x.method || '—'}</span> },
+              { key: 'quoteId', header: t('projects.quote', 'Cotización'), sortable: true,
+                render: (x) => {
+                  if (!x.quoteId) return <span className="muted">—</span>;
+                  const q = (project.quotes || []).find((qq) => qq.quoteId === x.quoteId);
+                  return <span className="badge-m3 info">{q ? q.docNumber : `COT-${x.quoteId}`}</span>;
+                } },
               { key: 'reference', header: t('projects.reference', 'Referencia'),
                 render: (x) => x.reference || '—' },
               { key: 'amount', header: t('projects.amount', 'Monto'), align: 'right', sortable: true,
@@ -846,7 +927,7 @@ function ProjectDrawer({ project, onClose, onChanged, pushToast }) {
 
         <div className="drawer-foot">
           <Button onClick={onClose}>{t('common.close', 'Cerrar')}</Button>
-          <Button icon="receipt" onClick={() => navigate('/quotes', { state: { projectId: project.id, newQuoteFor: { id: project.clientId, name: project.clientName || '', nit: '', email: '', contact: '' } } })}>
+          <Button icon="receipt" onClick={() => setQuoteBuilder(true)}>
             Nueva cotización
           </Button>
           {project.status === 'draft' && (
@@ -906,6 +987,11 @@ function ProjectDrawer({ project, onClose, onChanged, pushToast }) {
             onDone={() => { setConsumeModal(false); onChanged(); }}
             onClose={() => setConsumeModal(false)} />
         )}
+        {quoteBuilder && (
+          <QuoteBuilderModal project={project} pushToast={pushToast}
+            onCreated={() => { setQuoteBuilder(false); onChanged(); }}
+            onClose={() => setQuoteBuilder(false)} />
+        )}
       </div>
     </div>
   );
@@ -917,11 +1003,22 @@ export default function Projects({ pushToast }) {
   const { items: clients } = useClients();
   const [selected, setSelected] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const open = async (row) => {
     try { setSelected(await getProject(row.id)); }
     catch (err) { pushToast?.(err.message, 'danger'); }
   };
+
+  // Abrir un proyecto concreto al llegar desde "Ir al proyecto" en la cotización.
+  useEffect(() => {
+    const openId = location.state?.openProjectId;
+    if (!openId) return;
+    getProject(openId).then(setSelected).catch(() => {});
+    navigate(location.pathname, { replace: true, state: null });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
   const refresh = async () => {
     await reload();
     if (selected) { try { setSelected(await getProject(selected.id)); } catch { setSelected(null); } }
@@ -939,6 +1036,10 @@ export default function Projects({ pushToast }) {
     { key: 'name', header: t('common.name', 'Proyecto'), sortable: true },
     { key: 'clientName', header: t('common.client', 'Cliente'), sortable: true,
       render: (p) => p.clientName || '—' },
+    { key: 'quoteCount', header: t('projects.quotes', 'Cotizaciones'), align: 'center', sortable: true,
+      render: (p) => Number(p.quoteCount || 0) > 0
+        ? <span className="badge-m3 info">{p.quoteCount}</span>
+        : <span className="muted">—</span> },
     { key: 'contracted', header: t('projects.contracted', 'Contratado'), align: 'right', sortable: true,
       render: (p) => <span className="num">{Q(p.contracted)}</span> },
     { key: 'executed', header: t('projects.executed', 'Ejecutado'), align: 'right', sortable: true,

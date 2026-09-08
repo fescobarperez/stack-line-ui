@@ -1651,6 +1651,95 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
   background: rgba(10,10,10,0.4);
   z-index: 90;
 }
+/* ===== Quote drawer sections ===== */
+/* Jerarquía visual del drawer de cotización: títulos grandes, superficies
+   ligeras y suficiente aire sin convertir cada fila en una tarjeta. */
+.quote-section {
+  margin-top: 28px;
+}
+.quote-section:first-child { margin-top: 0; }
+.quote-section-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0 2px 12px;
+}
+.quote-section-title {
+  font: 600 19px/24px var(--font-sans);
+  letter-spacing: -.015em;
+  color: var(--text);
+}
+.quote-section-description,
+.quote-subsection-description {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+.quote-section-card,
+.quote-subsection-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 14px;
+}
+.quote-section-card--detail-core {
+  padding: 16px;
+}
+.quote-section-card--summary {
+  padding: 14px 16px;
+}
+.quote-subsection {
+  margin-top: 20px;
+}
+.quote-subsection--payments {
+  margin-top: 24px;
+}
+.quote-subsection-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px 8px;
+}
+.quote-subsection-title {
+  font: 600 14px/20px var(--font-sans);
+  letter-spacing: .01em;
+  color: var(--text-2);
+}
+.quote-subsection-card {
+  background: var(--surface);
+  padding: 12px 14px;
+}
+.quote-section--detail .quote-subsection-card,
+.quote-section--plan .quote-subsection-card {
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 3%, transparent);
+}
+.quote-plan-summary {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.quote-plan-summary span { color: var(--text-2); }
+.quote-plan-summary b { color: var(--text); }
+.quote-plan-balance {
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  font-size: 12px;
+}
+.quote-fiscal-card {
+  border: 1px solid var(--border) !important;
+  background: var(--surface-2) !important;
+  padding: 12px 14px !important;
+  border-radius: var(--r-lg) !important;
+}
+@media (max-width: 560px) {
+  .quote-subsection-heading { display: block; }
+  .quote-subsection-description { margin-top: 2px; }
+}
+
 .drawer {
   position: fixed;
   top: 0; right: 0; bottom: 0;

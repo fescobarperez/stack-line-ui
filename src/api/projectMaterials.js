@@ -24,3 +24,9 @@ export const copyProjectMaterialGroup = (projectId, groupId) =>
 
 export const renameProjectMaterialGroup = (projectId, groupId, name) =>
   api.put(`/api/projects/${projectId}/material-groups/${groupId}`, { name });
+
+// Modelo cotización-céntrico (Fase 1): crea una cotización a partir de
+// materiales del proyecto. `payload.lines[]` = { description, sourceGroupId,
+// uom, sellPrice, materialIds[] }. Devuelve { quoteId }.
+export const createProjectQuoteFromMaterials = (projectId, payload) =>
+  api.post(`/api/projects/${projectId}/quotes`, payload);

@@ -413,6 +413,9 @@ function ProjectMaterialTree({ project, plan, groups, onCreateGroup, onRefresh, 
       <div ref={handleRef} className={`tree-row ${rowClass}`} style={{ paddingLeft: 12 + depth * 22 }} onClick={kind === 'material' ? (event) => selectMaterial(node, event) : undefined} onKeyDown={handleKeyDown} tabIndex={kind === 'material' ? 0 : undefined} role={kind === 'material' ? 'option' : undefined} aria-selected={kind === 'material' ? selected : undefined}>
         {toggle}
         {leading}<span className={treeStyles.label}>{label}</span>
+        {kind === 'material' && material?.quoteId != null && (
+          <span className="badge accent" style={{ marginLeft: 6, fontSize: 10 }} title="Este material ya forma parte de una cotización">En cotización</span>
+        )}
         {kind === 'material' && <span className={`mono ${projectTreeStyles.cost}`}>{Q(material?.estimatedAmount)}</span>}
         {isRoot && <span className={`mono ${projectTreeStyles.cost}`}>{Q(plan.estimatedCost)}</span>}
         {isFolder && <div className={`${treeStyles.actions} ${projectTreeStyles.actions}`} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>

@@ -1,5 +1,5 @@
 // Stackline — Cotizaciones a clientes + RFQ a proveedores
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
 import { useTaxRate, useProjects } from '../hooks/useOperations.js';
@@ -9,6 +9,9 @@ import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import { useClientQuotes, useSupplierRfqs, mapQuote, mapRfq } from '../hooks/useQuotes.js';
 import { getQuote, createQuote as apiCreateQuote, updateQuoteStatus } from '../api/wave2.js';
+import QuoteBuilderModal from '../components/QuoteBuilderModal.jsx';
+import QuoteChargesPanel from '../components/QuoteChargesPanel.jsx';
+import QuotePlanPanel from '../components/QuotePlanPanel.jsx';
 
 const Q       = v  => `Q ${Number(v).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtDate = d  => new Date(d + 'T00:00').toLocaleDateString('es-GT', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -23,222 +26,16 @@ const RFQ_LABEL = { solicitada: 'Solicitada', recibida: 'Recibida', aprobada: 'A
 const RFQ_CLASS  = { solicitada: 'info',       recibida: 'warning',  aprobada: 'success',  rechazada: 'danger',    convertida: 'success'    };
 
 // El IVA va INCLUIDO en el precio, igual que lo calcula el backend
-// (tax = total × tasa/(100+tasa)). Antes esto lo sumaba por encima con un 12%
-// fijo, así que la vista previa y la cotización guardada no coincidían.
+// (tax = total × tasa/(100+tasa)). Se usa para las tarjetas de pipeline y el
+// desglose del drawer; el precio de cada línea ya lo trae el backend.
 function computeTotals(items, taxRate = 12) {
-  const lines    = items.map(i => ({ ...i, lineTotal: i.qty * (i.unitPrice || 0) * (1 - (i.discount || 0) / 100) }));
+  const lines    = (items ?? []).map(i => ({ ...i, lineTotal: (i.qty || 0) * (i.unitPrice || 0) * (1 - (i.discount || 0) / 100) }));
   const total    = lines.reduce((s, l) => s + l.lineTotal, 0);
   const iva      = total * (taxRate / (100 + taxRate));
   return { lines, subtotal: total - iva, iva, total, taxRate };
 }
 
-// ── Mock: cotizaciones a clientes ─────────────────────────────────────────────
-
-let _nextId = 13;
-const newId = () => `COT-2026-${String(_nextId++).padStart(5, '0')}`;
-// ── Mock: RFQ a proveedores ───────────────────────────────────────────────────
-
-let _nextRfqId = 7;
-const newRfqId = () => `RFQ-2026-${String(_nextRfqId++).padStart(5, '0')}`;
-// ── Modal: nueva cotización a cliente ─────────────────────────────────────────
-
-const EMPTY_ITEM = () => ({ id: Date.now(), name: '', qty: 1, uom: 'UN', unitPrice: 0, discount: 0 });
-
-function CreateModal({ onSave, onClose, initialClient, projects, initialProjectId }) {
-  const taxRate = useTaxRate();
-  const { t } = useTranslation();
-  // `initialClient` llega desde el botón «Cotizar» de la lista de clientes.
-  const [client,    setClient]    = useState(
-    initialClient || { name: '', nit: '', email: '', contact: '', id: null });
-  // Estado del autocompletado por NIT: idle · searching · found · new
-  const [nitLookup, setNitLookup] = useState(initialClient?.id ? 'found' : 'idle');
-
-  // Al salir del campo NIT se busca el cliente. Si existe, se rellenan sus datos
-  // y queda asociado por id; si no, se avisa de que se creará al guardar.
-  const lookupNit = async () => {
-    const nit = client.nit.trim();
-    if (!nit || nit.toUpperCase() === 'CF') { setNitLookup('idle'); return; }
-    setNitLookup('searching');
-    try {
-      const c = await getClientByNit(nit);
-      setClient((prev) => ({
-        ...prev, id: c.id, name: c.name || prev.name,
-        email: c.email || prev.email, contact: c.phone || prev.contact,
-      }));
-      setNitLookup('found');
-    } catch {
-      // 404: no existe. El backend lo creará con lo que se capture.
-      setClient((prev) => ({ ...prev, id: null }));
-      setNitLookup('new');
-    }
-  };
-  const [validDays, setValidDays] = useState(15);
-  const [notes,     setNotes]     = useState('');
-  const [projectId, setProjectId] = useState(initialProjectId ? String(initialProjectId) : '');
-  const [items,     setItems]     = useState([EMPTY_ITEM()]);
-  const setC = (k, v) => setClient(c => ({ ...c, [k]: v }));
-
-  const setItem    = (id, k, v) => setItems(prev => prev.map(i => i.id === id ? { ...i, [k]: v } : i));
-  const addItem    = () => setItems(prev => [...prev, EMPTY_ITEM()]);
-  const removeItem = id => setItems(prev => prev.filter(i => i.id !== id));
-
-  const { subtotal, iva, total } = computeTotals(items, taxRate);
-  const validDate = new Date(today);
-  validDate.setDate(validDate.getDate() + validDays);
-  const validUntil = validDate.toISOString().slice(0, 10);
-
-  const canSave = client.name.trim() && items.every(i => i.name.trim() && i.qty > 0 && i.unitPrice > 0);
-
-  const handleSave = () => {
-    onSave({
-      id: newId(), date: today, validUntil, client, projectId: projectId ? Number(projectId) : null, createdBy: 'Carlos Méndez',
-      status: 'borrador', notes,
-      items: items.map((i, idx) => ({ ...i, id: idx + 1 })),
-      history: [{ ts: `${today} ${new Date().toTimeString().slice(0, 5)}`, user: 'Carlos Méndez', action: 'Cotización creada' }],
-    });
-  };
-
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ width: 680, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-        <div className="modal-head">
-          <h3>{t('quotes.newQuote', 'Nueva Cotización')}</h3>
-          <button className="icon-btn" onClick={onClose}><Icon name="close" /></button>
-        </div>
-
-        <div className="modal-body" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 10 }}>{t('common.client', 'CLIENTE').toUpperCase()}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div className="field-group">
-                <label className="field-label">{t('quotes.clientName', 'Nombre / Empresa *')}</label>
-                <input className="field-input" value={client.name} onChange={e => setC('name', e.target.value)} placeholder={t('quotes.clientNamePlaceholder', 'Empresa o persona')} />
-              </div>
-              <div className="field-group">
-                <label className="field-label">NIT</label>
-                <input className="field-input" value={client.nit}
-                  onChange={e => { setC('nit', e.target.value); setNitLookup('idle'); }}
-                  onBlur={lookupNit}
-                  placeholder="0000000-0" />
-                {nitLookup === 'searching' && (
-                  <span className="cfg-hint">{t('quotes.nitSearching', 'Buscando cliente…')}</span>
-                )}
-                {nitLookup === 'found' && (
-                  <span className="cfg-hint" style={{ color: 'var(--success)' }}>
-                    <Icon name="check" size={14} /> {t('quotes.nitFound', 'Cliente existente: datos autocompletados')}
-                  </span>
-                )}
-                {nitLookup === 'new' && (
-                  <span className="cfg-hint" style={{ color: 'var(--warning)' }}>
-                    <Icon name="plus" size={14} /> {t('quotes.nitNew', 'NIT no registrado: se creará el cliente al guardar')}
-                  </span>
-                )}
-              </div>
-              <div className="field-group">
-                <label className="field-label">{t('common.email', 'Correo electrónico')}</label>
-                <input className="field-input" type="email" value={client.email} onChange={e => setC('email', e.target.value)} placeholder="correo@empresa.gt" />
-              </div>
-              <div className="field-group">
-                <label className="field-label">{t('quotes.contact', 'Contacto')}</label>
-                <input className="field-input" value={client.contact} onChange={e => setC('contact', e.target.value)} placeholder={t('quotes.contactPlaceholder', 'Nombre del contacto')} />
-              </div>
-            </div>
-          </div>
-
-          <div className="field-group">
-            <label className="field-label">Proyecto</label>
-            <select className="field-input" value={projectId} onChange={e => setProjectId(e.target.value)}>
-              <option value="">Asignar automáticamente a “Proyecto general”</option>
-              {(projects || []).filter(p => p.clientId == null || p.clientId === client.id).map(project => (
-                <option key={project.id} value={project.id}>{project.code} · {project.name}</option>
-              ))}
-            </select>
-            <div className="cfg-hint">Puedes seleccionar un proyecto existente; si lo dejas automático, se reutiliza el proyecto general de este cliente.</div>
-          </div>
-
-          <div className="field-group" style={{ maxWidth: 220 }}>
-            <label className="field-label">{t('quotes.validityDays', 'Validez (días)')}</label>
-            <input className="field-input" type="number" min="1" max="90" value={validDays}
-              onChange={e => setValidDays(Number(e.target.value))} />
-            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>{t('quotes.expires', 'Vence')}: {fmtDate(validUntil)}</div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 10 }}>{t('quotes.productsServices', 'PRODUCTOS / SERVICIOS')}</div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {[t('common.description', 'Descripción'), t('quotes.qty', 'Cant.'), 'UOM', t('quotes.unitPrice', 'P. unitario'), t('common.discount', 'Desc %'), t('common.total', 'Total'), ''].map((h, i) => (
-                    <th key={i} style={{ padding: '4px 6px', textAlign: i>= 3 && i <= 4 ? 'center' : i === 5 ? 'right' : 'left', fontWeight: 500, color: 'var(--text-2)',
-                      width: [undefined, 60, 60, 100, 60, 100, 28][i] }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map(item => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '4px 6px' }}>
-                      <input className="field-input" style={{ padding: '3px 6px' }} value={item.name}
-                        onChange={e => setItem(item.id, 'name', e.target.value)} placeholder={t('quotes.productOrService', 'Producto o servicio')} />
-                    </td>
-                    <td style={{ padding: '4px 6px' }}>
-                      <input className="field-input" type="number" min="1" style={{ padding: '3px 6px', textAlign: 'center', width: '100%' }}
-                        value={item.qty} onChange={e => setItem(item.id, 'qty', Number(e.target.value))} />
-                    </td>
-                    <td style={{ padding: '4px 6px' }}>
-                      <input className="field-input" style={{ padding: '3px 6px', textAlign: 'center', width: '100%' }}
-                        value={item.uom} onChange={e => setItem(item.id, 'uom', e.target.value)} />
-                    </td>
-                    <td style={{ padding: '4px 6px' }}>
-                      <input className="field-input" type="number" min="0" step="0.01" style={{ padding: '3px 6px', textAlign: 'right', width: '100%' }}
-                        value={item.unitPrice} onChange={e => setItem(item.id, 'unitPrice', Number(e.target.value))} />
-                    </td>
-                    <td style={{ padding: '4px 6px' }}>
-                      <input className="field-input" type="number" min="0" max="100" style={{ padding: '3px 6px', textAlign: 'center', width: '100%' }}
-                        value={item.discount} onChange={e => setItem(item.id, 'discount', Number(e.target.value))} />
-                    </td>
-                    <td className="num" style={{ padding: '4px 6px' }}>
-                      {Q(item.qty * item.unitPrice * (1 - item.discount / 100))}
-                    </td>
-                    <td style={{ padding: '4px 2px' }}>
-                      <button className="icon-btn" onClick={() => removeItem(item.id)} disabled={items.length === 1}>
-                        <Icon name="close" size={11} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <Button icon="plus" variant="ghost" style={{ marginTop: 8 }} onClick={addItem}>{t('quotes.addLine', 'Agregar línea')}
-            </Button>
-          </div>
-
-          <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '12px 16px', alignSelf: 'flex-end', minWidth: 260 }}>
-            {[[t('quotes.subtotalNoIva', 'Subtotal (sin IVA)'), Q(subtotal)], [`${t('common.iva', 'IVA')} (${taxRate}%)`, Q(iva)]].map(([l, v]) => (
-              <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, color: 'var(--text-2)' }}>
-                <span>{l}</span><span className="mono">{v}</span>
-              </div>
-            ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, fontSize: 14, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-              <span>{t('common.total', 'TOTAL').toUpperCase()}</span><span className="mono">{Q(total)}</span>
-            </div>
-          </div>
-
-          <div className="field-group">
-            <label className="field-label">{t('quotes.notesConditions', 'Notas / condiciones')}</label>
-            <textarea className="field-input" rows={2} style={{ resize: 'none' }} value={notes}
-              onChange={e => setNotes(e.target.value)} placeholder={t('quotes.notesPlaceholder', 'Condiciones de pago, entrega, observaciones…')} />
-          </div>
-        </div>
-
-        <div className="modal-foot">
-          <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
-          <Button icon="check" variant="accent" disabled={!canSave} onClick={handleSave}>{t('quotes.createQuote', 'Crear cotización')}</Button>
-        </div>
-      </div>
-    </div>
-  );
-}
+const newRfqId = () => `RFQ-${Date.now()}`;
 
 // ── Modal: nueva solicitud de cotización a proveedor (RFQ) ────────────────────
 
@@ -379,8 +176,18 @@ export default function Quotes({ pushToast }) {
   // — cotizaciones a clientes —
   const { items: quotes, reload: reloadQuotes } = useClientQuotes();
   const [selected,     setSelected]     = useState(null);
+  const [selectedPlanBalanced, setSelectedPlanBalanced] = useState(null);
+  const [chargesVersion, setChargesVersion] = useState(0);
+  const [manualChargesTotal, setManualChargesTotal] = useState(0);
+  const handlePlanBalanceChange = useCallback((balanced) => setSelectedPlanBalanced(balanced), []);
+  const handleChargesChange = useCallback(() => setChargesVersion((version) => version + 1), []);
+  const handleChargeSummary = useCallback((summary) => {
+    setManualChargesTotal(Number(summary?.fixedTotal || 0) + Number(summary?.percentTotal || 0));
+  }, []);
   const [drawerTab,    setDrawerTab]    = useState('detail');
   const [showCreate,   setShowCreate]   = useState(Boolean(location.state?.newQuoteFor));
+  // Proyecto elegido para el constructor de cotización desde materiales.
+  const [builderProject, setBuilderProject] = useState(null);
 
   // Limpia el estado de la ruta tras abrir: si no, recargar o volver atrás
   // reabriría el diálogo con el mismo cliente.
@@ -401,6 +208,8 @@ export default function Quotes({ pushToast }) {
   const switchType = (type) => {
     setQuoteType(type);
     setSelected(null);
+    setSelectedPlanBalanced(null);
+    setManualChargesTotal(0);
     setSelectedRfq(null);
     setStatusFilter('');
     setSearch('');
@@ -436,30 +245,26 @@ export default function Quotes({ pushToast }) {
     } catch (err) { pushToast('No se pudo actualizar el estado: ' + err.message, 'danger'); }
   };
 
-  const submitQuote = async (draft) => {
-    try {
-      await apiCreateQuote({
-        partyType: 'client',
-        projectId: draft.projectId,
-        // clientId cuando el NIT ya existía; si no, el backend crea el cliente
-        // con estos datos. Sin uno u otro la cotización no se puede convertir.
-        clientId: draft.client.id ?? null,
-        clientName: draft.client.name, clientNit: draft.client.nit,
-        clientEmail: draft.client.email, clientContact: draft.client.contact,
-        quoteDate: draft.date, validUntil: draft.validUntil,
-        createdBy: draft.createdBy, notes: draft.notes,
-        items: draft.items.map(i => ({ itemName: i.name, uom: i.uom, quantity: i.qty, unitPrice: i.unitPrice, discount: i.discount })),
-      });
-      setShowCreate(false);
-      pushToast('Cotización creada como borrador', 'success');
-      reloadQuotes();
-    } catch (err) { pushToast('No se pudo crear la cotización: ' + err.message, 'danger'); }
-  };
   const openDrawer  = async (q) => {
+    setSelectedPlanBalanced(null);
+    setManualChargesTotal(0);
     setSelected(q); setDrawerTab('detail');
     try { setSelected(mapQuote(await getQuote(q.backendId))); } catch { /* deja el de la lista */ }
   };
   const selQuote    = selected;
+
+  // Abrir una cotización concreta al llegar desde "Ver cotización" en el
+  // proyecto: se navega con state.openQuoteId (el backendId de la cotización).
+  useEffect(() => {
+    const openId = location.state?.openQuoteId;
+    if (!openId || !quotes.length) return;
+    const row = quotes.find((q) => q.backendId === openId);
+    if (row) {
+      openDrawer(row);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, quotes]);
 
   // — KPIs proveedores —
   const rfqInProcess = rfqs.filter(r => ['solicitada', 'recibida'].includes(r.status));
@@ -739,10 +544,23 @@ export default function Quotes({ pushToast }) {
 
             <div className="drawer-body">
               {drawerTab === 'detail' && (() => {
-                const { lines, subtotal, iva, total } = computeTotals(selQuote.items, taxRate);
+                const { lines, total } = computeTotals(selQuote.items, taxRate);
+                const operatingCostSubtotal = total + manualChargesTotal;
+                const profitAmount = Number(selQuote.profitAmount || 0);
+                const operationalSubtotal = operatingCostSubtotal + profitAmount;
+                const operationalIva = operationalSubtotal * (taxRate / 100);
+                const operationalTotal = operationalSubtotal + operationalIva;
                 return (
                   <>
-                    <div className="detail-grid" style={{ marginBottom: 16 }}>
+                    <section className="quote-section quote-section--detail">
+                      <div className="quote-section-heading">
+                        <div>
+                          <div className="quote-section-title">{t('quotes.detailSection', 'Detalle de la cotización')}</div>
+                          <div className="quote-section-description">{t('quotes.detailSectionHint', 'Productos, cargos y resumen fiscal')}</div>
+                        </div>
+                      </div>
+                      <div className="quote-section-card quote-section-card--detail-core">
+                        <div className="detail-grid" style={{ marginBottom: 16 }}>
                       {[
                         [t('common.client', 'Cliente'),      selQuote.client.name],
                         ['NIT',          selQuote.client.nit || '—'],
@@ -756,6 +574,17 @@ export default function Quotes({ pushToast }) {
                           <span style={{ fontSize: 12, textAlign: 'right' }}>{v}</span>
                         </div>
                       ))}
+                      {selQuote.projectId && (
+                        <div className="detail-row">
+                          <span className="detail-label">{t('quotes.project', 'Proyecto')}</span>
+                          <span style={{ fontSize: 12, textAlign: 'right' }}>
+                            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/projects', { state: { openProjectId: selQuote.projectId } }); }}
+                              style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                              {t('quotes.goToProject', 'Ir al proyecto')} <Icon name="chevronRight" size={13} />
+                            </a>
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 8 }}>{t('common.product', 'PRODUCTOS').toUpperCase()}</div>
@@ -786,23 +615,42 @@ export default function Quotes({ pushToast }) {
                       </tbody>
                     </table>
 
-                    <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginBottom: 14 }}>
-                      {[[t('quotes.subtotalNoIva', 'Subtotal sin IVA'), Q(subtotal)], [`${t('common.iva', 'IVA')} (${taxRate}%)`, Q(iva)]].map(([l, v]) => (
-                        <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5, color: 'var(--text-2)' }}>
-                          <span>{l}</span><span className="mono">{v}</span>
-                        </div>
-                      ))}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, fontSize: 14, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-                        <span>{t('common.total', 'TOTAL').toUpperCase()}</span><span className="mono">{Q(total)}</span>
-                      </div>
-                    </div>
-
                     {selQuote.notes && (
                       <div style={{ fontSize: 12, color: 'var(--text-2)', background: 'var(--surface-2)', padding: '10px 14px', borderRadius: 'var(--r-md)', borderLeft: '3px solid var(--border)' }}>
                         <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)', marginBottom: 4, letterSpacing: '0.05em' }}>{t('common.notes', 'NOTAS').toUpperCase()}</div>
                         {selQuote.notes}
                       </div>
                     )}
+                      </div>
+
+                    <QuoteChargesPanel
+                      quoteId={selQuote.backendId}
+                      canEdit={selQuote.status === 'borrador'}
+                      onChargesChange={handleChargesChange}
+                      onSummaryChange={handleChargeSummary}
+                      pushToast={pushToast}
+                    />
+
+                    <div className="quote-fiscal-card" style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginTop: 14, marginBottom: 14 }}>
+                      {[[t('projects.operatingCosts', 'Costos operativos'), Q(operatingCostSubtotal)], [t('projects.profit', 'Ganancia'), Q(profitAmount)], [t('quotes.subtotalNoIva', 'Subtotal sin IVA'), Q(operationalSubtotal)], [`${t('common.iva', 'IVA')} (${taxRate}%)`, Q(operationalIva)]].map(([l, v]) => (
+                        <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5, color: 'var(--text-2)' }}>
+                          <span>{l}</span><span className="mono">{v}</span>
+                        </div>
+                      ))}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, fontSize: 14, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                        <span>{t('common.total', 'TOTAL').toUpperCase()}</span><span className="mono">{Q(operationalTotal)}</span>
+                      </div>
+                    </div>
+
+                    </section>
+
+                    <QuotePlanPanel
+                      quote={selQuote}
+                      canEdit={selQuote.status !== 'rechazada' && selQuote.status !== 'cancelada'}
+                      chargesVersion={chargesVersion}
+                      onPlanBalanceChange={handlePlanBalanceChange}
+                      pushToast={pushToast}
+                    />
                   </>
                 );
               })()}
@@ -829,7 +677,10 @@ export default function Quotes({ pushToast }) {
               <Button variant="ghost" onClick={() => setSelected(null)}>{t('common.close', 'Cerrar')}</Button>
               <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
                 {selQuote.status === 'borrador' && (
-                  <Button onClick={() => { updateStatus(selQuote.id, 'enviada', 'Enviada al cliente por correo electrónico', 'Cotización enviada'); }}>
+                  <Button
+                    disabled={selectedPlanBalanced !== true}
+                    title={selectedPlanBalanced === true ? '' : t('quotes.sendRequiresBalancedPlan', 'Completa el plan de pagos para enviar la cotización')}
+                    onClick={() => { updateStatus(selQuote.id, 'enviada', 'Enviada al cliente por correo electrónico', 'Cotización enviada'); }}>
                     {t('quotes.sendToClient', 'Enviar al cliente')}
                   </Button>
                 )}
@@ -1018,9 +869,46 @@ export default function Quotes({ pushToast }) {
         </div>
       )}
 
-      {showCreate    && <CreateModal    onSave={submitQuote} initialClient={prefillClient}
-                                        projects={projects} initialProjectId={location.state?.projectId}
-                                        onClose={() => { setShowCreate(false); setPrefillClient(null); }} />}
+      {/* Paso 1: elegir el proyecto. La cotización se arma desde SUS materiales,
+          así que primero se selecciona el proyecto y luego se abre el constructor. */}
+      {showCreate && !builderProject && (
+        <div className="modal-backdrop" onClick={() => { setShowCreate(false); setPrefillClient(null); }}>
+          <div className="modal" style={{ width: 460 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>{t('quotes.pickProject', 'Nueva cotización · elegir proyecto')}</h3>
+              <button className="icon-btn" onClick={() => { setShowCreate(false); setPrefillClient(null); }}><Icon name="close" /></button>
+            </div>
+            <div className="modal-body">
+              <div className="field-group">
+                <label className="field-label">{t('quotes.project', 'Proyecto')}</label>
+                <select className="field-input" defaultValue=""
+                  onChange={(e) => {
+                    const p = (projects || []).find((x) => String(x.id) === e.target.value);
+                    if (p) setBuilderProject(p);
+                  }}>
+                  <option value="" disabled>{t('common.select', 'Seleccionar…')}</option>
+                  {(projects || []).map((p) => (
+                    <option key={p.id} value={p.id}>{p.code} · {p.name}</option>
+                  ))}
+                </select>
+                <div className="cfg-hint">{t('quotes.pickProjectHint', 'La cotización se compone de los materiales planificados del proyecto.')}</div>
+              </div>
+            </div>
+            <div className="modal-foot">
+              <Button variant="ghost" onClick={() => { setShowCreate(false); setPrefillClient(null); }}>{t('common.cancel', 'Cancelar')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Paso 2: constructor desde materiales del proyecto elegido. */}
+      {showCreate && builderProject && (
+        <QuoteBuilderModal
+          project={builderProject}
+          pushToast={pushToast}
+          onClose={() => { setShowCreate(false); setBuilderProject(null); setPrefillClient(null); }}
+          onCreated={() => { setShowCreate(false); setBuilderProject(null); setPrefillClient(null); reloadQuotes(); }}
+        />
+      )}
       {showCreateRfq && <CreateRFQModal onSave={submitRfq}   onClose={() => setShowCreateRfq(false)} />}
     </div>
   );
