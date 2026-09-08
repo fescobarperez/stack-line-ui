@@ -30,3 +30,5 @@ export const renameProjectMaterialGroup = (projectId, groupId, name) =>
 // uom, sellPrice, materialIds[] }. Devuelve { quoteId }.
 export const createProjectQuoteFromMaterials = (projectId, payload) =>
   api.post(`/api/projects/${projectId}/quotes`, payload);
+export const appendProjectQuoteLines = (projectId, quoteId, payload) =>
+  api.post(`/api/projects/${projectId}/quotes/${quoteId}/lines`, payload);

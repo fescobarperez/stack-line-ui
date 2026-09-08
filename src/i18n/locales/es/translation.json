@@ -526,7 +526,15 @@
   "quotes": {
     "title": "Cotizaciones / Pre-ventas",
     "newQuote": "Nueva cotización",
-    "searchPlaceholder": "No. cotización, cliente…"
+    "searchPlaceholder": "No. cotización, cliente…",
+    "generatePdf": "Generar PDF",
+    "generatingPdf": "Generando PDF…",
+    "pdfReady": "PDF generado. Revisa la ventana de impresión para guardarlo.",
+    "pdfBlocked": "Permite las ventanas emergentes para generar el PDF",
+    "expirationRequiredBeforeActions": "Define una fecha de expiración vigente antes de enviar o generar el PDF.",
+    "expirationRequiredBeforeSend": "No se puede enviar: define una fecha de expiración vigente.",
+    "pdfExpirationBlocked": "No se puede generar el PDF: define una fecha de expiración vigente.",
+    "pdfFailed": "No se pudo generar el PDF: "
   },
 
   "promotions": {
