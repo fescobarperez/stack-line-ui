@@ -23,6 +23,7 @@ export const listQuotes = ({ partyType, ...opts } = {}) =>
   api.get(`/api/quotes?${paged(opts)}${partyType ? `&partyType=${partyType}` : ''}`);
 export const getQuote = (id) => api.get(`/api/quotes/${id}`);
 export const createQuote = (data) => api.post('/api/quotes', data);
+export const updateQuote = (id, data) => api.put(`/api/quotes/${id}`, data);
 export const updateQuoteStatus = (id, data) => api.put(`/api/quotes/${id}/status`, data);
 
 // Gastos/cargos de la cotización (fixed/percent). Cada llamada devuelve el

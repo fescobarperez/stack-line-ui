@@ -8,14 +8,23 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import { useClientQuotes, useSupplierRfqs, mapQuote, mapRfq } from '../hooks/useQuotes.js';
-import { getQuote, createQuote as apiCreateQuote, updateQuoteStatus } from '../api/wave2.js';
+import { getQuote, getQuoteCharges, createQuote as apiCreateQuote, updateQuoteStatus } from '../api/wave2.js';
+import { sessionCompany } from '../api/auth.js';
+import { renderQuotePdfWindow } from '../lib/quotePdf.js';
 import QuoteBuilderModal from '../components/QuoteBuilderModal.jsx';
+import QuoteDraftEditModal from '../components/QuoteDraftEditModal.jsx';
 import QuoteChargesPanel from '../components/QuoteChargesPanel.jsx';
 import QuotePlanPanel from '../components/QuotePlanPanel.jsx';
 
 const Q       = v  => `Q ${Number(v).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmtDate = d  => new Date(d + 'T00:00').toLocaleDateString('es-GT', { day: '2-digit', month: 'short', year: 'numeric' });
-const today   = '2026-05-24';
+const fmtDate = d  => d
+  ? new Date(d + 'T00:00').toLocaleDateString('es-GT', { day: '2-digit', month: 'short', year: 'numeric' })
+  : '—';
+const today   = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+})();
+const quoteHasCurrentExpiration = quote => Boolean(quote?.validUntil) && quote.validUntil >= today;
 
 // — Cotizaciones a clientes —
 const STATUS_LABEL = { borrador: 'Borrador', enviada: 'Enviada', aprobada: 'Aprobada', rechazada: 'Rechazada', vencida: 'Vencida', convertida: 'Convertida' };
@@ -188,6 +197,8 @@ export default function Quotes({ pushToast }) {
   const [showCreate,   setShowCreate]   = useState(Boolean(location.state?.newQuoteFor));
   // Proyecto elegido para el constructor de cotización desde materiales.
   const [builderProject, setBuilderProject] = useState(null);
+  const [showDraftEdit, setShowDraftEdit] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   // Limpia el estado de la ruta tras abrir: si no, recargar o volver atrás
   // reabriría el diálogo con el mismo cliente.
@@ -237,6 +248,10 @@ export default function Quotes({ pushToast }) {
   const updateStatus = async (id, newStatus, entry, okMsg, okTone = 'success') => {
     const q = quotes.find(x => x.id === id);
     if (!q) { pushToast(t('quotes.notFound', 'No se encontró la cotización'), 'danger'); return; }
+    if (newStatus === 'enviada' && !quoteHasCurrentExpiration(q)) {
+      pushToast(t('quotes.expirationRequiredBeforeSend', 'No se puede enviar: define una fecha de expiración vigente.'), 'danger');
+      return;
+    }
     try {
       const full = await updateQuoteStatus(q.backendId, { status: newStatus, note: entry, actor: '' });
       setSelected(mapQuote(full));
@@ -251,7 +266,39 @@ export default function Quotes({ pushToast }) {
     setSelected(q); setDrawerTab('detail');
     try { setSelected(mapQuote(await getQuote(q.backendId))); } catch { /* deja el de la lista */ }
   };
+
+  const handleGeneratePdf = async () => {
+    if (!selQuote || generatingPdf) return;
+    if (!quoteHasCurrentExpiration(selQuote)) {
+      pushToast(t('quotes.pdfExpirationBlocked', 'No se puede generar el PDF: define una fecha de expiración vigente.'), 'danger');
+      return;
+    }
+    const popup = window.open('', '_blank', 'width=920,height=900');
+    if (!popup) {
+      pushToast(t('quotes.pdfBlocked', 'Permite las ventanas emergentes para generar el PDF'), 'danger');
+      return;
+    }
+    popup.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Generando PDF…</title></head><body style="font-family:system-ui;padding:32px;color:#555">Generando PDF…</body></html>');
+    popup.document.close();
+    setGeneratingPdf(true);
+    try {
+      const charges = await getQuoteCharges(selQuote.backendId);
+      renderQuotePdfWindow(popup, selQuote, {
+        company: sessionCompany(),
+        charges,
+        taxRate: Number(selQuote.taxRate || taxRate || 12),
+      });
+      pushToast(t('quotes.pdfReady', 'PDF generado. Revisa la ventana de impresión para guardarlo.'), 'success');
+    } catch (err) {
+      popup.close();
+      pushToast(t('quotes.pdfFailed', 'No se pudo generar el PDF: ') + err.message, 'danger');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   const selQuote    = selected;
+  const selectedQuoteExpirationValid = quoteHasCurrentExpiration(selQuote);
 
   // Abrir una cotización concreta al llegar desde "Ver cotización" en el
   // proyecto: se navega con state.openQuoteId (el backendId de la cotización).
@@ -675,14 +722,32 @@ export default function Quotes({ pushToast }) {
 
             <div className="drawer-foot" style={{ flexWrap: 'wrap', gap: 8 }}>
               <Button variant="ghost" onClick={() => setSelected(null)}>{t('common.close', 'Cerrar')}</Button>
+              <Button
+                icon="download"
+                variant="tonal"
+                disabled={generatingPdf || !selectedQuoteExpirationValid}
+                title={selectedQuoteExpirationValid ? '' : t('quotes.expirationRequiredBeforeActions', 'Define una fecha de expiración vigente antes de enviar o generar el PDF.')}
+                onClick={handleGeneratePdf}
+              >
+                {generatingPdf ? t('quotes.generatingPdf', 'Generando PDF…') : t('quotes.generatePdf', 'Generar PDF')}
+              </Button>
               <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
                 {selQuote.status === 'borrador' && (
-                  <Button
-                    disabled={selectedPlanBalanced !== true}
-                    title={selectedPlanBalanced === true ? '' : t('quotes.sendRequiresBalancedPlan', 'Completa el plan de pagos para enviar la cotización')}
-                    onClick={() => { updateStatus(selQuote.id, 'enviada', 'Enviada al cliente por correo electrónico', 'Cotización enviada'); }}>
-                    {t('quotes.sendToClient', 'Enviar al cliente')}
-                  </Button>
+                  <>
+                    <Button onClick={() => setShowDraftEdit(true)}>
+                      {t('quotes.editDraft', 'Editar borrador')}
+                    </Button>
+                    <Button
+                      disabled={selectedPlanBalanced !== true || !selectedQuoteExpirationValid}
+                      title={!selectedQuoteExpirationValid
+                        ? t('quotes.expirationRequiredBeforeActions', 'Define una fecha de expiración vigente antes de enviar o generar el PDF.')
+                        : selectedPlanBalanced === true
+                          ? ''
+                          : t('quotes.sendRequiresBalancedPlan', 'Completa el plan de pagos para enviar la cotización')}
+                      onClick={() => { updateStatus(selQuote.id, 'enviada', 'Enviada al cliente por correo electrónico', 'Cotización enviada'); }}>
+                      {t('quotes.sendToClient', 'Enviar al cliente')}
+                    </Button>
+                  </>
                 )}
                 {selQuote.status === 'enviada' && (
                   <>
@@ -711,6 +776,22 @@ export default function Quotes({ pushToast }) {
             </div>
           </div>
         </div>
+      )}
+
+      {showDraftEdit && selQuote && selQuote.status === 'borrador' && (
+        <QuoteDraftEditModal
+          quote={selQuote}
+          pushToast={pushToast}
+          onClose={() => setShowDraftEdit(false)}
+          onSaved={(updated) => {
+            const next = mapQuote(updated);
+            setSelected(next);
+            setShowDraftEdit(false);
+            setSelectedPlanBalanced(null);
+            setChargesVersion((version) => version + 1);
+            reloadQuotes();
+          }}
+        />
       )}
 
       {/* ── Drawer: RFQ a proveedor ─────────────────────────────────────────── */}

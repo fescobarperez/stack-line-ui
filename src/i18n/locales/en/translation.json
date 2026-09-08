@@ -526,7 +526,15 @@
   "quotes": {
     "title": "Quotes / Pre-sales",
     "newQuote": "New quote",
-    "searchPlaceholder": "Quote no., client…"
+    "searchPlaceholder": "Quote no., client…",
+    "generatePdf": "Generate PDF",
+    "generatingPdf": "Generating PDF…",
+    "pdfReady": "PDF generated. Check the print window to save it.",
+    "pdfBlocked": "Allow pop-up windows to generate the PDF",
+    "expirationRequiredBeforeActions": "Set a current expiration date before sending or generating the PDF.",
+    "expirationRequiredBeforeSend": "Cannot send: set a current expiration date.",
+    "pdfExpirationBlocked": "Cannot generate the PDF: set a current expiration date.",
+    "pdfFailed": "Could not generate the PDF: "
   },
 
   "promotions": {

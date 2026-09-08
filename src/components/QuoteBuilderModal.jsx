@@ -10,8 +10,8 @@ import Icon from '../components/Icon.jsx';
 import TreeView from './TreeView.jsx';
 import treeStyles from './TreeView.module.css';
 import useTreeSelection from '../hooks/useTreeSelection.js';
-import { getProjectMaterials, createProjectQuoteFromMaterials } from '../api/projectMaterials.js';
-import { addQuoteCharge } from '../api/wave2.js';
+import { getProjectMaterials, createProjectQuoteFromMaterials, appendProjectQuoteLines } from '../api/projectMaterials.js';
+import { addQuoteCharge, listQuotes } from '../api/wave2.js';
 import { useTranslation } from 'react-i18next';
 
 const Q = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -21,6 +21,9 @@ const matAmount = (m) => Number(m.estimatedAmount || 0);
 export default function QuoteBuilderModal({ project, onClose, onCreated, pushToast }) {
   const { t } = useTranslation();
   const [plan, setPlan] = useState(null);
+  const [draftQuotes, setDraftQuotes] = useState([]);
+  const [targetQuoteId, setTargetQuoteId] = useState('new');
+  const [targetLineId, setTargetLineId] = useState('new');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedKeys, setSelectedKeys] = useState([]);
@@ -29,6 +32,11 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
   // Cargos manuales que se agregarán tras crear la cotización.
   // { key, calcType: 'fixed'|'percent', category, description, value }
   const [charges, setCharges] = useState([]);
+  const [validUntil, setValidUntil] = useState('');
+  const today = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
   const [profit, setProfit] = useState({ calcType: 'fixed', value: '' });
   const setProfitField = (k, v) => setProfit((f) => ({ ...f, [k]: v }));
   const [charge, setCharge] = useState({ calcType: 'fixed', category: '', description: '', value: '' });
@@ -49,6 +57,14 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
       .then((p) => { if (alive) { setPlan(p); setError(null); } })
       .catch((err) => { if (alive) setError(err); })
       .finally(() => { if (alive) setLoading(false); });
+    listQuotes({ partyType: 'client', size: 200 })
+      .then((page) => {
+        if (!alive) return;
+        const rows = Array.isArray(page) ? page : (page?.content || []);
+        setDraftQuotes(rows.filter((quote) => Number(quote.projectId) === Number(project.id)
+          && ['borrador', 'draft'].includes(String(quote.status).toLowerCase())));
+      })
+      .catch(() => { if (alive) setDraftQuotes([]); });
     return () => { alive = false; };
   }, [project.id]);
 
@@ -126,6 +142,7 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
     const cost = ids.reduce((s, id) => s + matAmount(allMaterials.get(id) || {}), 0);
     setLines((prev) => [...prev, {
       key: Date.now() + Math.random(),
+      targetItemId: null,
       description: description || '',
       sourceGroupId: sourceGroupId ?? null,
       sellPrice: cost,
@@ -136,9 +153,57 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
     setSelectedKeys([]);
   };
 
+  const addMaterialsToLine = (lineKey, materialIds) => {
+    const ids = materialIds.filter((id) => isAvailable(allMaterials.get(id) || { quoteId: 1 }));
+    if (ids.length === 0) return;
+    const addedCost = ids.reduce((s, id) => s + matAmount(allMaterials.get(id) || {}), 0);
+    setLines((prev) => prev.map((line) => String(line.key) === String(lineKey) ? {
+      ...line,
+      sellPrice: Number(line.sellPrice || 0) + addedCost,
+      cost: Number(line.cost || 0) + addedCost,
+      materialIds: [...line.materialIds, ...ids],
+      materialLabels: [...line.materialLabels, ...ids.map((id) => allMaterials.get(id)?.productName || `#${id}`)],
+    } : line));
+    setSelectedKeys([]);
+  };
+
+  const addMaterialsToDraftLine = (itemId, materialIds) => {
+    const draftItem = (draftQuotes.find((draft) => String(draft.id) === String(targetQuoteId))?.items || [])
+      .find((item) => String(item.id) === String(itemId));
+    if (!draftItem) return;
+    const pendingKey = `draft:${itemId}`;
+    const existingPending = lines.find((line) => line.key === pendingKey);
+    if (existingPending) {
+      addMaterialsToLine(pendingKey, materialIds);
+      return;
+    }
+    const ids = materialIds.filter((id) => isAvailable(allMaterials.get(id) || { quoteId: 1 }));
+    if (ids.length === 0) return;
+    const addedCost = ids.reduce((s, id) => s + matAmount(allMaterials.get(id) || {}), 0);
+    setLines((prev) => [...prev, {
+      key: pendingKey,
+      targetItemId: Number(itemId),
+      description: draftItem.productName || `Línea ${itemId}`,
+      sourceGroupId: null,
+      sellPrice: addedCost,
+      cost: addedCost,
+      materialIds: ids,
+      materialLabels: ids.map((id) => allMaterials.get(id)?.productName || `#${id}`),
+    }]);
+    setSelectedKeys([]);
+  };
+
   const addSelectionAsLine = () => {
     const ids = selectedMaterialIds;
     if (ids.length === 0) return;
+    if (targetLineId.startsWith('draft:')) {
+      addMaterialsToDraftLine(targetLineId.slice('draft:'.length), ids);
+      return;
+    }
+    if (targetLineId.startsWith('local:')) {
+      addMaterialsToLine(targetLineId.slice('local:'.length), ids);
+      return;
+    }
     // Si todos son de una misma carpeta, esa es el origen (default de descripción).
     const groupIds = [...new Set(ids.map((id) => allMaterials.get(id)?.groupId).filter((g) => g != null))];
     const sole = groupIds.length === 1 ? groupIds[0] : null;
@@ -159,27 +224,36 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
   const removeLine = (key) => setLines((prev) => prev.filter((l) => l.key !== key));
 
   const total = lines.reduce((s, l) => s + Number(l.sellPrice || 0), 0);
-  const canSave = lines.length > 0 && lines.every((l) => Number(l.sellPrice) >= 0 && l.materialIds.length > 0);
+  const appendingToDraft = targetQuoteId !== 'new';
+  const canSave = (appendingToDraft || (Boolean(validUntil) && validUntil >= today))
+    && lines.length > 0
+    && lines.every((l) => Number(l.sellPrice) >= 0 && l.materialIds.length > 0);
 
   const save = async () => {
     if (!canSave) return;
     setBusy(true);
     try {
       const payload = {
+        ...(appendingToDraft ? {} : { quoteDate: today, validUntil }),
         lines: lines.map((l) => ({
           description: (l.description || '').trim() || null,
           sourceGroupId: l.sourceGroupId ?? null,
+          targetItemId: l.targetItemId ?? null,
           uom: 'servicio',
           sellPrice: Number(l.sellPrice) || 0,
           materialIds: l.materialIds,
         })),
-        profitCalcType: profit.calcType,
-        profitValue: Number(profit.value) || 0,
+        ...(appendingToDraft ? {} : {
+          profitCalcType: profit.calcType,
+          profitValue: Number(profit.value) || 0,
+        }),
       };
-      const res = await createProjectQuoteFromMaterials(project.id, payload);
+      const res = appendingToDraft
+        ? await appendProjectQuoteLines(project.id, Number(targetQuoteId), payload)
+        : await createProjectQuoteFromMaterials(project.id, payload);
       const quoteId = res?.quoteId;
       // Persistir los cargos manuales capturados en el builder.
-      if (quoteId && charges.length) {
+      if (!appendingToDraft && quoteId && charges.length) {
         for (const c of charges) {
           await addQuoteCharge(quoteId, {
             calcType: c.calcType,
@@ -189,7 +263,9 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
           });
         }
       }
-      pushToast?.(t('quotes.builderCreated', 'Cotización creada desde materiales'), 'success');
+      pushToast?.(appendingToDraft
+        ? t('quotes.linesAddedToDraft', 'Líneas agregadas al borrador')
+        : t('quotes.builderCreated', 'Cotización creada desde materiales'), 'success');
       onCreated?.(quoteId);
     } catch (err) {
       pushToast?.(t('quotes.builderFailed', 'No se pudo crear la cotización: ') + err.message, 'danger');
@@ -238,7 +314,7 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ width: 900, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h3>{t('quotes.builderTitle', 'Nueva cotización desde materiales')} · {project.code}</h3>
+          <h3>{appendingToDraft ? t('quotes.appendDraftTitle', 'Agregar líneas a cotización') : t('quotes.builderTitle', 'Nueva cotización desde materiales')} · {project.code}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="close" /></button>
         </div>
 
@@ -266,8 +342,28 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
                 <div style={{ fontSize: 12, marginBottom: 6 }}>
                   {selectedMaterialIds.length} {t('quotes.selected', 'seleccionados')} · {t('quotes.cost', 'costo')} {Q(selectedCost)}
                 </div>
+                <div className="field-group" style={{ marginBottom: 8 }}>
+                  <label className="field-label">{t('quotes.lineDestination', 'Línea destino')}</label>
+                  <select
+                    className="field-input"
+                    value={targetLineId}
+                    onChange={(e) => setTargetLineId(e.target.value)}
+                  >
+                    <option value="new">{t('quotes.createNewLine', 'Crear una línea nueva')}</option>
+                    {appendingToDraft && (draftQuotes.find((draft) => String(draft.id) === String(targetQuoteId))?.items || []).map((item) => (
+                      <option key={`draft:${item.id}`} value={`draft:${item.id}`}>
+                        {t('quotes.addToLine', 'Agregar a')} · {item.productName || `Línea ${item.id}`}
+                      </option>
+                    ))}
+                    {lines.map((line, index) => (
+                      <option key={`local:${line.key}`} value={`local:${line.key}`}>
+                        {t('quotes.addToLine', 'Agregar a')} · {line.description || `${t('quotes.line', 'Línea')} ${index + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <Button icon="plus" variant="accent" onClick={addSelectionAsLine}>
-                  {t('quotes.makeLine', 'Crear línea con la selección')}
+                  {targetLineId === 'new' ? t('quotes.makeLine', 'Crear línea con la selección') : t('quotes.addMaterialsToLine', 'Agregar materiales a la línea')}
                 </Button>
               </div>
             )}
@@ -275,6 +371,34 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
 
           {/* Líneas de la cotización */}
           <div>
+            <div className="field-group" style={{ marginBottom: 16 }}>
+              <label className="field-label">{t('quotes.lineDestination', 'Destino de las líneas')}</label>
+              <select className="field-input" value={targetQuoteId} onChange={(e) => { setTargetQuoteId(e.target.value); setTargetLineId('new'); }}>
+                <option value="new">{t('quotes.createNewQuote', 'Crear una cotización nueva')}</option>
+                {draftQuotes.map((draft) => (
+                  <option key={draft.id} value={draft.id}>{draft.docNumber} · {draft.clientName || 'Borrador'}</option>
+                ))}
+              </select>
+            </div>
+            {!appendingToDraft && (
+              <div className="field-group" style={{ marginBottom: 16 }}>
+                <label className="field-label">{t('quotes.validUntil', 'Fecha de expiración')} *</label>
+                <input
+                  className="field-input"
+                  type="date"
+                  value={validUntil}
+                  min={today}
+                  onChange={(e) => setValidUntil(e.target.value)}
+                  required
+                />
+                <div className="cfg-hint">{t('quotes.validUntilHint', 'Después de esta fecha la cotización ya no será válida para el cliente.')}</div>
+              </div>
+            )}
+            {appendingToDraft && (
+              <div className="cfg-hint" style={{ marginBottom: 16 }}>
+                {t('quotes.appendDraftHint', 'Las líneas se agregarán al borrador seleccionado y conservarán su fecha de expiración.')}
+              </div>
+            )}
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: 'var(--muted)', marginBottom: 8 }}>
               {t('quotes.lines', 'LÍNEAS DE LA COTIZACIÓN')}
             </div>
@@ -308,7 +432,8 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
               </div>
             )}
 
-            <div style={{ marginTop: 16, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+            {!appendingToDraft && (
+              <div style={{ marginTop: 16, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
               <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: 'var(--muted)', marginBottom: 8 }}>
                 {t('quotes.companyProfit', 'GANANCIA DE LA EMPRESA')}
               </div>
@@ -319,7 +444,6 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
                 </select>
                 <input className="field-input mono" type="number" min="0" step="0.01" style={{ width: 120 }} value={profit.value} onChange={(e) => setProfitField('value', e.target.value)} placeholder={profit.calcType === 'percent' ? '%' : 'Q'} />
               </div>
-            </div>
 
             {/* Costos operativos adicionales */}
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: 'var(--muted)', margin: '16px 0 8px' }}>
@@ -343,13 +467,15 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
                 value={charge.value} onChange={(e) => setCh('value', e.target.value)} />
               <Button icon="plus" onClick={addCharge}>{t('common.add', 'Agregar')}</Button>
             </div>
+            </div>
+            )}
           </div>
         </div>
 
         <div className="modal-foot">
           <Button variant="ghost" onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
           <Button icon="check" variant="accent" disabled={!canSave || busy} onClick={save}>
-            {t('quotes.createQuote', 'Crear cotización')}
+            {appendingToDraft ? t('quotes.appendLines', 'Agregar líneas') : t('quotes.createQuote', 'Crear cotización')}
           </Button>
         </div>
       </div>
