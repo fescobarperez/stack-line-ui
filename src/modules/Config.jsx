@@ -3,12 +3,13 @@ import React, { useState, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import { useTranslation } from 'react-i18next';
-import { listSettings, putSetting } from '../api/wave2.js';
+import { listSettings, putSetting, uploadCompanyLogo } from '../api/wave2.js';
 
 // Clave en company_settings de cada campo. Lo que no esté aquí no se persiste.
 // `tax.iva_rate` es la que consume TaxService en el backend.
 const SETTING_KEYS = {
   nit: 'company.nit', address: 'company.address', phone: 'company.phone', email: 'company.email',
+  logoUrl: 'company.logo_url', primaryColor: 'brand.primary_color', secondaryColor: 'brand.secondary_color',
   felProvider: 'fel.provider', felUser: 'fel.user', felEnvironment: 'fel.environment',
   felEndpoint: 'fel.endpoint', felSeries: 'fel.series', felResolution: 'fel.resolution',
   satCategory: 'fel.sat_category', establishment: 'fel.establishment',
@@ -26,6 +27,9 @@ const MOCK_CONFIG = {
   address: '5a Calle 12-34, Zona 1, Guatemala, Guatemala',
   phone: '+502 2238-1100',
   email: 'admin@stackline.gt',
+  logoUrl: '',
+  primaryColor: '#8b1e3f',
+  secondaryColor: '#d47a5a',
   felProvider: 'infile',
   felUser: 'feluser@stackline.gt',
   hasFelKey: true,
@@ -74,6 +78,7 @@ export default function Config({ pushToast }) {
   const [config, setConfig] = useState(MOCK_CONFIG);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // Carga lo guardado. Antes la pantalla arrancaba siempre con los valores de
   // ejemplo y no reflejaba nada de lo que hubiera en la base.
@@ -96,6 +101,32 @@ export default function Config({ pushToast }) {
   }, []);
 
   const set = (k, v) => { setConfig(prev => ({ ...prev, [k]: v })); setSaved(false); };
+
+  // Sube el archivo elegido a S3 (URL prefirmada) y guarda la URL pública.
+  // No persiste el resto de la config; el usuario aún debe 'Guardar cambios'.
+  const handleLogoFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';           // permite re-elegir el mismo archivo
+    if (!file) return;
+    if (!/^image\/(png|jpeg|webp|svg\+xml)$/.test(file.type)) {
+      pushToast?.(t('config.branding.badFormat', 'Formato no permitido. Usa PNG, JPG, WEBP o SVG.'), 'danger');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      pushToast?.(t('config.branding.tooBig', 'El archivo supera 2 MB.'), 'danger');
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const url = await uploadCompanyLogo(file);
+      set('logoUrl', url);
+      pushToast?.(t('config.branding.uploaded', 'Logo subido. No olvides Guardar cambios.'), 'success');
+    } catch (err) {
+      pushToast?.(t('config.branding.uploadFailed', 'No se pudo subir el logo: ') + err.message, 'danger');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   // Antes esto solo mostraba un toast de éxito sin guardar nada: se podía
   // poner el IVA al 5% y seguía facturando al 12%.
@@ -192,6 +223,66 @@ export default function Config({ pushToast }) {
                   <input className="field-input mono" value={config.transferPrefix} onChange={e => set('transferPrefix', e.target.value)} maxLength={5} />
                 </Field>
               </Section>
+
+              <Section title={t('config.branding.sectionTitle', 'Marca / Branding')} icon="tag">
+                <Field label={t('config.branding.logo', 'Logo de la empresa')} span={2}
+                  hint={t('config.branding.logoHint', 'PNG, JPG, WEBP o SVG (máx 2 MB). Se sube a S3 y se usa en el encabezado del PDF de cotización.')}>
+                  <div className="cfg-logo-upload">
+                    <label className={`btn-file${uploadingLogo ? ' is-loading' : ''}`}>
+                      <Icon name={uploadingLogo ? 'clock' : 'upload'} size={14} />
+                      {uploadingLogo
+                        ? t('config.branding.uploading', 'Subiendo…')
+                        : (config.logoUrl ? t('config.branding.replaceLogo', 'Cambiar logo') : t('config.branding.chooseLogo', 'Seleccionar imagen'))}
+                      <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                        hidden disabled={uploadingLogo} onChange={handleLogoFile} />
+                    </label>
+                    {config.logoUrl && (
+                      <a className="cfg-logo-url mono" href={config.logoUrl} target="_blank" rel="noreferrer">
+                        {config.logoUrl}
+                      </a>
+                    )}
+                  </div>
+                </Field>
+                <Field label={t('config.branding.primaryColor', 'Color primario')}
+                  hint={t('config.branding.primaryColorHint', 'Acento principal del PDF (títulos, total).')}>
+                  <div className="cfg-color-row">
+                    <input type="color" className="cfg-color-swatch" value={config.primaryColor}
+                      onChange={e => set('primaryColor', e.target.value)} />
+                    <input className="field-input mono" value={config.primaryColor}
+                      onChange={e => set('primaryColor', e.target.value)} maxLength={7} placeholder="#8b1e3f" />
+                  </div>
+                </Field>
+                <Field label={t('config.branding.secondaryColor', 'Color secundario')}
+                  hint={t('config.branding.secondaryColorHint', 'Acento secundario del PDF (cargos, notas).')}>
+                  <div className="cfg-color-row">
+                    <input type="color" className="cfg-color-swatch" value={config.secondaryColor}
+                      onChange={e => set('secondaryColor', e.target.value)} />
+                    <input className="field-input mono" value={config.secondaryColor}
+                      onChange={e => set('secondaryColor', e.target.value)} maxLength={7} placeholder="#d47a5a" />
+                  </div>
+                </Field>
+              </Section>
+
+              <div className="cfg-preview">
+                <div className="cfg-preview-title">{t('config.branding.preview', 'Vista previa — encabezado del PDF')}</div>
+                <div className="cfg-brand-preview" style={{ borderTop: `4px solid ${config.primaryColor}` }}>
+                  <div className="cfg-brand-logoframe">
+                    {config.logoUrl
+                      ? <img src={config.logoUrl} alt="logo"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }} />
+                      : null}
+                    <div className="cfg-brand-logofallback"
+                      style={{ display: config.logoUrl ? 'none' : 'flex', borderColor: config.primaryColor, color: config.primaryColor }}>
+                      LOGO
+                    </div>
+                  </div>
+                  <div className="cfg-brand-meta">
+                    <div className="cfg-brand-name">{config.tradeName || config.legalName || t('config.branding.companyName', 'Nombre de empresa')}</div>
+                    <div className="cfg-brand-doc" style={{ color: config.primaryColor }}>COTIZACIÓN</div>
+                    <span className="cfg-brand-chip" style={{ background: config.secondaryColor }}>Cargo adicional</span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

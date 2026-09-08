@@ -1,5 +1,7 @@
 import { sessionCompany } from '../api/auth.js';
 
+const DEFAULT_LOGO_URL = 'https://stackline-client-logos-460005624841.s3.us-east-1.amazonaws.com/logos/madera-viva-mv.png';
+
 const PALETTE = {
   ink: '#25242a',
   muted: '#726a72',
@@ -20,6 +22,15 @@ const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
   '"': '&quot;',
   "'": '&#39;',
 }[char]));
+
+// Tinte suave (fondo claro) derivado de un color hex #rrggbb, para que los
+// colores de marca personalizados tengan un fondo que combine.
+const softTint = (hex, alpha = 0.1) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+};
 
 const money = (value) => `Q ${Number(value || 0).toLocaleString('es-GT', {
   minimumFractionDigits: 2,
@@ -87,14 +98,24 @@ function renderRows(rows) {
     </tr>`).join('');
 }
 
-function documentHtml(quote, { company, charges, taxRate = quote.taxRate || 12 } = {}) {
+function documentHtml(quote, { company, charges, branding, taxRate = quote.taxRate || 12 } = {}) {
   const co = company || sessionCompany() || {};
+  const brand = branding || {};
   const rows = quoteRows(quote, charges);
   const totals = buildTotals(quote, charges, taxRate);
   const client = quote.client || {};
   const notes = quote.notes?.trim() || 'Propuesta preparada según el alcance acordado con el cliente.';
   const companyName = co.name || 'NOMBRE DE EMPRESA';
   const companyCode = co.code ? `Código de empresa: ${co.code}` : 'Soluciones que construyen confianza';
+  const logoUrl = brand.logoUrl || co.logoUrl || DEFAULT_LOGO_URL;
+  // Colores de marca por empresa (company_settings) con fallback al PALETTE base.
+  const palette = {
+    ...PALETTE,
+    corinto: brand.primaryColor || PALETTE.corinto,
+    terracotta: brand.secondaryColor || PALETTE.terracotta,
+    corintoSoft: brand.primaryColor ? (softTint(brand.primaryColor) || PALETTE.corintoSoft) : PALETTE.corintoSoft,
+    terracottaSoft: brand.secondaryColor ? (softTint(brand.secondaryColor) || PALETTE.terracottaSoft) : PALETTE.terracottaSoft,
+  };
 
   return `<!doctype html>
 <html lang="es">
@@ -102,7 +123,7 @@ function documentHtml(quote, { company, charges, taxRate = quote.taxRate || 12 }
   <meta charset="utf-8" />
   <title>${esc(quote.id || 'Cotización')} · ${esc(companyName)}</title>
   <style>
-    :root{color-scheme:light;--ink:${PALETTE.ink};--muted:${PALETTE.muted};--border:${PALETTE.border};--paper:${PALETTE.paper};--page:${PALETTE.page};--corinto:${PALETTE.corinto};--corinto-soft:${PALETTE.corintoSoft};--terracotta:${PALETTE.terracotta};--terracotta-soft:${PALETTE.terracottaSoft};--success:${PALETTE.success}}
+    :root{color-scheme:light;--ink:${palette.ink};--muted:${palette.muted};--border:${palette.border};--paper:${palette.paper};--page:${palette.page};--corinto:${palette.corinto};--corinto-soft:${palette.corintoSoft};--terracotta:${palette.terracotta};--terracotta-soft:${palette.terracottaSoft};--success:${palette.success}}
     *{box-sizing:border-box}
     @page{size:A4;margin:13mm 14mm}
     html,body{margin:0;padding:0;background:var(--page);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:11px;line-height:1.4}
@@ -110,7 +131,7 @@ function documentHtml(quote, { company, charges, taxRate = quote.taxRate || 12 }
     .doc{max-width:182mm;min-height:270mm;margin:0 auto;background:var(--paper);padding:14mm 14mm 10mm;box-shadow:0 10px 36px rgba(50,20,30,.10)}
     .topbar{height:7px;background:linear-gradient(90deg,var(--corinto) 0 70%,var(--terracotta) 70% 100%);margin:-14mm -14mm 25px}
     .header{display:flex;justify-content:space-between;align-items:flex-start;gap:28px;padding-bottom:20px;border-bottom:1px solid var(--border)}
-    .brand{display:flex;align-items:flex-start;gap:12px;min-width:0}.logo-placeholder{width:72px;height:42px;border:1.5px dashed var(--corinto);border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--corinto);font-size:9px;font-weight:800;letter-spacing:.12em;line-height:1.2;flex:none}.logo-placeholder span{font-size:6px;letter-spacing:.08em;color:var(--muted);margin-top:2px}.company-name{font-size:17px;font-weight:800;letter-spacing:-.025em;color:var(--ink);margin:2px 0 2px}.company-sub{font-size:9px;color:var(--muted)}
+    .brand{display:flex;align-items:flex-start;gap:12px;min-width:0}.logo-frame{width:48px;height:48px;border-radius:9px;background:#0a090c;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}.logo-img{width:100%;height:100%;object-fit:cover;display:block}.logo-placeholder{width:72px;height:42px;border:1.5px dashed var(--corinto);border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--corinto);font-size:9px;font-weight:800;letter-spacing:.12em;line-height:1.2;flex:none}.logo-placeholder span{font-size:6px;letter-spacing:.08em;color:var(--muted);margin-top:2px}.company-name{font-size:17px;font-weight:800;letter-spacing:-.025em;color:var(--ink);margin:2px 0 2px}.company-sub{font-size:9px;color:var(--muted)}
     .doc-meta{text-align:right;min-width:135px}.doc-type{font-size:23px;line-height:1;font-weight:900;letter-spacing:-.055em;color:var(--corinto)}.doc-number{font:700 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);margin-top:7px}.doc-date{font-size:9px;color:var(--muted);margin-top:3px}.status{display:inline-block;margin-top:9px;padding:5px 8px;border-radius:999px;background:var(--corinto-soft);color:var(--corinto);font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
     .client-card{display:grid;grid-template-columns:1.35fr .65fr;gap:20px;background:var(--corinto-soft);border-left:4px solid var(--corinto);border-radius:0 9px 9px 0;padding:14px 16px;margin:22px 0 24px}.eyebrow{font-size:8px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--corinto);margin-bottom:4px}.client-name{font-size:14px;font-weight:800;color:var(--ink)}.client-meta{font-size:9px;color:var(--muted);margin-top:3px}.client-date{text-align:right}.client-date strong{display:block;color:var(--ink);font-size:10px}.client-date span{display:block;color:var(--muted);font-size:9px;margin-top:3px}
     .section-label{display:flex;align-items:center;gap:8px;color:var(--corinto);font-size:9px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;margin-bottom:9px}.section-label:after{content:"";height:1px;flex:1;background:var(--border)}
@@ -126,7 +147,7 @@ function documentHtml(quote, { company, charges, taxRate = quote.taxRate || 12 }
     <div class="topbar"></div>
     <header class="header">
       <div class="brand">
-        <div class="logo-placeholder">LOGO<span>PLACEHOLDER</span></div>
+        <div class="logo-frame"><img class="logo-img" src="${esc(logoUrl)}" alt="${esc(companyName)}" onerror="this.parentNode.outerHTML='&lt;div class=&quot;logo-placeholder&quot;&gt;LOGO&lt;span&gt;PLACEHOLDER&lt;/span&gt;&lt;/div&gt;'" /></div>
         <div><div class="company-name">${esc(companyName)}</div><div class="company-sub">${esc(companyCode)}</div></div>
       </div>
       <div class="doc-meta"><div class="doc-type">COTIZACIÓN</div><div class="doc-number">${esc(quote.id || '—')}</div><div class="doc-date">Emitida el ${esc(date(quote.date))}</div><div class="status">${esc(quote.status || 'Vigente')}</div></div>

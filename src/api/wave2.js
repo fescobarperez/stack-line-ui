@@ -79,3 +79,22 @@ export const listSettings = () => api.get('/api/settings');
 export const getSetting = (key) => api.get(`/api/settings/${encodeURIComponent(key)}`);
 export const putSetting = (key, data) => api.put(`/api/settings/${encodeURIComponent(key)}`, data);
 export const deleteSetting = (key) => api.del(`/api/settings/${encodeURIComponent(key)}`);
+
+// ── Subida de logo a S3 (URL prefirmada) ──────────────────────────────
+// 1) pide al backend una URL prefirmada; 2) hace PUT del archivo directo a S3;
+// 3) devuelve la URL pública final para guardar en company.logo_url.
+export async function uploadCompanyLogo(file) {
+  const presign = await api.post('/api/uploads/logo-url', {
+    fileName: file.name,
+    contentType: file.type,
+  });
+  const putRes = await fetch(presign.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': presign.contentType },
+    body: file,
+  });
+  if (!putRes.ok) {
+    throw new Error(`La subida a S3 falló (HTTP ${putRes.status})`);
+  }
+  return presign.publicUrl;
+}
