@@ -155,6 +155,11 @@
   --muted: var(--md-sys-color-on-surface-variant);
   --accent: var(--md-sys-color-primary);
   --accent-soft: var(--md-sys-color-primary-container);
+  /* Color del giro de carga. Token propio y no --accent porque el velo es
+     SIEMPRE oscuro, en los dos temas: en tema claro --accent es el vinotinto
+     #893149 y no se vería. Aquí se toma el rosa claro de la marca, que es el
+     que contrasta sobre oscuro. */
+  --loading-spinner: var(--md-sys-color-primary-container);
   --accent-ink: var(--md-sys-color-on-primary-container);
   --accent-2: var(--md-sys-color-tertiary);
   --success: var(--md-sys-color-success);
@@ -177,6 +182,10 @@
 [data-theme="dark"] {
   /* Sólo se redefinen los roles M3; los aliases resuelven en cascada. */
   color-scheme: dark;
+
+  /* Excepción a esa cascada: en oscuro el rosa claro de la marca está en
+     --md-sys-color-primary, no en el container —que aquí es el vinotinto—. */
+  --loading-spinner: var(--md-sys-color-primary);
 
   /* Primary — M3 obliga a tono 80: rosa apagado a propósito
      (con croma alto sale rosa chicle). */
@@ -2455,6 +2464,107 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;               /* sobre drawers y modales: bloquea todo */
+  display: grid;
+  place-items: center;
+  /* Mismo patrón que .modal-backdrop y .drawer-overlay, pero más oscuro: aquí
+     no hay diálogo que leer detrás, solo hay que impedir el paso.
+     Sin color-mix ni variables de tema: --md-sys-color-scrim no existe en esta
+     hoja, y una variable indefinida invalida toda la declaración — el fondo
+     desaparecía y quedaba solo el desenfoque. */
+  background: rgba(10, 10, 10, .42);
+  backdrop-filter: blur(4px);
+  /* Es la razón de ser del velo: que no se pueda hacer clic en nada más
+     mientras el servidor responde. */
+  cursor: progress;
+  animation: loading-overlay-in var(--dur-short, .15s) var(--ease-standard, ease) both;
+}
+@keyframes loading-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+/* Solo el giro, sin caja ni texto. Más grande que el del login porque aquí
+   no hay nada más que mirar, y en blanco: sobre el velo oscurecido el color
+   de acento no tendría contraste suficiente. */
+.loading-overlay-spinner {
+  width: 60px; height: 60px;
+  /* El grosor sube con el diámetro: a 60px un trazo fino se ve endeble. */
+  border: 5px solid color-mix(in oklab, var(--loading-spinner) 28%, transparent);
+  border-top-color: var(--loading-spinner);
+  border-radius: 50%;
+  animation: login-spin .7s linear infinite;   /* reutiliza la animación del login */
+}
+/* Quien haya pedido menos movimiento ve el velo, pero sin giro ni entrada. */
+@media (prefers-reduced-motion: reduce) {
+  .loading-overlay { animation: none; }
+  .loading-overlay-spinner { animation: none; opacity: .6; }
+}
+
+.perm-matrix { display: flex; flex-direction: column; gap: 2px; }
+
+.perm-head {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px; margin-bottom: 12px;
+}
+/* label-large */
+.perm-count { font: 500 14px/20px var(--font-sans); letter-spacing: .1px; color: var(--text-2); }
+.perm-presets { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.perm-presets-label { font: 500 12px/16px var(--font-sans); letter-spacing: .5px; color: var(--muted); }
+.perm-preset {
+  font: 500 12px/16px var(--font-sans);
+  padding: 4px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--shape-full, 99px);
+  background: transparent; color: var(--text-2); cursor: pointer;
+  transition: all var(--dur-short, .12s) var(--ease-standard, ease);
+}
+.perm-preset:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+/* Rejilla común: el nombre ocupa lo que sobra, cada acción una columna fija.
+   Cabecera y filas comparten el reparto para que las casillas se alineen. */
+.perm-cols, .perm-section-head, .perm-row {
+  display: grid;
+  grid-template-columns: 1fr repeat(4, 74px);
+  align-items: center;
+}
+.perm-cols { padding: 0 10px 6px; }
+.perm-col {
+  text-align: center; text-transform: capitalize;
+  font: 500 12px/16px var(--font-sans); letter-spacing: .5px; color: var(--muted);
+}
+
+.perm-section { border-top: 1px solid var(--border); }
+.perm-section-head { padding: 4px 10px; }
+.perm-section-toggle {
+  display: flex; align-items: center; gap: 8px;
+  background: none; border: 0; padding: 8px 0; cursor: pointer;
+  color: var(--text); text-align: left; width: 100%;
+}
+/* label-large */
+.perm-section-name { font: 500 14px/20px var(--font-sans); letter-spacing: .1px; }
+.perm-section-count {
+  font: 500 11px/16px var(--font-mono);
+  padding: 1px 7px; border-radius: var(--shape-full, 99px);
+  background: var(--surface-2, var(--accent-soft)); color: var(--text-2);
+}
+.perm-row { padding: 3px 10px 3px 32px; }
+.perm-row:hover { background: var(--accent-soft); }
+/* body-medium */
+.perm-item { font: 400 14px/20px var(--font-sans); letter-spacing: .25px; color: var(--text-2); }
+.perm-always {
+  grid-column: 2 / -1; text-align: center;
+  font: 400 12px/16px var(--font-sans); color: var(--muted); font-style: italic;
+}
+.perm-check {
+  justify-self: center;
+  width: 15px; height: 15px; cursor: pointer;
+  accent-color: var(--accent);
+}
+.perm-check:disabled { cursor: not-allowed; opacity: .3; }
 
 /* ===== Sidebar colapsado ===== */
 .app[data-sidebar="collapsed"] {

@@ -1,4 +1,7 @@
 // Búsqueda global (⌘K): productos y clientes.
 import { api } from './client.js';
 
-export const getSearch = (q) => api.get(`/api/search?q=${encodeURIComponent(q)}`);
+// Silenciosa: se dispara mientras el usuario escribe. Bloquear la pantalla
+// en cada tecla sería peor que no avisar nada.
+export const getSearch = (q) =>
+  api.get(`/api/search?q=${encodeURIComponent(q)}`, { silent: true });

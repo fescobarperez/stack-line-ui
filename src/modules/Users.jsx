@@ -3,7 +3,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import DataTable from '../components/DataTable.jsx';
-import { MODULES_PERM, ACTIONS, initPerms, permsToMatrix, matrixToPerms } from '../lib/permissions.js';
+import { initPerms, permsToMatrix, matrixToPerms, normalizarMatriz } from '../lib/permissions.js';
+import PermissionMatrix from '../components/PermissionMatrix.jsx';
 import { useUsers, useRoles, useBranches } from '../hooks/useMasters.js';
 import { createUser, updateUser, createRole, updateRole } from '../api/security.js';
 import { useTranslation } from 'react-i18next';
@@ -168,15 +169,14 @@ export default function Users({ pushToast }) {
     setShowRoleModal(true);
   };
 
-  const togglePerm = (mod, acc) =>
-    setRolePerms(p => ({ ...p, [mod]: { ...p[mod], [acc]: !p[mod][acc] } }));
-
   const saveRole = async () => {
     if (!roleForm.name.trim()) return;
     const payload = {
       name: roleForm.name,
       description: roleForm.desc,
-      permissions: matrixToPerms(rolePerms),
+      // Se normaliza antes de persistir: un rol con «crear» pero sin «ver»
+      // no se puede cumplir y solo confunde a quien lo lea después.
+      permissions: matrixToPerms(normalizarMatriz(rolePerms)),
     };
     try {
       if (editingRole) await updateRole(editingRole.id, payload);
@@ -441,35 +441,8 @@ export default function Users({ pushToast }) {
               </h3>
             </div>
             {selectedRole ? (
-              <div className="card-body flush">
-                <table className="mtable">
-                  <thead>
-                    <tr>
-                      <th style={{ minWidth: 160 }}>{t('users.module', 'Módulo')}</th>
-                      {ACTIONS.map(a => (
-                        <th key={a} className="center" style={{ textTransform: 'capitalize' }}>{a}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {MODULES_PERM.map(mod => {
-                      const p = matrixForRole[mod];
-                      return (
-                        <tr key={mod}>
-                          <td style={{ fontWeight: 500 }}>{mod}</td>
-                          {ACTIONS.map(acc => (
-                            <td key={acc} className="center">
-                              {p[acc]
-                                ? <Icon name="check" size={13} style={{ color: 'var(--success)' }} />
-                                : <Icon name="x"     size={11} style={{ color: 'var(--border-strong)' }} />
-                              }
-                            </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="card-body">
+                <PermissionMatrix matriz={matrixForRole} onChange={() => {}} readOnly />
               </div>
             ) : (
               <div className="empty card-body">{t('users.selectRoleToView', 'Selecciona un rol para ver sus permisos')}</div>
@@ -637,51 +610,7 @@ export default function Users({ pushToast }) {
               <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10, fontFamily: 'var(--font-mono)' }}>
                 {t('users.permissionsMatrix', 'Matriz de permisos')}
               </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table className="mtable">
-                  <thead>
-                    <tr>
-                      <th style={{ minWidth: 170 }}>{t('users.module', 'Módulo')}</th>
-                      {ACTIONS.map(a => (
-                        <th key={a} className="center" style={{ textTransform: 'capitalize' }}>{a}</th>
-                      ))}
-                      <th className="center">{t('users.all', 'Todo')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {MODULES_PERM.map(mod => {
-                      const p = rolePerms[mod];
-                      const allOn = ACTIONS.every(a => p[a]);
-                      return (
-                        <tr key={mod}>
-                          <td style={{ fontWeight: 500 }}>{mod}</td>
-                          {ACTIONS.map(acc => (
-                            <td key={acc} className="center">
-                              <input
-                                type="checkbox"
-                                checked={p[acc]}
-                                onChange={() => togglePerm(mod, acc)}
-                                style={{ accentColor: 'var(--accent)', width: 14, height: 14, cursor: 'pointer' }}
-                              />
-                            </td>
-                          ))}
-                          <td className="center">
-                            <input
-                              type="checkbox"
-                              checked={allOn}
-                              onChange={() => {
-                                const val = !allOn;
-                                setRolePerms(prev => ({ ...prev, [mod]: Object.fromEntries(ACTIONS.map(a => [a, val])) }));
-                              }}
-                              style={{ accentColor: 'var(--accent)', width: 14, height: 14, cursor: 'pointer' }}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <PermissionMatrix matriz={rolePerms} onChange={setRolePerms} />
             </div>
             <div className="modal-foot">
               <Button onClick={() => setShowRoleModal(false)}>{t('common.cancel', 'Cancelar')}</Button>

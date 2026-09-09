@@ -2,6 +2,7 @@
 // header multi-empresa y el manejo de errores. La URL del backend se resuelve
 // por ruta a través del registro de microservicios (services.js).
 import { resolveBaseUrl } from './services.js';
+import { inicioPeticion, finPeticion } from './loading.js';
 
 const TOKEN_KEY = 'maya_token';
 const LOGIN_PATH = '/api/auth/login';
@@ -35,8 +36,16 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, { method = 'GET', body, headers } = {}) {
+/**
+ * @param {object}  opts
+ * @param {boolean} opts.silent  No cuenta para el indicador global de carga.
+ *   Para peticiones que se disparan solas mientras el usuario escribe —la
+ *   búsqueda global, por ejemplo—: bloquear la pantalla en cada tecla es peor
+ *   que no avisar nada.
+ */
+async function request(path, { method = 'GET', body, headers, silent = false } = {}) {
   const token = getToken();
+  if (!silent) inicioPeticion();
   try {
     const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
       method,
@@ -63,12 +72,15 @@ async function request(path, { method = 'GET', body, headers } = {}) {
     if (error instanceof ApiError) throw error;
     const service = resolveBaseUrl(path) || 'mismo origen';
     throw new ApiError(0, `No se pudo conectar con ${service}. Verifica que el backend esté activo.`);
+  } finally {
+    // En `finally` para que un error tampoco deje el indicador encendido.
+    if (!silent) finPeticion();
   }
 }
 
 export const api = {
-  get: (path) => request(path),
-  post: (path, body) => request(path, { method: 'POST', body }),
-  put: (path, body) => request(path, { method: 'PUT', body }),
-  del: (path) => request(path, { method: 'DELETE' }),
+  get:  (path, opts)       => request(path, { ...opts }),
+  post: (path, body, opts) => request(path, { ...opts, method: 'POST', body }),
+  put:  (path, body, opts) => request(path, { ...opts, method: 'PUT', body }),
+  del:  (path, opts)       => request(path, { ...opts, method: 'DELETE' }),
 };
