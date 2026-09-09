@@ -454,7 +454,7 @@ export default function Users({ pushToast }) {
       {/* ── MODAL: Crear / Editar Usuario ────────────────────────────────── */}
       {showUserModal && (
         <div className="modal-overlay" onClick={() => setShowUserModal(false)}>
-          <div className="modal" style={{ width: 520 }} onClick={e => e.stopPropagation()}>
+          <div className="modal" style={{ width: 620 }} onClick={e => e.stopPropagation()}>
             <div className="modal-head">
               <h3>{editingUser ? `${t('common.edit', 'Editar')} · ${editingUser.name}` : t('users.newUser', 'Nuevo usuario')}</h3>
               <button className="icon-btn" onClick={() => setShowUserModal(false)}>
@@ -463,7 +463,7 @@ export default function Users({ pushToast }) {
             </div>
             <div className="modal-body">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <div className="field">
                   <label>{t('users.form.fullName', 'Nombre completo *')}</label>
                   <input
                     type="text"
@@ -474,7 +474,7 @@ export default function Users({ pushToast }) {
                   />
                   {userErrors.name && <span className="login-error">{userErrors.name}</span>}
                 </div>
-                <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <div className="field">
                   <label>{t('common.email', 'Correo electrónico *')}</label>
                   <input
                     type="email"
@@ -515,6 +515,9 @@ export default function Users({ pushToast }) {
                     {authLevels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
                 </div>
+                {/* Solo tiene sentido para quien aprueba: a un operativo le
+                    ocupaba media pantalla sin decidir nada. */}
+                {userForm.authLevelId && (
                 <div className="field" style={{ gridColumn: '1 / -1' }}>
                   <label>{t('users.form.scope', 'Sucursales que cubre como aprobador')}</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 4 }}>
@@ -536,6 +539,7 @@ export default function Users({ pushToast }) {
                     {t('users.form.scopeHint', 'Sin sucursales marcadas no podrá autorizar nada.')}
                   </span>
                 </div>
+                )}
                 {!editingUser && (
                   <div className="field" style={{ gridColumn: '1 / -1' }}>
                     <label>{t('users.form.tempPassword', 'Contraseña temporal *')}</label>

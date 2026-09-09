@@ -8,6 +8,33 @@
 // Vive fuera de React porque quien lo incrementa es el cliente HTTP, que no es
 // un componente. Los componentes se suscriben.
 
+/**
+ * Rutas que NO encienden el velo, por prefijo.
+ *
+ * Es el lugar donde declarar las excepciones: una petición se exime por lo
+ * que ES, no por quién la llama. Marcarlas una a una en cada módulo dispersa
+ * la decisión y la siguiente llamada al mismo endpoint se olvida.
+ *
+ * Dos motivos legítimos para entrar aquí:
+ *   · la pantalla ya tiene su propio indicador y el velo lo taparía
+ *   · la petición se dispara sola, sin que el usuario la haya pedido
+ */
+export const RUTAS_EXENTAS = [
+  // El botón de entrar ya muestra su giro; el velo encima lo esconde.
+  '/api/auth/login',
+  // Se dispara con cada tecla: bloquear la pantalla al escribir es peor que
+  // no avisar nada.
+  '/api/search',
+];
+
+/**
+ * Coincide con la ruta exacta o con lo que cuelgue de ella, pero respetando
+ * el límite del segmento: '/api/search' NO debe eximir a '/api/searchable',
+ * que sería otro endpoint eximido por accidente.
+ */
+export const estaExenta = (path = '') =>
+  RUTAS_EXENTAS.some((r) => path === r || path.startsWith(r + '/') || path.startsWith(r + '?'));
+
 let enVuelo = 0;
 const suscriptores = new Set();
 

@@ -1,7 +1,6 @@
 // Búsqueda global (⌘K): productos y clientes.
 import { api } from './client.js';
 
-// Silenciosa: se dispara mientras el usuario escribe. Bloquear la pantalla
-// en cada tecla sería peor que no avisar nada.
-export const getSearch = (q) =>
-  api.get(`/api/search?q=${encodeURIComponent(q)}`, { silent: true });
+// La exención vive en RUTAS_EXENTAS de loading.js, no aquí: así no hay dos
+// sitios donde mirar cuando alguien se pregunte por qué esta no muestra velo.
+export const getSearch = (q) => api.get(`/api/search?q=${encodeURIComponent(q)}`);

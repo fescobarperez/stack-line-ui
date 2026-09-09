@@ -2,7 +2,7 @@
 // header multi-empresa y el manejo de errores. La URL del backend se resuelve
 // por ruta a través del registro de microservicios (services.js).
 import { resolveBaseUrl } from './services.js';
-import { inicioPeticion, finPeticion } from './loading.js';
+import { inicioPeticion, finPeticion, estaExenta } from './loading.js';
 
 const TOKEN_KEY = 'maya_token';
 const LOGIN_PATH = '/api/auth/login';
@@ -38,14 +38,14 @@ export class ApiError extends Error {
 
 /**
  * @param {object}  opts
- * @param {boolean} opts.silent  No cuenta para el indicador global de carga.
- *   Para peticiones que se disparan solas mientras el usuario escribe —la
- *   búsqueda global, por ejemplo—: bloquear la pantalla en cada tecla es peor
- *   que no avisar nada.
+ * @param {boolean} opts.silent  Exime ESTA llamada del velo de carga. Para el
+ *   caso puntual; si el endpoint siempre debe eximirse, va en RUTAS_EXENTAS
+ *   de loading.js, que es donde se busca.
  */
 async function request(path, { method = 'GET', body, headers, silent = false } = {}) {
   const token = getToken();
-  if (!silent) inicioPeticion();
+  const conVelo = !silent && !estaExenta(path);
+  if (conVelo) inicioPeticion();
   try {
     const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
       method,
@@ -74,7 +74,7 @@ async function request(path, { method = 'GET', body, headers, silent = false } =
     throw new ApiError(0, `No se pudo conectar con ${service}. Verifica que el backend esté activo.`);
   } finally {
     // En `finally` para que un error tampoco deje el indicador encendido.
-    if (!silent) finPeticion();
+    if (conVelo) finPeticion();
   }
 }
 

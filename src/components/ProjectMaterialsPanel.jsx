@@ -434,7 +434,7 @@ function ProjectMaterialTree({ project, plan, groups, onCreateGroup, onRefresh, 
 
   return <div className="project-material-tree">
     <div className={projectTreeStyles.sectionHead}><div className="body-small muted"><Icon name="info" size={15} /> Arrastra materiales a folders, folders a otros folders o cualquier elemento a Raíz.</div>{selectedKeys.length > 0 && <div className={projectTreeStyles.selectionStatus}><span className="badge accent">{selectedKeys.length} material{selectedKeys.length === 1 ? '' : 'es'} seleccionado{selectedKeys.length === 1 ? '' : 's'}</span><Button type="button" size="sm" variant="ghost" icon="arrowDown" onClick={() => moveMaterialsToGroup(selectedKeys.map((key) => Number(key.slice(9))), null)} disabled={busy}>Mover selección a Raíz</Button></div>}</div>
-    <TreeView className={projectTreeStyles.tree} tree={tree} rootId={0} initialOpen sort={false} insertDroppableFirst={false} dropTargetOffset={0} canDrag={(node) => canEdit && ['group', 'material'].includes(node?.data?.kind)} canDrop={canDrop} onDrop={handleTreeDrop} render={renderNode} />;
+    <TreeView className={projectTreeStyles.tree} tree={tree} rootId={0} initialOpen sort={false} insertDroppableFirst={false} dropTargetOffset={0} canDrag={(node) => canEdit && ['group', 'material'].includes(node?.data?.kind)} canDrop={canDrop} onDrop={handleTreeDrop} render={renderNode} />
   </div>;
 }
 
