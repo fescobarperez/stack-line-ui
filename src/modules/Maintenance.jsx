@@ -1,6 +1,12 @@
 // Stackline — MaintenanceModule (catálogos / mantenimientos)
 // Data-driven con CRUD: sucursales/proveedores/categorías desde sus endpoints.
 // La pestaña Impuestos & SAT es configuración fiscal estática por ahora.
+//
+// Navegación en dos niveles, espejo del menú: pestaña de SECCIÓN (Inventario) →
+// menú lateral con la OPCIÓN de menú (Productos y stock, Compras y OCs) → los
+// catálogos que se mantienen desde esa pantalla. Así el usuario busca el
+// mantenimiento donde usa el dato, no en una lista plana que crece sin criterio.
+// El patrón menú + contenedor es el mismo de /config.
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import DataTable from '../components/DataTable.jsx';
@@ -10,8 +16,44 @@ import { createSupplier, updateSupplier } from '../api/partners.js';
 import { listCategories, createCategory, updateCategory } from '../api/catalog.js';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PERM_SECTIONS } from '../lib/permissions.js';
 
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// PERM_SECTIONS rotula las secciones en mayúsculas para la matriz de permisos;
+// como pestaña se leen a gritos. 'CRM' es sigla y se queda como está.
+const TITULO_SECCION = {
+  'OPERACIÓN': 'Operación', 'INVENTARIO': 'Inventario', 'ANÁLISIS': 'Análisis',
+  'CRM': 'CRM', 'CONTABILIDAD': 'Contabilidad', 'ADMINISTRACIÓN': 'Administración',
+};
+
+/**
+ * Cada catálogo declara bajo qué opción del menú se mantiene (`modulo`, un id
+ * de PERM_SECTIONS). Agregar un mantenimiento nuevo es agregar una entrada
+ * aquí: el árbol de pestañas se recalcula solo.
+ */
+const CATALOGOS = [
+  { id: 'categorias',  modulo: 'inventory', form: 'categoria', label: 'Categorías',      addLabel: 'Agregar categoría' },
+  { id: 'proveedores', modulo: 'purchases', form: 'proveedor', label: 'Proveedores',     addLabel: 'Agregar proveedor' },
+  { id: 'sucursales',  modulo: 'config',    form: 'sucursal',  label: 'Sucursales',      addLabel: 'Agregar sucursal' },
+  { id: 'impuestos',   modulo: 'fel',                          label: 'Impuestos & SAT' },
+];
+
+// Los mismos íconos que usa NAV en App.jsx para esas opciones. Van copiados y
+// no importados: App.jsx importa este módulo, y traerlo de vuelta cerraría el
+// ciclo de imports.
+const ICONO_MODULO = { inventory: 'box', purchases: 'truck', config: 'bolt', fel: 'check' };
+
+/** Secciones y módulos que realmente tienen algo que mantener, en orden de menú. */
+const ARBOL = PERM_SECTIONS
+  .map((seccion) => ({
+    id: seccion.section,
+    label: TITULO_SECCION[seccion.section] || seccion.section,
+    modulos: seccion.items
+      .map((item) => ({ ...item, icon: ICONO_MODULO[item.id], catalogos: CATALOGOS.filter((c) => c.modulo === item.id) }))
+      .filter((item) => item.catalogos.length),
+  }))
+  .filter((seccion) => seccion.modulos.length);
 
 // Definición de campos por catálogo (para el modal genérico).
 const FORMS = {
@@ -54,7 +96,15 @@ const FORMS = {
 
 function MaintenanceModule({ pushToast }) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState('sucursales');
+  const [seccionId, setSeccionId] = useState(ARBOL[0].id);
+  const seccion = ARBOL.find((s) => s.id === seccionId) || ARBOL[0];
+  const [moduloId, setModuloId] = useState(seccion.modulos[0].id);
+  // Al cambiar de sección el módulo anterior ya no existe: se cae al primero.
+  const modulo = seccion.modulos.find((m) => m.id === moduloId) || seccion.modulos[0];
+  const irASeccion = (id) => {
+    setSeccionId(id);
+    setModuloId(ARBOL.find((s) => s.id === id).modulos[0].id);
+  };
   const { items: branches, reload: reloadBranches } = useBranches();
   const { items: suppliers, reload: reloadSuppliers } = useSuppliers();
 
@@ -99,6 +149,11 @@ function MaintenanceModule({ pushToast }) {
       ? <span className="badge-m3 success">{t('maintenance.branchActive', 'Activa')}</span>
       : <span className="badge-m3 warning">{t('maintenance.branchPaused', 'Pausada')}</span> },
   ];
+  const categoryColumns = [
+    { key: 'icon', header: '', width: 44, render: (c) => <span className="maint-cat-icon">{c.icon || '📦'}</span> },
+    { key: 'name', header: t('common.name', 'Nombre'), sortable: true, render: (c) => <span className="nm">{c.name}</span> },
+    { key: 'id', header: t('common.code', 'Código'), render: (c) => <span className="sku">{String(c.id).toUpperCase()}</span> },
+  ];
   const supplierColumns = [
     { key: 'name', header: t('maintenance.legalName', 'Razón social'), sortable: true, render: (s) => <span className="nm">{s.name}</span> },
     { key: 'nit', header: 'NIT', render: (s) => <span className="sku">{s.nit || '—'}</span> },
@@ -107,6 +162,76 @@ function MaintenanceModule({ pushToast }) {
     { key: 'paymentTerms', header: t('maintenance.terms', 'Términos'), render: (s) => s.paymentTerms ? <span className="badge-m3">{s.paymentTerms}</span> : '—' },
     { key: 'balance', header: t('maintenance.cxpBalance', 'Saldo CxP'), align: 'right', sortable: true, sortValue: (s) => Number(s.balance), render: (s) => <span className="num" style={{ fontWeight: 500, color: Number(s.balance) > 0 ? 'var(--warning)' : 'var(--muted)' }}>{Q(s.balance)}</span> },
   ];
+
+  const CONTEO = {
+    sucursales: branches.length,
+    proveedores: suppliers.length,
+    categorias: catalogCategories.length,
+  };
+
+  // El cuerpo de cada catálogo; la cabecera y el botón de agregar son genéricos.
+  const contenido = (id) => {
+    if (id === 'sucursales') return (
+      <DataTable
+        rowKey={(b) => b.id}
+        columns={branchColumns}
+        rows={branches}
+        density="compact"
+        pageSize={12}
+        onEdit={(b) => setModal({ type: 'sucursal', mode: 'edit', id: b.id, data: b })}
+        empty={t('maintenance.noBranches', 'Sin sucursales')}
+      />
+    );
+    if (id === 'proveedores') return (
+      <DataTable
+        rowKey={(s) => s.id}
+        columns={supplierColumns}
+        rows={suppliers}
+        density="compact"
+        pageSize={12}
+        onEdit={(s) => setModal({ type: 'proveedor', mode: 'edit', id: s.id, data: s })}
+        empty={t('maintenance.noSuppliers', 'Sin proveedores')}
+      />
+    );
+    if (id === 'categorias') return (
+      <DataTable
+        rowKey={(c) => c.id}
+        columns={categoryColumns}
+        rows={catalogCategories}
+        density="compact"
+        pageSize={12}
+        onEdit={(c) => setModal({ type: 'categoria', mode: 'edit', id: c.id, data: c })}
+        empty={t('maintenance.noCategories', 'Sin categorías')}
+      />
+    );
+    if (id === 'impuestos') return (
+      <div className="grid-2">
+        <div className="card">
+          <div className="card-head"><h3>{t('maintenance.taxpayerData', 'Datos fiscales del contribuyente')}</h3></div>
+          <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 14px', fontSize: 12 }}>
+            <div className="muted">{t('maintenance.regime', 'Régimen')}</div><div>General sobre Utilidades</div>
+            <div className="muted">{t('maintenance.satCategory', 'Categoría SAT')}</div><div>Definitivo IVA</div>
+            <div className="muted" style={{ gridColumn: '1 / -1', fontSize: 11, marginTop: 4 }}>
+              Configuración fiscal — pendiente de cablear a /api/settings.
+            </div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-head"><h3>{t('maintenance.taxConfig', 'Configuración de impuestos')}</h3></div>
+          <div className="card-body flush">
+            <table className="mtable">
+              <thead><tr><th>{t('common.code', 'Código')}</th><th>{t('common.name', 'Nombre')}</th><th className="r">{t('maintenance.rate', 'Tasa')}</th><th>{t('common.status', 'Estado')}</th></tr></thead>
+              <tbody>
+                <tr><td><span className="sku">IVA</span></td><td>Impuesto al Valor Agregado</td><td className="r num" style={{ fontWeight: 500 }}>12 %</td><td><span className="badge-m3 success">{t('common.active', 'Activo')}</span></td></tr>
+                <tr><td><span className="sku">IDP</span></td><td>Impuesto Distribución Petróleo</td><td className="r num">—</td><td><span className="badge-m3">N/A</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+    return null;
+  };
 
   return (
     <div className="page">
@@ -117,99 +242,46 @@ function MaintenanceModule({ pushToast }) {
         </div>
       </div>
 
+      {/* Nivel 1 · sección del menú */}
       <div className="tabs">
-        <div className={`tab ${tab === 'sucursales' ? 'active' : ''}`} onClick={() => setTab('sucursales')}>{t('maintenance.tabs.branches', 'Sucursales')} <span className="count">{branches.length}</span></div>
-        <div className={`tab ${tab === 'proveedores' ? 'active' : ''}`} onClick={() => setTab('proveedores')}>{t('maintenance.tabs.suppliers', 'Proveedores')} <span className="count">{suppliers.length}</span></div>
-        <div className={`tab ${tab === 'categorias' ? 'active' : ''}`} onClick={() => setTab('categorias')}>{t('maintenance.tabs.categories', 'Categorías')} <span className="count">{catalogCategories.length}</span></div>
-        <div className={`tab ${tab === 'impuestos' ? 'active' : ''}`} onClick={() => setTab('impuestos')}>{t('maintenance.tabs.taxes', 'Impuestos & SAT')}</div>
+        {ARBOL.map((item) => (
+          <button key={item.id} type="button" className={`tab ${item.id === seccion.id ? 'active' : ''}`} onClick={() => irASeccion(item.id)}>
+            {item.label}
+          </button>
+        ))}
       </div>
 
-      {tab === 'sucursales' && (
-        <>
-          <div className="toolbar" style={{ justifyContent: 'flex-end', marginBottom: 12 }}>
-            <Button icon="plus" variant="accent" onClick={() => setModal({ type: 'sucursal', mode: 'new' })}>{t('maintenance.addBranch', 'Agregar sucursal')}
-            </Button>
-          </div>
-          <DataTable
-            rowKey={(b) => b.id}
-            columns={branchColumns}
-            rows={branches}
-            density="compact"
-            pageSize={12}
-            onEdit={(b) => setModal({ type: 'sucursal', mode: 'edit', id: b.id, data: b })}
-            empty={t('maintenance.noBranches', 'Sin sucursales')}
-          />
-        </>
-      )}
-
-      {tab === 'proveedores' && (
-        <>
-          <div className="toolbar" style={{ justifyContent: 'flex-end', marginBottom: 12 }}>
-            <Button icon="plus" variant="accent" onClick={() => setModal({ type: 'proveedor', mode: 'new' })}>{t('maintenance.addSupplier', 'Agregar proveedor')}
-            </Button>
-          </div>
-          <DataTable
-            rowKey={(s) => s.id}
-            columns={supplierColumns}
-            rows={suppliers}
-            density="compact"
-            pageSize={12}
-            onEdit={(s) => setModal({ type: 'proveedor', mode: 'edit', id: s.id, data: s })}
-            empty={t('maintenance.noSuppliers', 'Sin proveedores')}
-          />
-        </>
-      )}
-
-      {tab === 'categorias' && (
-        <>
-          <div className="toolbar" style={{ justifyContent: 'flex-end', marginBottom: 12 }}>
-            <Button icon="plus" variant="accent" onClick={() => setModal({ type: 'categoria', mode: 'new' })}>{t('maintenance.addCategory', 'Agregar categoría')}
-            </Button>
-          </div>
-          <div className="grid-3">
-            {catalogCategories.length === 0 && <div className="empty" style={{ padding: 20 }}>Sin categorías</div>}
-            {catalogCategories.map((c) => (
-              <div key={c.id} className="card" style={{ cursor: 'pointer' }} onClick={() => setModal({ type: 'categoria', mode: 'edit', id: c.id, data: c })}>
-                <div className="card-body" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 'var(--r-md)', background: 'var(--surface-3)', display: 'grid', placeItems: 'center', fontSize: 22 }}>{c.icon || '📦'}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 500, fontSize: 14 }}>{c.name}</div>
-                    <div className="muted mono" style={{ fontSize: 11 }}>{String(c.id).toUpperCase()}</div>
-                  </div>
-                  <Icon name="edit" size={13} className="muted" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {tab === 'impuestos' && (
-        <div className="grid-2">
-          <div className="card">
-            <div className="card-head"><h3>{t('maintenance.taxpayerData', 'Datos fiscales del contribuyente')}</h3></div>
-            <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 14px', fontSize: 12 }}>
-              <div className="muted">{t('maintenance.regime', 'Régimen')}</div><div>General sobre Utilidades</div>
-              <div className="muted">{t('maintenance.satCategory', 'Categoría SAT')}</div><div>Definitivo IVA</div>
-              <div className="muted" style={{ gridColumn: '1 / -1', fontSize: 11, marginTop: 4 }}>
-                Configuración fiscal — pendiente de cablear a /api/settings.
-              </div>
+      <div className="maint-layout">
+        {/* Nivel 2 · opción de menú dentro de la sección */}
+        <nav className="maint-nav">
+          {seccion.modulos.map((item) => (
+            <div key={item.id}
+              className={`nav-item ${item.id === modulo.id ? 'active' : ''}`}
+              role="button" tabIndex={0}
+              onClick={() => setModuloId(item.id)}
+              onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setModuloId(item.id); } }}>
+              {item.icon && <Icon name={item.icon} size={13} className="icon" />}
+              <span className="nav-item-label">{item.label}</span>
+              {item.catalogos.length > 1 && <span className="badge mono">{item.catalogos.length}</span>}
             </div>
-          </div>
-          <div className="card">
-            <div className="card-head"><h3>{t('maintenance.taxConfig', 'Configuración de impuestos')}</h3></div>
-            <div className="card-body flush">
-              <table className="mtable">
-                <thead><tr><th>{t('common.code', 'Código')}</th><th>{t('common.name', 'Nombre')}</th><th className="r">{t('maintenance.rate', 'Tasa')}</th><th>{t('common.status', 'Estado')}</th></tr></thead>
-                <tbody>
-                  <tr><td><span className="sku">IVA</span></td><td>Impuesto al Valor Agregado</td><td className="r num" style={{ fontWeight: 500 }}>12 %</td><td><span className="badge-m3 success">{t('common.active', 'Activo')}</span></td></tr>
-                  <tr><td><span className="sku">IDP</span></td><td>Impuesto Distribución Petróleo</td><td className="r num">—</td><td><span className="badge-m3">N/A</span></td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+          ))}
+        </nav>
+
+        {/* Nivel 3 · los catálogos que se mantienen desde esa opción */}
+        <div className="maint-panel">
+          {modulo.catalogos.map((catalogo) => (
+            <section key={catalogo.id} className="maint-catalogo">
+              <div className="maint-catalogo-head">
+                <h3>{catalogo.label}<span className="count mono">{CONTEO[catalogo.id] ?? ''}</span></h3>
+                {catalogo.addLabel && (
+                  <Button icon="plus" variant="accent" onClick={() => setModal({ type: catalogo.form, mode: 'new' })}>{catalogo.addLabel}</Button>
+                )}
+              </div>
+              {contenido(catalogo.id)}
+            </section>
+          ))}
         </div>
-      )}
+      </div>
 
       {modal && (
         <CatalogModal

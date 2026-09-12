@@ -2,8 +2,16 @@
 import { api } from './client.js';
 
 
+// Relación producto ⇄ proveedor (muchos a muchos, tabla product_suppliers).
 export const addProductSupplier = (productId, data) =>
   api.post(`/api/products/${productId}/suppliers`, data);
+export const updateProductSupplier = (productId, supplierId, data) =>
+  api.put(`/api/products/${productId}/suppliers/${supplierId}`, data);
+export const removeProductSupplier = (productId, supplierId) =>
+  api.del(`/api/products/${productId}/suppliers/${supplierId}`);
+// El otro extremo de la relación: qué productos vende un proveedor.
+export const listProductsBySupplier = (supplierId) =>
+  api.get(`/api/products/by-supplier/${supplierId}`);
 // Categorías
 export const listCategories = () => api.get('/api/categories');
 export const createCategory = (data) => api.post('/api/categories', data);

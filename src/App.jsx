@@ -69,7 +69,7 @@ const NAV = [
     section: 'INVENTARIO',
     items: [
       { id: 'inventory',  label: 'Productos y stock', icon: 'box',      alert: 5 },
-      { id: 'catalog',    label: 'Catálogo de productos', icon: 'folder' },
+      { id: 'rawmaterials', label: 'Materia prima', icon: 'folder' },
       { id: 'variants',    label: 'Variantes',              icon: 'settings'          },
       { id: 'stockcount', label: 'Conteo físico',          icon: 'check'             },
       { id: 'uom',        label: 'Unidades de Medida',     icon: 'settings'          },
@@ -125,7 +125,7 @@ const MODULE_MAP = {
   pos:          POS,
   billing:      Billing,
   inventory:    Inventory,
-  catalog:      Catalog,
+  rawmaterials: Catalog,
   purchases:    Purchases,
   reports:      Reports,
   maintenance:  Maintenance,

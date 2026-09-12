@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
+import Autocomplete from '../components/Autocomplete.jsx';
 import InlineCreate from '../components/InlineCreate.jsx';
 import TreeView from '../components/TreeView.jsx';
 import treeStyles from '../components/TreeView.module.css';
 import catalogStyles from './CatalogTree.module.css';
 import useTreeSelection from '../hooks/useTreeSelection.js';
-import { addProductSupplier, copyCategory, createCategory, moveProduct, updateCategory, updateProduct } from '../api/catalog.js';
+import { addProductSupplier, copyCategory, createCategory, moveProduct, removeProductSupplier, updateCategory, updateProduct, updateProductSupplier } from '../api/catalog.js';
 import { createSupplier } from '../api/partners.js';
 import { useCategoryTree, useProducts } from '../hooks/useCatalog.js';
 import { useSuppliers } from '../hooks/useMasters.js';
@@ -65,7 +66,7 @@ function buildCatalogTree(categories, products, search) {
     categories.filter((category) => category.name.toLowerCase().includes(query)).forEach((category) => addCategoryPath(category.id));
   }
   const visibleCategories = query ? categories.filter((category) => visibleCategoryIds.has(String(category.id))) : categories;
-  const rows = [{ id: 'catalog-root', parent: 0, text: 'Raíz del catálogo', droppable: true, data: { kind: 'root' } }];
+  const rows = [{ id: 'catalog-root', parent: 0, text: 'Raíz de materia prima', droppable: true, data: { kind: 'root' } }];
   const sortedCategories = [...visibleCategories].sort((left, right) => left.name.localeCompare(right.name, 'es'));
   sortedCategories.forEach((category) => rows.push({
     id: `category:${category.id}`,
@@ -143,7 +144,15 @@ function SupplierRows({ rows, setRows, suppliers, onCreateSupplier, pushToast })
         const usedByOthers = rows.filter((_, rowIndex) => rowIndex !== index).map((item) => String(item.supplierId));
         const options = suppliers.filter((supplier) => !usedByOthers.includes(String(supplier.id)) || String(supplier.id) === String(row.supplierId));
         return <div className="catalog-supplier-line" key={`${index}-${row.supplierId}`}>
-          <select className="input" value={row.supplierId} onChange={(event) => setRow(index, 'supplierId', event.target.value)} aria-label={`Proveedor ${index + 1}`}><option value="">Seleccionar proveedor…</option>{options.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select>
+          <Autocomplete
+            value={row.supplierId}
+            onChange={(id) => setRow(index, 'supplierId', id)}
+            options={options.map((supplier) => ({ id: supplier.id, name: supplier.name }))}
+            placement="down"
+            placeholder="Buscar proveedor…"
+            emptyText="Ningún proveedor coincide"
+            aria-label={`Proveedor ${index + 1}`}
+          />
           <input className="input mono" type="number" min="0.01" step="0.01" placeholder="0.00" value={row.unitCost} onChange={(event) => setRow(index, 'unitCost', event.target.value)} aria-label={`Costo del proveedor ${index + 1}`} />
           <label className="catalog-preferred"><input type="radio" name="catalog-preferred" checked={!!row.preferred} onChange={() => setRows((current) => current.map((item, rowIndex) => ({ ...item, preferred: rowIndex === index })))} /> Sí</label>
           <Button type="button" variant="ghost" size="sm" icon="x" aria-label="Quitar proveedor" onClick={() => removeRow(index)} disabled={rows.length === 1} />
@@ -155,9 +164,62 @@ function SupplierRows({ rows, setRows, suppliers, onCreateSupplier, pushToast })
   </div>;
 }
 
+/**
+ * Editar solo los proveedores de un producto existente.
+ *
+ * Antes esta acción abría el modal completo del producto: para cambiar un
+ * precio había que pasar por nombre, SKU, categoría, tipo, unidad y factor de
+ * compra —y cualquier descuido ahí se guardaba con el resto—. Aquí se toca lo
+ * que se vino a tocar.
+ */
+function SupplierModal({ product, suppliers, onClose, onSave, onCreateSupplier, pushToast }) {
+  const filasExistentes = product?.suppliers?.length
+    ? product.suppliers.map((supplier, index) => ({
+        supplierId: String(supplier.supplierId),
+        unitCost: String(supplier.unitCost ?? ''),
+        preferred: index === 0 || !!supplier.preferred,
+      }))
+    : [{ supplierId: '', unitCost: '', preferred: true }];
+  const [filas, setFilas] = useState(filasExistentes);
+  const [guardando, setGuardando] = useState(false);
+
+  const guardar = async () => {
+    const validas = filas.filter((f) => f.supplierId && Number(f.unitCost) > 0);
+    if (!validas.length) {
+      pushToast?.('Indica al menos un proveedor con costo mayor que cero', 'danger');
+      return;
+    }
+    setGuardando(true);
+    try {
+      if (await onSave({ product, filas: validas })) onClose();
+    } finally { setGuardando(false); }
+  };
+
+  return <div className="modal-overlay" onClick={() => !guardando && onClose()}>
+    <div className="modal catalog-product-modal" onClick={(event) => event.stopPropagation()}>
+      <div className="modal-head">
+        <div>
+          <h3>Proveedores de {product.name}</h3>
+          <div className="body-small muted">El costo global del producto toma el precio del proveedor preferido.</div>
+        </div>
+        <Button type="button" variant="ghost" iconOnly icon="x" onClick={onClose} />
+      </div>
+      <div className="modal-body">
+        <SupplierRows rows={filas} setRows={setFilas} suppliers={suppliers} onCreateSupplier={onCreateSupplier} pushToast={pushToast} />
+      </div>
+      <div className="modal-foot">
+        <Button type="button" onClick={onClose} disabled={guardando}>Cancelar</Button>
+        <Button type="button" variant="accent" icon="check" onClick={guardar} disabled={guardando}>
+          {guardando ? 'Guardando…' : 'Guardar proveedores'}
+        </Button>
+      </div>
+    </div>
+  </div>;
+}
+
 function ProductModal({ product, categories, suppliers, selectedCategoryId, onClose, onSave, onCreateSupplier, pushToast }) {
   const existingRows = product?.suppliers?.length ? product.suppliers.map((supplier, index) => ({ supplierId: String(supplier.supplierId), unitCost: String(supplier.unitCost ?? ''), preferred: index === 0 || !!supplier.preferred })) : [{ supplierId: '', unitCost: '', preferred: true }];
-  const [form, setForm] = useState({ name: product?.name || '', sku: product?.sku || '', categoryId: product?.cat ?? selectedCategoryId ?? '', unit: product?.unit || 'Unidad', purchaseUnit: product?.purchaseUnit || '', purchaseFactor: product?.purchaseFactor ?? 1, itemType: product?.itemType || 'sellable', price: product?.price ?? '', minStock: product?.min ?? '', status: product?.status || 'ACTIVE' });
+  const [form, setForm] = useState({ name: product?.name || '', sku: product?.sku || '', categoryId: product?.cat ?? selectedCategoryId ?? '', unit: product?.unit || 'Unidad', purchaseUnit: product?.purchaseUnit || '', purchaseFactor: product?.purchaseFactor ?? 1, itemType: product?.itemType || 'raw_material', price: product?.price ?? '', minStock: product?.min ?? '', status: product?.status || 'ACTIVE' });
   const [supplierRows, setSupplierRows] = useState(existingRows);
   const [saving, setSaving] = useState(false);
   const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
@@ -174,7 +236,7 @@ function ProductModal({ product, categories, suppliers, selectedCategoryId, onCl
     } catch (error) { pushToast?.(`No se pudo guardar el producto: ${error.message}`, 'danger'); }
     finally { setSaving(false); }
   };
-  return <div className="modal-overlay" onClick={() => !saving && onClose()}><div className="modal catalog-product-modal" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><h3>{product ? 'Editar producto' : 'Nuevo producto'}</h3><div className="body-small muted">El producto conserva su ID al moverse entre carpetas.</div></div><Button type="button" variant="ghost" iconOnly icon="x" onClick={onClose} /></div><div className="modal-body"><div className="form-grid"><div className="field span-2"><label>Nombre del producto *</label><input autoFocus value={form.name} onChange={(event) => set('name', event.target.value)} placeholder="Ej. Corredera telescópica 45 cm" /></div><div className="field"><label>SKU / código *</label><input className="mono" value={form.sku} onChange={(event) => set('sku', event.target.value)} placeholder="COR-45" /></div><div className="field"><label>Categoría</label><select className="input" value={form.categoryId} onChange={(event) => set('categoryId', event.target.value)}><option value="">Sin categoría</option>{categories.map((category) => <option key={category.id} value={category.id}>{categoryPath(categories, category.id)}</option>)}</select></div><div className="field"><label>Tipo de artículo</label><select className="input" value={form.itemType} onChange={(event) => set('itemType', event.target.value)}><option value="sellable">Vendible (POS)</option><option value="raw_material">Materia prima</option><option value="service">Servicio / mano de obra</option></select></div><div className="field"><label>Unidad</label><select className="input" value={form.unit} onChange={(event) => set('unit', event.target.value)}><option>Unidad</option><option>Paquete</option><option>Kg</option><option>Libra</option><option>Litro</option></select></div><div className="field"><label>Precio de venta (Q)</label><input className="mono" type="number" min="0" step="0.01" value={form.price} onChange={(event) => set('price', event.target.value)} /></div><div className="field"><label>Stock mínimo</label><input className="mono" type="number" min="0" step="0.001" value={form.minStock} onChange={(event) => set('minStock', event.target.value)} /></div><div className="field"><label>Unidad de compra</label><input value={form.purchaseUnit} onChange={(event) => set('purchaseUnit', event.target.value)} placeholder="Caja, paquete…" /></div><div className="field"><label>Unidades por compra</label><input className="mono" type="number" min="0.000001" step="0.001" value={form.purchaseFactor} onChange={(event) => set('purchaseFactor', event.target.value)} /></div></div><SupplierRows rows={supplierRows} setRows={setSupplierRows} suppliers={suppliers} onCreateSupplier={onCreateSupplier} pushToast={pushToast} /></div><div className="modal-foot"><Button type="button" onClick={onClose} disabled={saving}>Cancelar</Button><Button type="button" variant="accent" icon="check" onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar producto'}</Button></div></div></div>;
+  return <div className="modal-overlay" onClick={() => !saving && onClose()}><div className="modal catalog-product-modal" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><h3>{product ? 'Editar producto' : 'Nuevo producto'}</h3><div className="body-small muted">El producto conserva su ID al moverse entre carpetas.</div></div><Button type="button" variant="ghost" iconOnly icon="x" onClick={onClose} /></div><div className="modal-body"><div className="form-grid"><div className="field span-2"><label>Nombre del producto *</label><input autoFocus value={form.name} onChange={(event) => set('name', event.target.value)} placeholder="Ej. Corredera telescópica 45 cm" /></div><div className="field"><label>SKU / código *</label><input className="mono" value={form.sku} onChange={(event) => set('sku', event.target.value)} placeholder="COR-45" /></div><div className="field"><label>Categoría</label><Autocomplete value={form.categoryId} onChange={(id) => set('categoryId', id)} options={categories.map((category) => ({ id: category.id, name: categoryPath(categories, category.id) }))} placeholder="Sin categoría" emptyText="Ninguna carpeta coincide" aria-label="Categoría" /></div><div className="field"><label>Tipo de artículo</label><Autocomplete value={form.itemType} onChange={(id) => id && set('itemType', id)} allowClear={false} options={[{ id: 'sellable', name: 'Vendible (POS)' }, { id: 'raw_material', name: 'Materia prima' }, { id: 'service', name: 'Servicio / mano de obra' }]} aria-label="Tipo de artículo" /></div><div className="field"><label>Unidad</label><Autocomplete value={form.unit} onChange={(id) => id && set('unit', id)} allowClear={false} options={['Unidad', 'Paquete', 'Kg', 'Libra', 'Litro'].map((u) => ({ id: u, name: u }))} aria-label="Unidad" /></div><div className="field"><label>Precio de venta (Q)</label><input className="mono" type="number" min="0" step="0.01" value={form.price} onChange={(event) => set('price', event.target.value)} /></div><div className="field"><label>Stock mínimo</label><input className="mono" type="number" min="0" step="0.001" value={form.minStock} onChange={(event) => set('minStock', event.target.value)} /></div><div className="field"><label>Unidad de compra</label><input value={form.purchaseUnit} onChange={(event) => set('purchaseUnit', event.target.value)} placeholder="Caja, paquete…" /></div><div className="field"><label>Unidades por compra</label><input className="mono" type="number" min="0.000001" step="0.001" value={form.purchaseFactor} onChange={(event) => set('purchaseFactor', event.target.value)} /></div></div><SupplierRows rows={supplierRows} setRows={setSupplierRows} suppliers={suppliers} onCreateSupplier={onCreateSupplier} pushToast={pushToast} /></div><div className="modal-foot"><Button type="button" onClick={onClose} disabled={saving}>Cancelar</Button><Button type="button" variant="accent" icon="check" onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar producto'}</Button></div></div></div>;
 }
 
 function CategoryModal({ category, initialParentId, categories, onClose, onSave }) {
@@ -188,7 +250,7 @@ function CategoryModal({ category, initialParentId, categories, onClose, onSave 
     await onSave({ name: name.trim(), icon: category?.icon || null, parentId: parentId === '' ? null : Number(parentId) });
     setSaving(false);
   };
-  return <div className="modal-overlay" onClick={onClose}><div className="modal catalog-category-modal" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><h3>{category ? 'Renombrar carpeta' : 'Nueva carpeta'}</h3><div className="body-small muted">Las carpetas pueden anidarse y moverse con drag-and-drop.</div></div><Button type="button" variant="ghost" iconOnly icon="x" onClick={onClose} /></div><div className="modal-body"><div className="field"><label>Nombre *</label><input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Ej. Herrajes" /></div><div className="field" style={{ marginTop: 12 }}><label>Carpeta padre</label><select className="input" value={parentId} onChange={(event) => setParentId(event.target.value)}><option value="">Sin padre · Raíz</option>{categories.filter((item) => !blocked.has(String(item.id))).map((item) => <option key={item.id} value={item.id}>{categoryPath(categories, item.id)}</option>)}</select></div></div><div className="modal-foot"><Button type="button" onClick={onClose}>Cancelar</Button><Button type="button" variant="accent" icon="check" onClick={submit} disabled={!name.trim() || saving}>{saving ? 'Guardando…' : 'Guardar carpeta'}</Button></div></div></div>;
+  return <div className="modal-overlay" onClick={onClose}><div className="modal catalog-category-modal" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><h3>{category ? 'Renombrar carpeta' : 'Nueva carpeta'}</h3><div className="body-small muted">Las carpetas pueden anidarse y moverse con drag-and-drop.</div></div><Button type="button" variant="ghost" iconOnly icon="x" onClick={onClose} /></div><div className="modal-body"><div className="field"><label>Nombre *</label><input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Ej. Herrajes" /></div><div className="field" style={{ marginTop: 12 }}><label>Carpeta padre</label><Autocomplete value={parentId} onChange={setParentId} options={categories.filter((item) => !blocked.has(String(item.id))).map((item) => ({ id: item.id, name: categoryPath(categories, item.id) }))} placeholder="Sin padre · Raíz" emptyText="Ninguna carpeta disponible" aria-label="Carpeta padre" /></div></div><div className="modal-foot"><Button type="button" onClick={onClose}>Cancelar</Button><Button type="button" variant="accent" icon="check" onClick={submit} disabled={!name.trim() || saving}>{saving ? 'Guardando…' : 'Guardar carpeta'}</Button></div></div></div>;
 }
 
 function UnifiedCatalogTree({ categories, products, search, selectedProductIds, selectedCategoryId, onSelectProducts, onSelectCategory, onCopyCategory, onEditCategory, onCreateSubcategory, onCreateProduct, onDrop, canDrop, canEdit, busy }) {
@@ -242,6 +304,7 @@ export default function CatalogModule({ pushToast }) {
   const [selectedProductIds, setSelectedProductIds] = useState(() => new Set());
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [productModal, setProductModal] = useState(null);
+  const [supplierModal, setSupplierModal] = useState(null);
   const [categoryModal, setCategoryModal] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -257,6 +320,42 @@ export default function CatalogModule({ pushToast }) {
     setSelectedProductIds(new Set());
   };
   const handleCreateSupplier = async (payload) => { const supplier = await createSupplier(payload); await reloadSuppliers(); return supplier; };
+  /**
+   * Sincroniza las asociaciones producto ⇄ proveedor contra lo que ya existe:
+   * da de alta las nuevas, actualiza las que cambiaron y borra las que el
+   * usuario quitó de la lista.
+   *
+   * El preferido va de último: marcarlo apaga a los demás en el backend, y
+   * hacerlo antes de dar de alta al resto lo dejaría desmarcado otra vez.
+   */
+  const handleSaveSuppliers = async ({ product, filas }) => {
+    const previos = new Map((product.suppliers ?? []).map((s) => [String(s.supplierId), s]));
+    const vigentes = new Set(filas.map((fila) => String(fila.supplierId)));
+    const ordenadas = [...filas].sort((a, b) => Number(!!a.preferred) - Number(!!b.preferred));
+    setBusy(true);
+    try {
+      for (const id of previos.keys()) {
+        if (!vigentes.has(id)) await removeProductSupplier(product.id, Number(id));
+      }
+      for (const fila of ordenadas) {
+        const previo = previos.get(String(fila.supplierId));
+        const datos = { unitCost: Number(fila.unitCost), preferred: !!fila.preferred };
+        if (!previo) {
+          await addProductSupplier(product.id, { supplierId: Number(fila.supplierId), ...datos });
+        } else if (Number(previo.unitCost) !== datos.unitCost || !!previo.preferred !== datos.preferred) {
+          await updateProductSupplier(product.id, Number(fila.supplierId), datos);
+        }
+      }
+      await reloadProducts();
+      pushToast?.('Proveedores actualizados', 'success');
+      return true;
+    } catch (error) {
+      await reloadProducts();
+      pushToast?.(`No se pudieron guardar los proveedores: ${error.message}`, 'danger');
+      return false;
+    } finally { setBusy(false); }
+  };
+
   const handleSaveProduct = async ({ id, payload, supplierRows }) => {
     setBusy(true);
     try {
@@ -326,12 +425,13 @@ export default function CatalogModule({ pushToast }) {
   const openNewCategory = (parentId = null) => setCategoryModal({ category: null, parentId });
   const selectedProductsInCategory = selectedCategoryId == null ? products.length : products.filter((product) => String(product.cat) === String(selectedCategoryId)).length;
 
-  return <div className="page catalog-page"><div className="page-head"><div><h1 className="page-title">Catálogo de productos</h1><div className="page-subtitle">Organiza folders y productos en un solo árbol. Arrastra para mover; copia o renombra carpetas desde cada nodo.</div></div><div className="page-head-actions"><Button icon="plus" variant="accent" onClick={openNewProduct}>Nuevo producto</Button></div></div>
-    {(productsError || categoriesError) && <div className="alert" style={{ marginBottom: 12 }}><Icon name="alert" size={16} />No se pudo cargar todo el catálogo. Verifica que el backend tenga aplicada la migración 057.</div>}
+  return <div className="page catalog-page"><div className="page-head"><div><h1 className="page-title">Materia prima</h1><div className="page-subtitle">Organiza folders y productos en un solo árbol. Arrastra para mover; copia o renombra carpetas desde cada nodo.</div></div><div className="page-head-actions"><Button icon="plus" variant="accent" onClick={openNewProduct}>Nuevo producto</Button></div></div>
+    {(productsError || categoriesError) && <div className="alert" style={{ marginBottom: 12 }}><Icon name="alert" size={16} />No se pudo cargar la materia prima. Verifica que el backend tenga aplicada la migración 057.</div>}
     <div className="catalog-stats"><div className="stat"><span>Productos</span><strong>{products.length}</strong></div><div className="stat"><span>Carpetas</span><strong>{categories.length}</strong></div><div className="stat"><span>Proveedores asociados</span><strong>{products.reduce((total, product) => total + (product.suppliers?.length || 0), 0)}</strong></div><div className="stat"><span>En vista seleccionada</span><strong>{selectedProductsInCategory}</strong></div></div>
-    <div className="catalog-unified-layout"><section className="card catalog-unified-card"><div className="card-head"><div><h3>Árbol del catálogo</h3><span className="body-small muted">Misma interacción que Materiales: arrastra folders y productos entre destinos.</span></div></div><div className="catalog-tree-toolbar"><div className="catalog-search"><Icon name="search" size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar SKU, nombre o carpeta…" /></div><span className="muted mono">{selectedProductIds.size > 1 ? `${selectedProductIds.size} productos seleccionados` : search ? 'Filtro activo' : `${products.length} productos · ${categories.length} carpetas`}</span></div><div className="catalog-tree-hint"><Icon name="info" size={15} />Arrastra productos a carpetas, carpetas a otras carpetas o cualquier elemento a Raíz. Copiar una carpeta conserva su estructura, pero no duplica productos.</div>{productsLoading || categoriesLoading ? <div className="catalog-empty">Cargando catálogo…</div> : <UnifiedCatalogTree categories={categories} products={products} search={search} selectedProductIds={selectedProductIds} selectedCategoryId={selectedCategoryId} onSelectProducts={handleSelectProducts} onSelectCategory={handleSelectCategory} onCopyCategory={copyCategoryAction} onEditCategory={(category) => setCategoryModal({ category, parentId: category.parentId })} onCreateSubcategory={openNewCategory} onCreateProduct={openNewProduct} onDrop={handleDrop} canDrop={canDrop} canEdit={!busy} busy={busy} />}</section>
-      <aside className="card catalog-unified-inspector"><div className="card-head"><h3>{selectedProduct ? 'Detalle del producto' : selectedCategory ? 'Detalle de carpeta' : 'Inspector'}</h3>{selectedProduct && <Button type="button" variant="ghost" size="sm" icon="edit" onClick={() => setProductModal({ product: selectedProduct })}>Editar</Button>}</div>{selectedProduct ? <div className="card-body"><div className="catalog-detail-title"><div className="catalog-product-icon"><Icon name="box" size={20} /></div><div><h3>{selectedProduct.name}</h3><span className="mono muted">{selectedProduct.sku}</span></div></div><div className="catalog-detail-section"><div className="catalog-detail-heading"><strong>Precios por proveedor</strong><span className="badge accent">{selectedProduct.suppliers?.length || 0}</span></div>{selectedProduct.suppliers?.length ? [...selectedProduct.suppliers].sort((left, right) => Number(left.unitCost) - Number(right.unitCost)).map((supplier) => <div className="catalog-price-row" key={supplier.supplierId}><div><strong>{supplier.supplierName}</strong><small>{supplier.preferred ? 'Proveedor preferido' : 'Precio asociado'}</small></div><span className="mono">{Q(supplier.unitCost)}</span></div>) : <div className="catalog-empty-inline">Este producto aún no tiene proveedor asociado.</div>}<Button type="button" size="sm" variant="ghost" icon="plus" onClick={() => setProductModal({ product: selectedProduct })}>Asociar proveedor</Button></div><div className="catalog-detail-section"><div className="catalog-detail-grid"><div><span>Carpeta</span><strong>{categoryPath(categories, selectedProduct.cat) || 'Raíz'}</strong></div><div><span>Tipo</span><strong>{ITEM_TYPES[selectedProduct.itemType]?.label || 'Producto'}</strong></div><div><span>Stock</span><strong className="mono">{selectedProduct.stock ?? 0}</strong></div><div><span>Precio venta</span><strong className="mono">{Q(selectedProduct.price)}</strong></div></div></div><div className="catalog-detail-section"><div className="catalog-inspector-note"><Icon name="info" size={15} />Mueve este producto directamente desde el árbol para conservar su ID y sus proveedores.</div></div></div> : selectedCategory ? <div className="card-body"><div className="catalog-detail-title"><div className="catalog-product-icon"><Icon name="folder" size={20} /></div><div><h3>{selectedCategory.name}</h3><span className="muted">{categoryPath(categories, selectedCategory.id)}</span></div></div><div className="catalog-detail-section"><div className="catalog-detail-grid"><div><span>Productos directos</span><strong>{products.filter((product) => String(product.cat) === String(selectedCategory.id)).length}</strong></div><div><span>Subcarpetas</span><strong>{categories.filter((category) => String(category.parentId) === String(selectedCategory.id)).length}</strong></div></div></div><div className="catalog-detail-section catalog-inspector-actions"><Button type="button" size="sm" variant="ghost" icon="edit" onClick={() => setCategoryModal({ category: selectedCategory, parentId: selectedCategory.parentId })}>Renombrar</Button><Button type="button" size="sm" variant="ghost" icon="copy" onClick={() => copyCategoryAction(selectedCategory)}>Copiar</Button><Button type="button" size="sm" variant="accent" icon="plus" onClick={() => openNewProduct()}>Producto aquí</Button></div></div> : <div className="catalog-empty detail-empty"><Icon name="drag_handle" size={28} /><strong>Selecciona un producto o carpeta</strong><span>El detalle y las acciones aparecerán aquí.</span></div>}</aside></div>
+    <div className="catalog-unified-layout"><section className="card catalog-unified-card"><div className="card-head"><div><h3>Árbol de materia prima</h3><span className="body-small muted">Misma interacción que Materiales: arrastra folders y productos entre destinos.</span></div></div><div className="catalog-tree-toolbar"><div className="catalog-search"><Icon name="search" size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar SKU, nombre o carpeta…" /></div><span className="muted mono">{selectedProductIds.size > 1 ? `${selectedProductIds.size} productos seleccionados` : search ? 'Filtro activo' : `${products.length} productos · ${categories.length} carpetas`}</span></div><div className="catalog-tree-hint"><Icon name="info" size={15} />Arrastra productos a carpetas, carpetas a otras carpetas o cualquier elemento a Raíz. Copiar una carpeta conserva su estructura, pero no duplica productos.</div>{productsLoading || categoriesLoading ? <div className="catalog-empty">Cargando materia prima…</div> : <UnifiedCatalogTree categories={categories} products={products} search={search} selectedProductIds={selectedProductIds} selectedCategoryId={selectedCategoryId} onSelectProducts={handleSelectProducts} onSelectCategory={handleSelectCategory} onCopyCategory={copyCategoryAction} onEditCategory={(category) => setCategoryModal({ category, parentId: category.parentId })} onCreateSubcategory={openNewCategory} onCreateProduct={openNewProduct} onDrop={handleDrop} canDrop={canDrop} canEdit={!busy} busy={busy} />}</section>
+      <aside className="card catalog-unified-inspector"><div className="card-head"><h3>{selectedProduct ? 'Detalle del producto' : selectedCategory ? 'Detalle de carpeta' : 'Inspector'}</h3>{selectedProduct && <Button type="button" variant="ghost" size="sm" icon="edit" onClick={() => setProductModal({ product: selectedProduct })}>Editar</Button>}</div>{selectedProduct ? <div className="card-body"><div className="catalog-detail-title"><div className="catalog-product-icon"><Icon name="box" size={20} /></div><div><h3>{selectedProduct.name}</h3><span className="mono muted">{selectedProduct.sku}</span></div></div><div className="catalog-detail-section"><div className="catalog-detail-heading"><strong>Precios por proveedor</strong><span className="badge accent">{selectedProduct.suppliers?.length || 0}</span></div>{selectedProduct.suppliers?.length ? [...selectedProduct.suppliers].sort((left, right) => Number(left.unitCost) - Number(right.unitCost)).map((supplier) => <div className="catalog-price-row" key={supplier.supplierId}><div><strong>{supplier.supplierName}</strong><small>{supplier.preferred ? 'Proveedor preferido' : 'Precio asociado'}</small></div><span className="mono">{Q(supplier.unitCost)}</span></div>) : <div className="catalog-empty-inline">Este producto aún no tiene proveedor asociado.</div>}<Button type="button" size="sm" variant="ghost" icon="plus" onClick={() => setSupplierModal({ product: selectedProduct })}>Asociar proveedor</Button></div><div className="catalog-detail-section"><div className="catalog-detail-grid"><div><span>Carpeta</span><strong>{categoryPath(categories, selectedProduct.cat) || 'Raíz'}</strong></div><div><span>Tipo</span><strong>{ITEM_TYPES[selectedProduct.itemType]?.label || 'Producto'}</strong></div><div><span>Stock</span><strong className="mono">{selectedProduct.stock ?? 0}</strong></div><div><span>Precio venta</span><strong className="mono">{Q(selectedProduct.price)}</strong></div></div></div><div className="catalog-detail-section"><div className="catalog-inspector-note"><Icon name="info" size={15} />Mueve este producto directamente desde el árbol para conservar su ID y sus proveedores.</div></div></div> : selectedCategory ? <div className="card-body"><div className="catalog-detail-title"><div className="catalog-product-icon"><Icon name="folder" size={20} /></div><div><h3>{selectedCategory.name}</h3><span className="muted">{categoryPath(categories, selectedCategory.id)}</span></div></div><div className="catalog-detail-section"><div className="catalog-detail-grid"><div><span>Productos directos</span><strong>{products.filter((product) => String(product.cat) === String(selectedCategory.id)).length}</strong></div><div><span>Subcarpetas</span><strong>{categories.filter((category) => String(category.parentId) === String(selectedCategory.id)).length}</strong></div></div></div><div className="catalog-detail-section catalog-inspector-actions"><Button type="button" size="sm" variant="ghost" icon="edit" onClick={() => setCategoryModal({ category: selectedCategory, parentId: selectedCategory.parentId })}>Renombrar</Button><Button type="button" size="sm" variant="ghost" icon="copy" onClick={() => copyCategoryAction(selectedCategory)}>Copiar</Button><Button type="button" size="sm" variant="accent" icon="plus" onClick={() => openNewProduct()}>Producto aquí</Button></div></div> : <div className="catalog-empty detail-empty"><Icon name="drag_handle" size={28} /><strong>Selecciona un producto o carpeta</strong><span>El detalle y las acciones aparecerán aquí.</span></div>}</aside></div>
     {productModal && <ProductModal product={productModal.product} categories={categories} suppliers={suppliers} selectedCategoryId={selectedCategoryId} onClose={() => setProductModal(null)} onSave={handleSaveProduct} onCreateSupplier={handleCreateSupplier} pushToast={pushToast} />}
+    {supplierModal && <SupplierModal product={supplierModal.product} suppliers={suppliers} onClose={() => setSupplierModal(null)} onSave={handleSaveSuppliers} onCreateSupplier={handleCreateSupplier} pushToast={pushToast} />}
     {categoryModal && <CategoryModal category={categoryModal.category} initialParentId={categoryModal.parentId} categories={categories} onClose={() => setCategoryModal(null)} onSave={handleSaveCategory} />}
   </div>;
 }

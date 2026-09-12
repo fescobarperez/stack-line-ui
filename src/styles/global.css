@@ -868,8 +868,13 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
   text-transform: none;
   letter-spacing: 0.5px;
 }
+/* body-large
+   `.input` es la MISMA regla aplicada por clase: hay 36 controles en la
+   aplicación con className="input" que hasta ahora no coincidían con nada y
+   se pintaban con la apariencia por defecto del navegador. Sirve para
+   controles que no viven dentro de un .field. */
 /* body-large */
-.field input, .field select, .field textarea {
+.field input, .field select, .field textarea, .input {
   font: 400 16px/24px var(--font-sans);
   letter-spacing: 0.5px;
   border: 1px solid var(--border);
@@ -879,7 +884,7 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
   padding: 7px 10px;
   outline: none;
 }
-.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+.field input:focus, .field select:focus, .field textarea:focus, .input:focus { border-color: var(--accent); }
 
 /* ===== Filter bar ===== */
 .filterbar {
@@ -2566,6 +2571,54 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
 }
 .perm-check:disabled { cursor: not-allowed; opacity: .3; }
 
+.autocomplete { position: relative; display: block; min-width: 0; }
+.autocomplete-input { width: 100%; padding-right: 30px; }
+
+/* El icono no intercepta el clic: pulsar sobre él debe enfocar el campo. */
+.autocomplete-caret {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); pointer-events: none;
+}
+.autocomplete-clear {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center;
+  width: 20px; height: 20px; padding: 0;
+  border: 0; border-radius: var(--shape-full, 99px);
+  background: transparent; color: var(--muted); cursor: pointer;
+}
+.autocomplete-clear:hover { background: var(--accent-soft); color: var(--accent); }
+
+.autocomplete-list {
+  z-index: 300;
+  margin: 0; padding: 4px; list-style: none;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg);
+}
+/* body-medium */
+.autocomplete-option {
+  padding: 7px 10px;
+  border-radius: var(--r-sm);
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: .25px;
+  color: var(--text);
+  cursor: pointer;
+}
+/* Un solo resaltado: el teclado y el ratón mueven el mismo indicador, así no
+   aparecen dos filas marcadas a la vez. */
+.autocomplete-option.is-active { background: var(--accent-soft); }
+.autocomplete-option.is-selected { font-weight: 500; color: var(--accent); }
+/* body-small */
+.autocomplete-empty {
+  padding: 10px;
+  font: 400 12px/16px var(--font-sans);
+  letter-spacing: .4px;
+  color: var(--muted);
+  text-align: center;
+}
+
 /* ===== Sidebar colapsado ===== */
 .app[data-sidebar="collapsed"] {
   grid-template-columns: 84px 1fr;
@@ -2794,7 +2847,7 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
    ============================================================ */
 
 /* ===== Material Symbols ===== */
-.msi {
+.msi.msi {
   font-family: "Material Symbols Outlined";
   font-weight: normal;
   font-style: normal;
@@ -3827,7 +3880,7 @@ table.tbl tfoot td {
 .catalog-page { min-width: 0; }
 .catalog-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
 .catalog-stats .stat { padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
-.catalog-stats .stat span { display: block; color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+.catalog-stats .stat span:not(.msi) { display: block; color: var(--muted); font: 500 11px/16px var(--font-sans); letter-spacing: .5px; margin-bottom: 4px; }
 .catalog-stats .stat strong { font: 500 18px var(--font-mono); }
 .catalog-workspace { display: grid; grid-template-columns: 250px minmax(480px, 1fr) 340px; gap: 12px; min-height: 640px; }
 .catalog-sidebar, .catalog-list, .catalog-detail { min-width: 0; }
@@ -3835,7 +3888,7 @@ table.tbl tfoot td {
 .catalog-sidebar .card-head, .catalog-list .card-head, .catalog-detail .card-head { min-height: 67px; }
 .catalog-sidebar .card-head h3 { margin-bottom: 2px; }
 .catalog-tree { padding: 10px 8px; flex: 1; overflow: auto; }
-.catalog-tree-empty { padding: 18px 10px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.catalog-tree-empty { padding: 18px 10px; color: var(--muted); font: 400 12px/18px var(--font-sans); letter-spacing: .4px; }
 .catalog-sidebar-foot { border-top: 1px solid var(--border); padding: 10px; }
 .catalog-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .catalog-search { flex: 1; min-width: 0; height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 11px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--muted); }
@@ -3846,10 +3899,10 @@ table.tbl tfoot td {
 .catalog-product-row:last-child { border-bottom: 0; }
 .catalog-product-row:not(.catalog-product-header) { cursor: pointer; }
 .catalog-product-row:not(.catalog-product-header):hover, .catalog-product-row.selected { background: color-mix(in srgb, var(--accent-soft) 42%, var(--surface)); }
-.catalog-product-header { background: var(--surface-2); color: var(--muted); font-size: 10px; letter-spacing: .05em; text-transform: uppercase; }
+.catalog-product-header { background: var(--surface-2); color: var(--muted); font: 500 11px/16px var(--font-sans); letter-spacing: .5px; text-transform: uppercase; }
 .catalog-product-row > span { min-width: 0; }
 .catalog-product-name strong { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.catalog-product-name small, .catalog-product-row > span > small { display: block; margin-top: 3px; font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.catalog-product-name small, .catalog-product-row > span > small { display: block; margin-top: 3px; font: 400 11px/16px var(--font-sans); letter-spacing: .4px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .catalog-stock-empty { color: var(--danger); }
 .catalog-empty { min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: var(--muted); text-align: center; padding: 24px; }
 .catalog-empty strong { color: var(--text-2); font-weight: 500; }
@@ -3858,32 +3911,32 @@ table.tbl tfoot td {
 .catalog-detail > .card-body { overflow: auto; }
 .catalog-detail-title { display: flex; align-items: flex-start; gap: 10px; }
 .catalog-product-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--r-md); background: var(--surface-2); color: var(--accent); flex: none; }
-.catalog-detail-title h3 { margin: 1px 0 4px; font-size: 15px; font-weight: 500; }
-.catalog-detail-title .mono { font-size: 11px; }
+.catalog-detail-title h3 { margin: 1px 0 4px; font: 500 16px/24px var(--font-sans); letter-spacing: .15px; }
+.catalog-detail-title .mono { font: 400 11px/16px var(--font-mono); }
 .catalog-detail-section { border-top: 1px solid var(--border); margin-top: 15px; padding-top: 13px; }
-.catalog-detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 12px; }
+.catalog-detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; font: 500 12px/16px var(--font-sans); letter-spacing: .5px; }
 .catalog-price-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
-.catalog-price-row strong { display: block; font-size: 12px; font-weight: 500; }
-.catalog-price-row small { display: block; color: var(--muted); font-size: 10px; margin-top: 3px; }
+.catalog-price-row strong { display: block; font: 500 12px/16px var(--font-sans); letter-spacing: .5px; }
+.catalog-price-row small { display: block; color: var(--muted); font: 400 11px/16px var(--font-sans); letter-spacing: .4px; margin-top: 3px; }
 .catalog-detail-section > .btn { margin-top: 9px; }
-.catalog-empty-inline { color: var(--muted); font-size: 12px; padding: 8px 0; }
+.catalog-empty-inline { color: var(--muted); font: 400 12px/16px var(--font-sans); letter-spacing: .4px; padding: 8px 0; }
 .catalog-move-row { display: flex; gap: 7px; align-items: center; }
 .catalog-move-row .input { flex: 1; min-width: 0; }
-.catalog-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; font-size: 12px; }
-.catalog-detail-grid span { display: block; color: var(--muted); font-size: 10px; margin-bottom: 2px; }
+.catalog-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; font: 400 12px/16px var(--font-sans); letter-spacing: .4px; }
+.catalog-detail-grid span:not(.msi) { display: block; color: var(--muted); font: 500 11px/16px var(--font-sans); letter-spacing: .5px; margin-bottom: 2px; }
 .catalog-detail-grid strong { font-weight: 500; }
 .detail-empty { min-height: 420px; }
 .catalog-category-modal { width: 460px; }
 .catalog-product-modal { width: 760px; max-width: calc(100vw - 32px); }
 .catalog-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-top: 18px; margin-bottom: 9px; }
-.catalog-section-heading strong { display: block; font-size: 13px; font-weight: 500; }
-.catalog-section-heading span { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.catalog-section-heading strong { display: block; font: 500 14px/20px var(--font-sans); letter-spacing: .1px; }
+.catalog-section-heading span:not(.msi) { display: block; color: var(--muted); font: 400 12px/16px var(--font-sans); letter-spacing: .4px; margin-top: 2px; }
 .catalog-supplier-table { border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
 .catalog-supplier-header, .catalog-supplier-line { display: grid; grid-template-columns: minmax(180px, 1fr) 150px 72px 36px; gap: 8px; align-items: center; padding: 8px 10px; }
-.catalog-supplier-header { background: var(--surface-2); color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+.catalog-supplier-header { background: var(--surface-2); color: var(--muted); font: 500 11px/16px var(--font-sans); text-transform: uppercase; letter-spacing: .5px; }
 .catalog-supplier-line { border-top: 1px solid var(--border); }
 .catalog-supplier-line .input { min-width: 0; width: 100%; }
-.catalog-preferred { display: flex; align-items: center; justify-content: center; gap: 4px; color: var(--text-2); font-size: 11px; }
+.catalog-preferred { display: flex; align-items: center; justify-content: center; gap: 4px; color: var(--text-2); font: 500 11px/16px var(--font-sans); letter-spacing: .5px; }
 .catalog-preferred input { accent-color: var(--accent); }
 @media (max-width: 1200px) { .catalog-workspace { grid-template-columns: 220px minmax(420px, 1fr); } .catalog-detail { grid-column: 1 / -1; } .catalog-detail > .card-body { max-height: 380px; } }
 @media (max-width: 760px) { .catalog-stats { grid-template-columns: repeat(2, 1fr); } .catalog-workspace { display: block; } .catalog-sidebar, .catalog-list, .catalog-detail { margin-bottom: 12px; } .catalog-product-row { grid-template-columns: 70px minmax(150px, 1fr) 94px; } .catalog-product-row > :nth-child(4), .catalog-product-row > :nth-child(5), .catalog-product-header > :nth-child(4), .catalog-product-header > :nth-child(5) { display: none; } .catalog-supplier-header, .catalog-supplier-line { grid-template-columns: minmax(150px, 1fr) 110px 56px 30px; padding-left: 7px; padding-right: 7px; gap: 5px; } }
@@ -3894,11 +3947,11 @@ table.tbl tfoot td {
 .catalog-unified-card .card-head { min-height: 68px; }
 .catalog-tree-toolbar { display: flex; align-items: center; gap: 10px; padding: 12px 14px 10px; }
 .catalog-tree-toolbar .catalog-search { flex: 1; }
-.catalog-tree-hint { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--accent-soft); color: var(--accent-ink); font-size: 12px; }
+.catalog-tree-hint { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--accent-soft); color: var(--accent-ink); font: 400 12px/18px var(--font-sans); letter-spacing: .4px; }
 .catalog-tree-hint .msi { flex: none; margin-top: 1px; }
 .catalog-unified-inspector > .card-body { flex: 1; overflow: auto; }
 .catalog-unified-inspector .card-head { min-height: 68px; }
-.catalog-inspector-note { display: flex; align-items: flex-start; gap: 7px; padding: 10px; border-radius: var(--r-sm); background: var(--surface-2); color: var(--muted); font-size: 11px; line-height: 1.45; }
+.catalog-inspector-note { display: flex; align-items: flex-start; gap: 7px; padding: 10px; border-radius: var(--r-sm); background: var(--surface-2); color: var(--muted); font: 400 11px/16px var(--font-sans); letter-spacing: .4px; }
 .catalog-inspector-note .msi { flex: none; }
 .catalog-inspector-actions { display: flex; flex-wrap: wrap; gap: 7px; }
 .catalog-inspector-actions .btn { flex: 1; min-width: 90px; }
@@ -3938,3 +3991,52 @@ table.tbl tfoot td {
   background-color: var(--md-sys-color-primary-container) !important;
 }
 .material-picker-modal .material-picker-hint { background-color: var(--md-sys-color-primary-container); }
+
+/* ===== Mantenimientos · navegación en dos niveles ===== */
+/* Nivel 1 son .tabs (sección del menú); nivel 2 es un menú lateral con las
+   opciones de esa sección, mismo patrón que /config. Reusa .nav-item para que
+   se lea igual que el menú principal, que es justo lo que representa. */
+.maint-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.maint-nav { display: flex; flex-direction: column; gap: 2px; }
+.maint-panel { min-width: 0; }
+@media (max-width: 900px) {
+  .maint-layout { grid-template-columns: 1fr; gap: 16px; }
+}
+/* Misma superficie que el contenedor de /config: .card sube a container-low
+   para leerse como caja propia sobre el panel del router, que es lowest. */
+.maint-catalogo {
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+}
+/* Las fichas de adentro bajan a lowest —igual que .datatable— porque a la misma
+   altura que su contenedor se perderían contra el fondo. */
+.maint-catalogo .card { background: var(--md-sys-color-surface-container-lowest); }
+.maint-catalogo + .maint-catalogo { margin-top: 20px; }
+.maint-catalogo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.maint-catalogo-head h3 {
+  margin: 0;
+  font: 500 16px/24px var(--font-sans); letter-spacing: .15px;
+  color: var(--md-sys-color-on-surface);
+}
+/* El emoji de la categoría en su columna: centrado y a tamaño legible, que a
+   14px del cuerpo de tabla se pierde. */
+.maint-cat-icon { display: inline-block; font-size: 18px; line-height: 1; }
+.maint-catalogo-head .count {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}

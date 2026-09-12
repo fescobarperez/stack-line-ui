@@ -31,7 +31,7 @@ export const PERM_SECTIONS = [
   ]},
   { section: 'INVENTARIO', items: [
     { id: 'inventory',  label: 'Productos y stock' },
-    { id: 'catalog',    label: 'Catálogo de productos' },
+    { id: 'rawmaterials', label: 'Materia prima' },
     { id: 'variants',   label: 'Variantes' },
     { id: 'stockcount', label: 'Conteo físico' },
     { id: 'uom',        label: 'Unidades de Medida' },
@@ -91,13 +91,24 @@ const GRUPOS_ANTIGUOS = {
   'Punto de venta': ['pos', 'promotions'],
   'Facturación':    ['billing', 'fel', 'returns'],
   'Cierre de caja': ['cash'],
-  'Inventario':     ['inventory', 'catalog', 'variants', 'stockcount', 'uom', 'transfers'],
+  'Inventario':     ['inventory', 'rawmaterials', 'variants', 'stockcount', 'uom', 'transfers'],
   'Compras':        ['purchases', 'cxp'],
   'Reportes':       ['reports', 'quotes'],
   'Clientes':       ['clients', 'loyalty', 'cxc'],
   'Contabilidad':   ['accounting', 'costcenters', 'presupuestos', 'ledger', 'financials', 'banks', 'bankrec'],
   'Mantenimientos': ['maintenance', 'users', 'payroll', 'fixedassets', 'audit'],
   'Configuración':  ['config'],
+};
+
+/**
+ * Ids que cambiaron de nombre. Se traducen al leer un rol guardado.
+ *
+ * Renombrar el id de un módulo no es cosmético: los roles guardan
+ * "catalog|ver" en la base, y sin esta traducción el usuario pierde el acceso
+ * la próxima vez que entre. Al guardar, el rol queda con el nombre nuevo.
+ */
+const IDS_RENOMBRADOS = {
+  catalog: 'rawmaterials',
 };
 
 /** Códigos cortos del mock original (pos, inv:r, …). */
@@ -122,7 +133,8 @@ export const permsToMatrix = (perms = []) => {
     if (typeof p === 'string' && p.includes('|')) {
       const [clave, accion] = p.split('|');
       if (!ACTIONS.includes(accion)) return;
-      if (m[clave]) { m[clave][accion] = true; return; }          // formato nuevo
+      const id = IDS_RENOMBRADOS[clave] || clave;
+      if (m[id]) { m[id][accion] = true; return; }                // id actual o renombrado
       (GRUPOS_ANTIGUOS[clave] || []).forEach(id => {              // formato viejo
         if (m[id]) m[id][accion] = true;
       });
