@@ -9,6 +9,62 @@
   white-space: nowrap;
 }
 
+.quantity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.quantity input {
+  width: 76px;
+  height: 30px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 8px;
+  text-align: right;
+}
+
+.quantity input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: 0;
+}
+
+.quantity input:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.quoteRef {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  flex-shrink: 0;
+  margin-left: 6px;
+  line-height: 1.15;
+}
+
+.quoteRef strong {
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.quoteRef span {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 .actions {
   display: flex;
   align-items: center;
