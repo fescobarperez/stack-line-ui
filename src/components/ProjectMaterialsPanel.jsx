@@ -8,7 +8,7 @@ import projectTreeStyles from './ProjectMaterialsTree.module.css';
 import useTreeSelection from '../hooks/useTreeSelection.js';
 import StatCard from './StatCard.jsx';
 import { createSupplier } from '../api/partners.js';
-import { copyProjectMaterial, copyProjectMaterialGroup, createProjectMaterial, createProjectMaterialGroup, getProjectMaterials, moveProjectMaterial, moveProjectMaterialGroup, renameProjectMaterialGroup } from '../api/projectMaterials.js';
+import { copyProjectMaterial, copyProjectMaterialGroup, createProjectMaterial, createProjectMaterialGroup, getProjectMaterials, moveProjectMaterial, moveProjectMaterialGroup, renameProjectMaterialGroup, updateProjectMaterialQuantity } from '../api/projectMaterials.js';
 import { useProducts } from '../hooks/useCatalog.js';
 import { useSuppliers } from '../hooks/useMasters.js';
 
@@ -201,12 +201,13 @@ function MaterialModal({ project, products, suppliers, onCreateProduct, onCreate
   );
 }
 
-function ProjectMaterialTree({ project, plan, groups, onCreateGroup, onRefresh, pushToast, canEdit }) {
+function ProjectMaterialTree({ project, plan, groups, onCreateGroup, onAddMaterial, onRefresh, pushToast, canEdit }) {
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [creatingFolderFor, setCreatingFolderFor] = useState(null);
   const [newFolderName, setNewFolderName] = useState('');
   const [renamingFolderId, setRenamingFolderId] = useState(null);
   const [renameFolderName, setRenameFolderName] = useState('');
+  const [quantityDrafts, setQuantityDrafts] = useState({});
   const [busy, setBusy] = useState(false);
   const materialsByGroup = useMemo(() => groups.reduce((acc, group) => {
     acc[group.id] = group.materials || [];
@@ -324,6 +325,30 @@ function ProjectMaterialTree({ project, plan, groups, onCreateGroup, onRefresh, 
       pushToast?.(`No se pudo copiar el material: ${error.message}`, 'danger');
     } finally { setBusy(false); }
   };
+  const saveMaterialQuantity = async (material) => {
+    const draft = quantityDrafts[material.id];
+    if (draft == null || Number(draft) === Number(material.quantityPlanned)) return;
+    const quantity = Number(draft);
+    if (!(quantity > 0)) {
+      pushToast?.('La cantidad debe ser mayor que cero', 'danger');
+      setQuantityDrafts((current) => ({ ...current, [material.id]: String(material.quantityPlanned ?? 1) }));
+      return;
+    }
+    setBusy(true);
+    try {
+      await updateProjectMaterialQuantity(project.id, material.id, quantity);
+      await onRefresh();
+      setQuantityDrafts((current) => {
+        const next = { ...current };
+        delete next[material.id];
+        return next;
+      });
+      pushToast?.('Cantidad actualizada', 'success');
+    } catch (error) {
+      setQuantityDrafts((current) => ({ ...current, [material.id]: String(material.quantityPlanned ?? 1) }));
+      pushToast?.(`No se pudo actualizar la cantidad: ${error.message}`, 'danger');
+    } finally { setBusy(false); }
+  };
   const copyGroup = async (groupId) => {
     setBusy(true);
     try {
@@ -397,6 +422,8 @@ function ProjectMaterialTree({ project, plan, groups, onCreateGroup, onRefresh, 
     const isFolder = kind === 'group';
     const isRoot = kind === 'root';
     const material = node.data?.material;
+    const quoteIsDraft = ['borrador', 'draft'].includes(String(material?.quoteStatus || '').toLowerCase());
+    const quantityLocked = material?.quoteId != null && !quoteIsDraft;
     const rowClass = [
       treeStyles.row,
       selected && treeStyles.selected,
@@ -405,7 +432,7 @@ function ProjectMaterialTree({ project, plan, groups, onCreateGroup, onRefresh, 
     ].filter(Boolean).join(' ');
     const toggle = isFolder || isRoot ? <button type="button" className={treeStyles.toggle} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onToggle?.(); }} aria-label={isOpen ? 'Colapsar' : 'Expandir'}><Icon name={isOpen ? 'chevronDown' : 'chevronRight'} size={17} /></button> : <span className={treeStyles.toggleSpacer} />;
     const leading = isRoot ? <Icon name="home" size={18} /> : <Icon name={isFolder ? 'folder' : 'box'} size={17} fill={isFolder} />;
-    const label = isRoot ? <><strong>Raíz del proyecto</strong><span className="muted">Destino predeterminado · {plan.materialCount || 0} materiales</span></> : <><strong>{node.text}</strong><span className="muted">{isFolder ? `${(materialsByGroup[node.data.groupId] || []).length} materiales · ${Q(groupCosts.get(Number(node.data.groupId)) || 0)}` : `${material?.sku || ''} · ${material?.quantityPlanned} ${material?.uom}`}</span></>;
+    const label = isRoot ? <><strong>Raíz del proyecto</strong><span className="muted">Destino predeterminado · {plan.materialCount || 0} materiales</span></> : <><strong>{node.text}</strong><span className="muted">{isFolder ? `${(materialsByGroup[node.data.groupId] || []).length} materiales · ${Q(groupCosts.get(Number(node.data.groupId)) || 0)}` : `${material?.sku || ''} · ${material?.uom || 'unid'}`}</span></>;
     const handleKeyDown = (event) => {
       if (kind === 'material') extendMaterialSelection(node, event);
     };
@@ -414,10 +441,44 @@ function ProjectMaterialTree({ project, plan, groups, onCreateGroup, onRefresh, 
         {toggle}
         {leading}<span className={treeStyles.label}>{label}</span>
         {kind === 'material' && material?.quoteId != null && (
-          <span className="badge accent" style={{ marginLeft: 6, fontSize: 10 }} title="Este material ya forma parte de una cotización">En cotización</span>
+          <span
+            className={projectTreeStyles.quoteRef}
+            title={quoteIsDraft ? 'Cotización en borrador: la cantidad todavía puede editarse' : `Cotización ${material.quoteStatus || 'enviada'}: la cantidad está bloqueada`}
+          >
+            <strong>En cotización</strong>
+            <span>{material.quoteDocNumber || 'Número pendiente'}</span>
+          </span>
         )}
+        {kind === 'material' && <label className={projectTreeStyles.quantity} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+          <span>Cantidad</span>
+          <input
+            className="mono"
+            type="number"
+            min="0.001"
+            step="0.001"
+            value={quantityDrafts[material.id] ?? String(material.quantityPlanned ?? '')}
+            onChange={(event) => setQuantityDrafts((current) => ({ ...current, [material.id]: event.target.value }))}
+            onBlur={() => saveMaterialQuantity(material)}
+            onKeyDown={(event) => {
+              event.stopPropagation();
+              if (event.key === 'Enter') event.currentTarget.blur();
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setQuantityDrafts((current) => ({ ...current, [material.id]: String(material.quantityPlanned ?? 1) }));
+              }
+            }}
+            disabled={!canEdit || busy || quantityLocked}
+            title={quantityLocked ? `Cantidad bloqueada por ${material.quoteDocNumber || 'la cotización asociada'}` : 'Cantidad planificada editable'}
+            aria-label={`Cantidad planificada de ${node.text}`}
+          />
+          <span>{material?.uom || 'unid'}</span>
+        </label>}
         {kind === 'material' && <span className={`mono ${projectTreeStyles.cost}`}>{Q(material?.estimatedAmount)}</span>}
         {isRoot && <span className={`mono ${projectTreeStyles.cost}`}>{Q(plan.estimatedCost)}</span>}
+        {isRoot && <div className={`${treeStyles.actions} ${projectTreeStyles.actions}`} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+          <Button type="button" variant="ghost" size="sm" icon="plus" onClick={() => { setRenamingFolderId(null); setCreatingFolderFor('project-root'); }} disabled={!canEdit || busy}>Carpeta</Button>
+          <Button type="button" variant="accent" size="sm" icon="plus" onClick={onAddMaterial} disabled={!canEdit || busy}>Material</Button>
+        </div>}
         {isFolder && <div className={`${treeStyles.actions} ${projectTreeStyles.actions}`} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
           <Button type="button" variant="ghost" size="sm" icon="copy" title="Copiar folder" aria-label="Copiar folder" onClick={() => copyGroup(node.data.groupId)} disabled={!canEdit || busy}>Copiar</Button>
           <Button type="button" variant="ghost" size="sm" icon="edit" title="Renombrar folder" aria-label="Renombrar folder" onClick={() => startRename(node.data.group)} disabled={!canEdit || busy}>Renombrar</Button>
@@ -427,6 +488,7 @@ function ProjectMaterialTree({ project, plan, groups, onCreateGroup, onRefresh, 
           <Button type="button" variant="ghost" size="sm" icon="copy" title="Copiar material" aria-label="Copiar material" onClick={() => copyMaterial(node.data.materialId)} disabled={!canEdit || busy}>Copiar</Button>
         </div>}
       </div>
+      {creatingFolderFor === 'project-root' && isRoot && <div className={projectTreeStyles.inlineFolder} style={{ marginLeft: 42 + depth * 22 }}><input autoFocus value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} placeholder="Nombre de la carpeta" onKeyDown={(event) => { if (event.key === 'Enter') submitFolder(null); }} /><Button type="button" size="sm" variant="accent" onClick={() => submitFolder(null)} disabled={busy}>Crear</Button><Button type="button" size="sm" variant="ghost" onClick={() => setCreatingFolderFor(null)}>Cancelar</Button></div>}
       {creatingFolderFor === node.data?.groupId && isFolder && <div className={projectTreeStyles.inlineFolder} style={{ marginLeft: 42 + depth * 22 }}><input autoFocus value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} placeholder="Nombre del subfolder" onKeyDown={(event) => { if (event.key === 'Enter') submitFolder(node.data.groupId); }} /><Button type="button" size="sm" variant="accent" onClick={() => submitFolder(node.data.groupId)} disabled={busy}>Crear</Button><Button type="button" size="sm" variant="ghost" onClick={() => setCreatingFolderFor(null)}>Cancelar</Button></div>}
       {renamingFolderId === node.data?.groupId && isFolder && <div className={projectTreeStyles.inlineFolder} style={{ marginLeft: 42 + depth * 22 }}><input autoFocus value={renameFolderName} onChange={(event) => setRenameFolderName(event.target.value)} placeholder="Nombre del folder" onKeyDown={(event) => { if (event.key === 'Enter') submitRename(node.data.groupId); }} /><Button type="button" size="sm" variant="accent" onClick={() => submitRename(node.data.groupId)} disabled={busy}>Guardar</Button><Button type="button" size="sm" variant="ghost" onClick={() => setRenamingFolderId(null)}>Cancelar</Button></div>}
     </React.Fragment>;
@@ -470,13 +532,13 @@ export default function ProjectMaterialsPanel({ project, pushToast, onMaterialsT
 
   return (
     <section className="card project-materials-panel" style={{ marginBottom: 16 }}>
-      <div className="card-head"><div><h3>Materiales del proyecto</h3><div className="body-small muted">La Raíz del proyecto existe automáticamente; organiza los materiales dentro de subfolders.</div></div><div style={{ display: 'flex', gap: 8 }}><Button size="sm" icon="box" variant="accent" onClick={openMaterialModal} disabled={!canEdit}>Agregar material</Button></div></div>
+      <div className="card-head"><div><h3>Materiales del proyecto</h3><div className="body-small muted">Agrega carpetas y materiales desde la Raíz del proyecto; luego organízalos arrastrando.</div></div></div>
       <div className="card-body">
         {error && <div className="alert" style={{ marginBottom: 12 }}><Icon name="alert" size={16} />No se pudo cargar la planificación: {error.message}</div>}
         {loading ? <div className="muted">Cargando materiales…</div> : (
           <>
             <div className="stat-grid" style={{ marginBottom: 14 }}><StatCard icon="box" tone="pri" size="title" label="Materiales planificados" value={plan.materialCount || 0} /><StatCard icon="cash" tone="sec" size="title" label="Costo planificado" value={Q(plan.estimatedCost)} /><StatCard icon="folder" tone="ter" size="title" label="Grupos" value={groups.length} /></div>
-            <ProjectMaterialTree project={project} plan={plan} groups={groups} onCreateGroup={(payload) => createProjectMaterialGroup(project.id, payload)} onRefresh={reload} pushToast={pushToast} canEdit={canEdit} />
+            <ProjectMaterialTree project={project} plan={plan} groups={groups} onCreateGroup={(payload) => createProjectMaterialGroup(project.id, payload)} onAddMaterial={openMaterialModal} onRefresh={reload} pushToast={pushToast} canEdit={canEdit} />
           </>
         )}
       </div>

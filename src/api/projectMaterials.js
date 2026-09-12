@@ -13,6 +13,9 @@ export const createProjectMaterial = (projectId, data) =>
 export const moveProjectMaterial = (projectId, materialId, groupId = null) =>
   api.put(`/api/projects/${projectId}/materials/${materialId}/group`, { groupId });
 
+export const updateProjectMaterialQuantity = (projectId, materialId, quantityPlanned) =>
+  api.put(`/api/projects/${projectId}/materials/${materialId}/quantity`, { quantityPlanned });
+
 export const moveProjectMaterialGroup = (projectId, groupId, parentGroupId = null) =>
   api.put(`/api/projects/${projectId}/material-groups/${groupId}/parent`, { parentGroupId });
 
