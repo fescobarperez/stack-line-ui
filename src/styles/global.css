@@ -4200,3 +4200,28 @@ table.tbl tfoot td {
 @media (max-width: 560px) {
   .quote-op-form.is-single { grid-template-columns: 1fr; }
 }
+
+/* ===== Reportería · rentabilidad de proyectos ===== */
+.rentab-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.rentab-toolbar .field-group { min-width: 170px; }
+/* .grid-2 es 2fr 1fr —pensado para un panel principal y uno lateral—, y aquí
+   las dos tablas pesan lo mismo: se comparan entre sí, así que van al mismo
+   ancho. Abajo de 1100px una sobre otra, que comparadas a la fuerza en
+   columnas angostas no se leen. */
+.rentab-grid {
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+}
+/* Con seis columnas cada una, que desborde la tabla y no la tarjeta. */
+.rentab-grid .card-body { overflow-x: auto; }
+.rentab-grid .mtable { min-width: 460px; }
+@media (max-width: 1100px) {
+  .rentab-grid { grid-template-columns: 1fr; }
+}
+.rentab-grid .mtable tbody tr:hover td { background: var(--surface-2); }

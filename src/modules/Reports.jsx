@@ -8,6 +8,7 @@ import StatCard from '../components/StatCard.jsx';
 import { useReports } from '../hooks/useReports.js';
 import { usePurchaseOrders } from '../hooks/useOperations.js';
 import { useSuppliers } from '../hooks/useMasters.js';
+import ProjectProfitabilityPanel from '../components/ProjectProfitabilityPanel.jsx';
 import React, { useState as useStateRpt } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -15,7 +16,7 @@ const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDi
 const Qs = Q;
 const daysFor = { hoy: 1, '7d': 7, '14d': 14, '30d': 30, '90d': 90, mtd: 30, ytd: 365 };
 
-function ReportsModule() {
+function ReportsModule({ pushToast }) {
   const { t } = useTranslation();
   const [section, setSection] = useStateRpt('ventas');
   const [range, setRange] = useStateRpt('30d');
@@ -50,6 +51,7 @@ function ReportsModule() {
         <div className={`tab ${section === 'ventas' ? 'active' : ''}`} onClick={() => setSection('ventas')}>{t('reports.tabs.sales', 'Reportes de ventas')}</div>
         <div className={`tab ${section === 'compras' ? 'active' : ''}`} onClick={() => setSection('compras')}>Reportes de compras</div>
         <div className={`tab ${section === 'rentabilidad' ? 'active' : ''}`} onClick={() => setSection('rentabilidad')}>Rentabilidad &amp; márgenes</div>
+        <div className={`tab ${section === 'proyectos' ? 'active' : ''}`} onClick={() => setSection('proyectos')}>Rentabilidad de proyectos</div>
         <div className={`tab ${section === 'fiscal' ? 'active' : ''}`} onClick={() => setSection('fiscal')}>Reportes fiscales (SAT)</div>
       </div>
 
@@ -212,6 +214,8 @@ function ReportsModule() {
           </div>
         </>
       )}
+
+      {section === 'proyectos' && <ProjectProfitabilityPanel pushToast={pushToast} />}
 
       {section === 'rentabilidad' && (
         <>

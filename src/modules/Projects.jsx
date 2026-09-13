@@ -35,8 +35,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 const Q = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const aggregateCost = (project) => Number(project.executed || 0) + Number(project.materialsCost || 0);
-const aggregateMargin = (project) => Number(project.contracted || 0) - aggregateCost(project);
+// El margen lo calcula el backend y aquí solo se lee. Antes se recalculaba
+// sumando materialsCost al ejecutado, y eso contaba dos veces el material que
+// ya estaba dentro del ejecutado: la lista mostraba −200 donde el backend
+// decía +600 sobre el mismo proyecto.
+const projectCost = (project) => Number(project.executed || 0);
+const projectMargin = (project) => Number(project.margin || 0);
 
 // Debe coincidir con BANK_METHODS de PaymentService.
 const NEEDS_BANK = new Set(['transferencia', 'deposito']);
@@ -786,13 +790,17 @@ function ProjectDrawer({ project, clients, onClose, onChanged, onDuplicated, pus
   const [materialsCost, setMaterialsCost] = useState(0);
   const [materialsLoading, setMaterialsLoading] = useState(true);
   const st = STATUS[project.status] || { label: project.status, variant: 'neutral' };
-  const materialTotal = materialsCost > 0 ? materialsCost : Number(project.materialsCost || 0);
-  const executedTotal = Number(project.executed || 0) + materialTotal;
+  // Mismo criterio que la lista: el ejecutado y el margen vienen del backend.
+  // Sumarle aquí el costo de materiales contaba dos veces lo que el backend ya
+  // incluía, y dejaba el drawer contradiciendo a la tabla de la que se abrió.
+  const executedTotal = Number(project.executed || 0);
   const contractedTotal = Number(project.contracted || 0);
   const invoicedTotal = Number(project.invoiced || 0);
-  const marginTotal = contractedTotal - executedTotal;
-  const projectedMarginTotal = marginTotal - Number(project.committed || 0);
-  const marginPctTotal = contractedTotal > 0 ? (marginTotal / contractedTotal) * 100 : 0;
+  const marginTotal = Number(project.margin || 0);
+  // El proyectado ya descuenta material pendiente, cargos tentativos y OCs
+  // vivas; recalcularlo aquí solo con committed volvía a perder esas dos.
+  const projectedMarginTotal = Number(project.projectedMargin || 0);
+  const marginPctTotal = Number(project.marginPct || 0);
   const executedNotInvoicedTotal = Math.max(executedTotal - invoicedTotal, 0);
   const totalSpinner = <span className="material-total-spinner" role="status" aria-label="Calculando materiales" />;
   const overrun = !materialsLoading && marginTotal < 0;
@@ -822,7 +830,7 @@ function ProjectDrawer({ project, clients, onClose, onChanged, onDuplicated, pus
     return [{
       id: materialsCostRowId,
       source: 'material',
-      description: 'Materiales',
+      description: 'Materiales planificados',
       costDate: '—',
       amount: materialsCost,
       isMaterialsTotal: true,
@@ -1149,8 +1157,8 @@ export default function Projects({ pushToast }) {
 
   const totals = useMemo(() => projects.reduce((a, p) => ({
     contracted: a.contracted + Number(p.contracted || 0),
-    executed:   a.executed   + aggregateCost(p),
-    margin:     a.margin     + aggregateMargin(p),
+    executed:   a.executed   + projectCost(p),
+    margin:     a.margin     + projectMargin(p),
     open:       a.open + (p.status === 'open' ? 1 : 0),
   }), { contracted: 0, executed: 0, margin: 0, open: 0 }), [projects]);
 
@@ -1166,11 +1174,11 @@ export default function Projects({ pushToast }) {
     { key: 'contracted', header: t('projects.contracted', 'Contratado'), align: 'right', sortable: true,
       render: (p) => <span className="num">{Q(p.contracted)}</span> },
     { key: 'executed', header: t('projects.executed', 'Ejecutado'), align: 'right', sortable: true,
-      render: (p) => <span className="num">{Q(aggregateCost(p))}</span> },
+      render: (p) => <span className="num">{Q(projectCost(p))}</span> },
     { key: 'margin', header: t('projects.margin', 'Margen'), align: 'right', sortable: true,
       render: (p) => (
-        <span className="num" style={{ color: aggregateMargin(p) < 0 ? 'var(--danger)' : 'var(--success)' }}>
-          {Q(aggregateMargin(p))} · {Number(p.contracted || 0) > 0 ? ((aggregateMargin(p) / Number(p.contracted)) * 100).toFixed(1) : '0.0'}%
+        <span className="num" style={{ color: projectMargin(p) < 0 ? 'var(--danger)' : 'var(--success)' }}>
+          {Q(projectMargin(p))} · {Number(p.marginPct ?? 0).toFixed(1)}%
         </span>
       ) },
     { key: 'status', header: t('common.status', 'Estado'),
