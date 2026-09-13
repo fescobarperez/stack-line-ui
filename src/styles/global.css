@@ -4064,3 +4064,46 @@ table.tbl tfoot td {
   justify-content: space-between;
   gap: 12px;
 }
+
+/* ===== Comparación de precios por proveedor ===== */
+.price-modal { max-width: 880px; width: 92vw; }
+.price-modal-tabs { margin: 0 18px; }
+.price-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: var(--md-sys-color-surface-container-lowest);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.price-summary > div { display: flex; flex-direction: column; gap: 2px; }
+.price-summary span {
+  font: 500 11px/16px var(--font-sans); letter-spacing: .5px;
+  color: var(--md-sys-color-on-surface-variant);
+  text-transform: uppercase;
+}
+.price-summary strong { font: 500 16px/24px var(--font-mono); letter-spacing: .15px; }
+/* El veredicto es la respuesta a "¿le compro al más barato?": va antes que la
+   tabla y con color propio, para no obligar a leer filas para saberlo. */
+.price-verdict {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: var(--r-md);
+  font: 400 12px/16px var(--font-sans); letter-spacing: .4px;
+}
+.price-verdict.is-ok {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+}
+.price-verdict.is-warn {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+}
+/* .tbl-wrap ya trae overflow:auto; aquí solo se fija el ancho mínimo de la
+   tabla para que desborde ella y no el diálogo. */
+.price-table { width: 100%; min-width: 620px; }
+.price-table tr.is-best td { background: color-mix(in srgb, var(--success) 6%, transparent); }
+.price-modal .cfg-hint { margin-top: 12px; }

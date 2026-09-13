@@ -16,6 +16,7 @@ const MAP = {
   user: 'person',
   users: 'group',
   supplier: 'local_shipping',
+  pricecompare: 'price_change',
   search: 'search',
   plus: 'add',
   minus: 'remove',

@@ -12,6 +12,13 @@ export const removeProductSupplier = (productId, supplierId) =>
 // El otro extremo de la relación: qué productos vende un proveedor.
 export const listProductsBySupplier = (supplierId) =>
   api.get(`/api/products/by-supplier/${supplierId}`);
+// Comparación de precios: por producto y ranking global de proveedores.
+export const getSupplierComparison = (productId) =>
+  api.get(`/api/products/${productId}/supplier-comparison`);
+// Con productId el ranking se limita a los proveedores de ese producto.
+export const getSupplierRanking = (productId, limit = 5) =>
+  api.get(`/api/products/supplier-ranking?limit=${limit}`
+    + (productId != null ? `&productId=${productId}` : ''));
 // Categorías
 export const listCategories = () => api.get('/api/categories');
 export const createCategory = (data) => api.post('/api/categories', data);

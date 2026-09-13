@@ -8,6 +8,7 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import React, { useState as useStateInv, useMemo as useMemoInv } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProducts, useCategories } from '../hooks/useCatalog.js';
+import SupplierPriceModal from '../components/SupplierPriceModal.jsx';
 import { useSuppliers, useBranches } from '../hooks/useMasters.js';
 import { useStockMovements } from '../hooks/useOperations.js';
 
@@ -159,6 +160,28 @@ function InventoryModule({ pushToast }) {
     }
   };
 
+  const [priceModal, setPriceModal] = useStateInv(null);
+
+  /**
+   * Acciones de fila explícitas.
+   *
+   * DataTable arma ver/editar/eliminar solo a partir de onView/onEdit/onDelete,
+   * y `actions` las reemplaza por completo: para sumar un cuarto botón hay que
+   * redeclarar los tres.
+   */
+  const rowActions = (p) => (
+    <>
+      <button className="icon-btn" title="Comparar precios de proveedor" aria-label="Comparar precios de proveedor"
+        onClick={() => setPriceModal(p)}><Icon name="pricecompare" size={18} /></button>
+      <button className="icon-btn" title="Ver" aria-label="Ver"
+        onClick={() => viewProduct(p)}><Icon name="eye" size={18} /></button>
+      <button className="icon-btn" title="Editar" aria-label="Editar"
+        onClick={() => editProduct(p)}><Icon name="edit" size={18} /></button>
+      <button className="icon-btn" title="Eliminar" aria-label="Eliminar"
+        onClick={() => deleteProduct(p)}><Icon name="trash" size={18} /></button>
+    </>
+  );
+
   // Columnas de la tabla de productos (demo del componente <DataTable>)
   const catName = (id) => CATEGORIES.find(c => c.id === id)?.name;
   const productColumns = [
@@ -287,9 +310,7 @@ function InventoryModule({ pushToast }) {
             totals={{ sku: 'Total', stock: totalStock }}
             title={`${filtered.length} productos`}
             onRowClick={viewProduct}
-            onView={viewProduct}
-            onEdit={editProduct}
-            onDelete={deleteProduct}
+            actions={rowActions}
             onRefresh={() => { reloadProducts(); pushToast && pushToast('Actualizando productos…'); }}
             empty={t('inventory.empty', 'Sin productos que coincidan con el filtro')}
             emptyIcon="box"
@@ -600,6 +621,10 @@ function InventoryModule({ pushToast }) {
             </div>
           </div>
         </div>
+      )}
+
+      {priceModal && (
+        <SupplierPriceModal product={priceModal} pushToast={pushToast} onClose={() => setPriceModal(null)} />
       )}
 
       {/* Detail drawer */}
