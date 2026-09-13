@@ -14,6 +14,7 @@ import { useBranches, useSuppliers } from '../hooks/useMasters.js';
 import { createBranch, updateBranch } from '../api/org.js';
 import { createSupplier, updateSupplier } from '../api/partners.js';
 import { listCategories, createCategory, updateCategory } from '../api/catalog.js';
+import { listChargeCategories, createChargeCategory, updateChargeCategory } from '../api/wave2.js';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PERM_SECTIONS } from '../lib/permissions.js';
@@ -36,6 +37,7 @@ const CATALOGOS = [
   { id: 'categorias',  modulo: 'inventory', form: 'categoria', label: 'Categorías',      addLabel: 'Agregar categoría' },
   { id: 'proveedores', modulo: 'purchases', form: 'proveedor', label: 'Proveedores',     addLabel: 'Agregar proveedor' },
   { id: 'sucursales',  modulo: 'config',    form: 'sucursal',  label: 'Sucursales',      addLabel: 'Agregar sucursal' },
+  { id: 'gastos',      modulo: 'quotes',    form: 'gasto',    label: 'Conceptos de gasto', addLabel: 'Agregar concepto' },
   { id: 'impuestos',   modulo: 'fel',                          label: 'Impuestos & SAT' },
 ];
 
@@ -82,6 +84,21 @@ const FORMS = {
     toForm: (s) => ({ name: s.name || '', nit: s.nit || '', contact: s.contact || '', phone: s.phone || '', paymentTerms: s.paymentTerms || '', status: s.status || 'active' }),
     toPayload: (f) => ({ name: f.name.trim(), nit: f.nit || null, contact: f.contact || null, phone: f.phone || null, paymentTerms: f.paymentTerms || null, balance: 0, status: f.status }),
   },
+  gasto: {
+    title: 'Concepto de gasto',
+    fields: [
+      { key: 'name', label: 'Nombre', required: true, placeholder: 'Energía eléctrica, alquiler…' },
+      { key: 'operating', label: '¿Suma a Gastos operativos?', type: 'select',
+        options: [['false', 'No, es un cargo aparte'], ['true', 'Sí, es gasto operativo']] },
+      { key: 'sortOrder', label: 'Orden en la lista', placeholder: '50' },
+      { key: 'status', label: 'Estado', type: 'select', options: [['active', 'Activo'], ['inactive', 'Inactivo']] },
+    ],
+    empty: { name: '', operating: 'false', sortOrder: '50', status: 'active' },
+    toForm: (c) => ({ name: c.name || '', operating: c.operating ? 'true' : 'false',
+                      sortOrder: String(c.sortOrder ?? 50), status: c.status || 'active' }),
+    toPayload: (f) => ({ name: f.name.trim(), operating: f.operating === 'true',
+                         sortOrder: Number(f.sortOrder) || 50, status: f.status }),
+  },
   categoria: {
     title: 'Categoría',
     fields: [
@@ -118,6 +135,18 @@ function MaintenanceModule({ pushToast }) {
   }, []);
   useEffect(() => { reloadCategories(); }, [reloadCategories]);
 
+  // Conceptos de gasto de la cotización. No se llaman solo «categorías»
+  // a propósito: en esta misma pantalla ya hay una pestaña de categorías de
+  // producto y son cosas distintas.
+  const [gastos, setGastos] = useState([]);
+  const reloadGastos = useCallback(async () => {
+    try {
+      const rows = await listChargeCategories();
+      setGastos(Array.isArray(rows) ? rows : []);
+    } catch { setGastos([]); }
+  }, []);
+  useEffect(() => { reloadGastos(); }, [reloadGastos]);
+
   // modal = { type, mode:'new'|'edit', id }
   const [modal, setModal] = useState(null);
 
@@ -126,6 +155,7 @@ function MaintenanceModule({ pushToast }) {
       sucursal: { create: createBranch, update: updateBranch, reload: reloadBranches },
       proveedor: { create: createSupplier, update: updateSupplier, reload: reloadSuppliers },
       categoria: { create: createCategory, update: updateCategory, reload: reloadCategories },
+      gasto: { create: createChargeCategory, update: updateChargeCategory, reload: reloadGastos },
     }[type];
     try {
       if (id != null) await api.update(id, payload);
@@ -154,6 +184,20 @@ function MaintenanceModule({ pushToast }) {
     { key: 'name', header: t('common.name', 'Nombre'), sortable: true, render: (c) => <span className="nm">{c.name}</span> },
     { key: 'id', header: t('common.code', 'Código'), render: (c) => <span className="sku">{String(c.id).toUpperCase()}</span> },
   ];
+  const gastoColumns = [
+    { key: 'name', header: t('common.name', 'Nombre'), sortable: true, render: (g) => <span className="nm">{g.name}</span> },
+    { key: 'code', header: t('common.code', 'Código'), render: (g) => <span className="sku">{g.code}</span> },
+    { key: 'operating', header: t('maintenance.operating', 'Gasto operativo'), render: (g) => g.operating
+      ? <span className="badge-m3 accent">Sí</span>
+      : <span className="muted">—</span> },
+    { key: 'protectedRow', header: '', width: 110, render: (g) => g.protectedRow
+      ? <span className="badge-m3">Fijo del sistema</span>
+      : null },
+    { key: 'sortOrder', header: t('maintenance.order', 'Orden'), align: 'right', sortable: true, className: 'muted' },
+    { key: 'status', header: t('common.status', 'Estado'), sortable: true, render: (g) => g.status === 'inactive'
+      ? <span className="badge-m3 warning">Inactivo</span>
+      : <span className="badge-m3 success">Activo</span> },
+  ];
   const supplierColumns = [
     { key: 'name', header: t('maintenance.legalName', 'Razón social'), sortable: true, render: (s) => <span className="nm">{s.name}</span> },
     { key: 'nit', header: 'NIT', render: (s) => <span className="sku">{s.nit || '—'}</span> },
@@ -167,6 +211,7 @@ function MaintenanceModule({ pushToast }) {
     sucursales: branches.length,
     proveedores: suppliers.length,
     categorias: catalogCategories.length,
+    gastos: gastos.length,
   };
 
   // El cuerpo de cada catálogo; la cabecera y el botón de agregar son genéricos.
@@ -203,6 +248,24 @@ function MaintenanceModule({ pushToast }) {
         onEdit={(c) => setModal({ type: 'categoria', mode: 'edit', id: c.id, data: c })}
         empty={t('maintenance.noCategories', 'Sin categorías')}
       />
+    );
+    if (id === 'gastos') return (
+      <>
+        <DataTable
+          rowKey={(g) => g.id}
+          columns={gastoColumns}
+          rows={gastos}
+          density="compact"
+          pageSize={12}
+          onEdit={(g) => setModal({ type: 'gasto', mode: 'edit', id: g.id, data: g })}
+          empty={t('maintenance.noCharges', 'Sin conceptos de gasto')}
+        />
+        <div className="cfg-hint" style={{ marginTop: 12 }}>
+          Los marcados como <b>gasto operativo</b> suman al renglón fijo de Gastos operativos de la
+          cotización. Los <b>fijos del sistema</b> no se pueden eliminar porque ese cálculo depende de
+          ellos; si no los quieres en el selector, márcalos como inactivos.
+        </div>
+      </>
     );
     if (id === 'impuestos') return (
       <div className="grid-2">

@@ -61,7 +61,15 @@ function quoteRows(quote, charges) {
     total: lineAmount(item),
   }));
 
-  const chargeRows = (charges?.charges || []).map((charge) => ({
+  // Los gastos operativos van AGRUPADOS en una sola línea. El desglose
+  // (energía, alquiler, transporte…) es estructura de costo interna: el
+  // cliente no tiene por qué leer cuánto paga uno de luz para fijar su
+  // precio. Los demás cargos sí se listan uno por uno, como siempre.
+  const todos = charges?.charges || [];
+  const operativos = todos.filter((charge) => charge.operating);
+  const otros = todos.filter((charge) => !charge.operating);
+
+  const chargeRows = otros.map((charge) => ({
     description: charge.description || 'Cargo adicional',
     detail: charge.category || 'Cargo de la propuesta',
     qty: 1,
@@ -70,7 +78,17 @@ function quoteRows(quote, charges) {
     isCharge: true,
   }));
 
-  return [...productRows, ...chargeRows];
+  const operatingTotal = operativos.reduce((sum, charge) => sum + Number(charge.computedAmount || 0), 0);
+  const operatingRows = operatingTotal > 0 ? [{
+    description: 'Gastos operativos',
+    detail: '',
+    qty: 1,
+    unitPrice: operatingTotal,
+    total: operatingTotal,
+    isCharge: true,
+  }] : [];
+
+  return [...productRows, ...chargeRows, ...operatingRows];
 }
 
 function buildTotals(quote, charges, taxRate) {
@@ -78,7 +96,7 @@ function buildTotals(quote, charges, taxRate) {
   const chargesSubtotal = Number(charges?.fixedTotal || 0) + Number(charges?.percentTotal || 0);
   const profit = Number(quote.profitAmount || 0);
   const subtotal = productSubtotal + chargesSubtotal + profit;
-  const iva = subtotal * (Number(taxRate || 12) / 100);
+  const iva = subtotal * (Number(taxRate) / 100);
   return { productSubtotal, chargesSubtotal, profit, subtotal, iva, total: subtotal + iva };
 }
 
@@ -98,7 +116,7 @@ function renderRows(rows) {
     </tr>`).join('');
 }
 
-function documentHtml(quote, { company, charges, branding, taxRate = quote.taxRate || 12 } = {}) {
+function documentHtml(quote, { company, charges, branding, taxRate = quote.taxRate } = {}) {
   const co = company || sessionCompany() || {};
   const brand = branding || {};
   const rows = quoteRows(quote, charges);

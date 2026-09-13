@@ -29,6 +29,15 @@ export const updateQuoteStatus = (id, data) => api.put(`/api/quotes/${id}/status
 // Gastos/cargos de la cotización (fixed/percent). Cada llamada devuelve el
 // resumen recalculado { materialsCost, fixedTotal, subtotalCost, percentTotal, total, charges[] }.
 export const getQuoteCharges = (id) => api.get(`/api/quotes/${id}/charges`);
+/** Conceptos de gasto de la cotización (tabla charge_categories). */
+export const listChargeCategories = () => api.get('/api/quotes/charge-categories');
+export const createChargeCategory = (data) => api.post('/api/quotes/charge-categories', data);
+export const updateChargeCategory = (id, data) => api.put(`/api/quotes/charge-categories/${id}`, data);
+export const deleteChargeCategory = (id) => api.del(`/api/quotes/charge-categories/${id}`);
+/** Gasto operativo: modo de captura y monto cuando es cifra única. */
+export const setQuoteOperatingMode = (id, mode) => api.put(`/api/quotes/${id}/operating-mode`, { mode });
+export const setQuoteOperatingAmount = (id, amount, description) =>
+  api.put(`/api/quotes/${id}/operating-expense`, { amount, description: description || null });
 export const addQuoteCharge = (id, data) => api.post(`/api/quotes/${id}/charges`, data);
 export const deleteQuoteCharge = (id, chargeId) => api.del(`/api/quotes/${id}/charges/${chargeId}`);
 

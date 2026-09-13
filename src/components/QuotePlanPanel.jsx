@@ -13,11 +13,13 @@ import Icon from './Icon.jsx';
 import { getQuotePlan, getQuoteCharges, addQuotePaymentTerm, deleteQuotePaymentTerm, generateQuotePlan } from '../api/wave2.js';
 import { createPayment } from '../api/receivables.js';
 import { useTranslation } from 'react-i18next';
+import { useTaxRate } from '../hooks/useOperations.js';
 
 const Q = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPlanBalanceChange, chargesVersion = 0 }) {
   const { t } = useTranslation();
+  const tasaEmpresa = useTaxRate();
   const quoteId = quote.backendId;
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
   const baseQuoteTotal = persistedQuoteTotal > 0 ? persistedQuoteTotal : lineTotal;
   const manualChargesTotal = Number(plan?.manualChargesTotal || 0);
   const taxableSubtotal = baseQuoteTotal + manualChargesTotal + Number(quote.profitAmount || 0);
-  const taxRate = Number(quote.taxRate || 12);
+  const taxRate = Number(quote.taxRate ?? tasaEmpresa);
   const fallbackQuoteTotal = taxableSubtotal * (1 + taxRate / 100);
   const quoteTotal = apiQuoteTotal > 0 ? apiQuoteTotal : fallbackQuoteTotal;
   const planTotal = Number(plan?.planTotal || 0);

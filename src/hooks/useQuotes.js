@@ -34,7 +34,7 @@ export function mapQuote(q) {
     client: { name: q.clientName || '', nit: q.clientNit || '', email: q.clientEmail || '', contact: q.clientContact || '' },
     createdBy: q.createdBy || '',
     status: q.status,
-    taxRate: Number(q.taxRate || 12),
+    taxRate: q.taxRate == null ? null : Number(q.taxRate),
     profitCalcType: q.profitCalcType || 'fixed',
     profitValue: Number(q.profitValue || 0),
     profitAmount: Number(q.profitAmount || 0),

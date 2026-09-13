@@ -1944,6 +1944,18 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
    Era 11px mono en versalitas: el último bolsón del set anterior, y el más usado
    (123 sitios). Pasó desapercibido en las auditorías porque 11px SÍ está en la
    escala; lo que estaba fuera era la familia y las versalitas. */
+/* .field-group nunca existió: 45 usos en 7 archivos y ninguna regla. El label
+   es inline y el input inline-block, así que se sentaban uno junto al otro y
+   con un ancho fijo encima acababan encimados. Apilarlos es lo que el marcado
+   siempre dio por hecho. */
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.field-group .field-input,
+.field-group .autocomplete { width: 100%; }
 .field-label {
   font: 500 12px/16px var(--font-sans);
   letter-spacing: 0.5px;
@@ -4107,3 +4119,84 @@ table.tbl tfoot td {
 .price-table { width: 100%; min-width: 620px; }
 .price-table tr.is-best td { background: color-mix(in srgb, var(--success) 6%, transparent); }
 .price-modal .cfg-hint { margin-top: 12px; }
+
+/* ===== Cotización · renglón fijo de gastos operativos ===== */
+/* Se lee como bloque: la cabecera con fondo propio y las partidas indentadas
+   colgando de ella, para no confundirlas con los demás cargos. */
+.quote-op-row td { background: color-mix(in srgb, var(--md-sys-color-primary) 5%, transparent); }
+.quote-op-modo { height: 26px; }
+.quote-op-modo .seg { padding: 0 10px; font-size: 11px; }
+/* Disparador del panel: el chevron gira al abrir, que es la señal que la
+   gente ya sabe leer sin que nadie se la explique. */
+.quote-op-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none; padding: 0;
+  font: inherit; color: inherit; cursor: pointer;
+}
+.quote-op-toggle .msi {
+  color: var(--md-sys-color-on-surface-variant);
+  transition: transform var(--dur-short) var(--ease-standard);
+}
+.quote-op-toggle.is-open .msi { transform: rotate(90deg); }
+.quote-op-toggle:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 2px; border-radius: var(--r-sm); }
+
+/* Contenido desplegado: una sola celda a todo el ancho, para que los campos
+   no queden presos del reparto de columnas de la tabla. */
+.quote-op-panel > td {
+  padding: 4px 10px 14px 28px;
+  background: color-mix(in srgb, var(--md-sys-color-primary) 2%, transparent);
+}
+.quote-op-empty {
+  padding: 8px 0;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.quote-op-list { list-style: none; margin: 0 0 4px; padding: 0; }
+.quote-op-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px 110px 32px;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.quote-op-list-name { display: flex; flex-direction: column; min-width: 0; }
+.quote-op-list-name small { color: var(--md-sys-color-on-surface-variant); }
+.quote-op-list-amount { text-align: right; font-weight: 500; }
+@media (max-width: 700px) {
+  .quote-op-list li { grid-template-columns: minmax(0, 1fr) 110px 32px; }
+  .quote-op-list-calc { display: none; }
+}
+
+/* La captura vive fuera de la tabla: dentro de un <td> los campos quedaban
+   presos del ancho de las columnas. Aquí el grid reparte el espacio a su
+   gusto y colapsa a una columna cuando no cabe. */
+.quote-op-box { margin-top: 10px; }
+.quote-op-box-title {
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: .5px;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-bottom: 10px;
+}
+.quote-op-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.4fr) minmax(160px, 1.6fr) 110px 120px auto;
+  gap: 10px;
+  align-items: end;
+}
+/* Un solo campo y su botón: que no se estire por todo el ancho. Clase propia
+   y no :has(), que no todos los navegadores resuelven. */
+.quote-op-form.is-single {
+  grid-template-columns: minmax(140px, 180px) auto;
+  justify-content: start;
+}
+@media (max-width: 860px) {
+  .quote-op-form { grid-template-columns: 1fr 1fr; }
+  .quote-op-form > .btn { grid-column: 1 / -1; justify-self: start; }
+}
+@media (max-width: 560px) {
+  .quote-op-form { grid-template-columns: 1fr; }
+}
+/* En una columna el modo monto ya no necesita su ancho reducido. */
+@media (max-width: 560px) {
+  .quote-op-form.is-single { grid-template-columns: 1fr; }
+}

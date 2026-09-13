@@ -297,7 +297,10 @@ export default function Quotes({ pushToast }) {
         company: sessionCompany(),
         charges,
         branding,
-        taxRate: Number(selQuote.taxRate || taxRate || 12),
+        // La tasa de la cotización manda por estar congelada en el documento;
+        // si no la trae, la configurada en la empresa. El 12 duro se fue: era
+        // el que hacía que el PDF ignorara la configuración.
+        taxRate: Number(selQuote.taxRate ?? taxRate),
       });
       pushToast(t('quotes.pdfReady', 'PDF generado. Revisa la ventana de impresión para guardarlo.'), 'success');
     } catch (err) {
