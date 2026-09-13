@@ -4,6 +4,11 @@ import { api } from './client.js';
 export const listProjects = () => api.get('/api/projects');
 export const getProject = (id) => api.get(`/api/projects/${id}`);
 export const createProject = (data) => api.post('/api/projects', data);
+/**
+ * Duplica el proyecto con su plan de materiales y sus cotizaciones.
+ * Solo se captura nombre y cliente; lo demás se hereda del original.
+ */
+export const duplicateProject = (id, data) => api.post(`/api/projects/${id}/duplicate`, data);
 
 export const addProjectCost = (id, data) => api.post(`/api/projects/${id}/costs`, data);
 export const deleteProjectCost = (id, costId) => api.del(`/api/projects/${id}/costs/${costId}`);

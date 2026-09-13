@@ -17,7 +17,7 @@ import DataTable from '../components/DataTable.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useProjects, useAging, useBankAccounts } from '../hooks/useOperations.js';
 import { useAccounts } from '../hooks/useAccounting.js';
-import { getProject, createProject, addProjectCost, deleteProjectCost, setProjectStatus } from '../api/projects.js';
+import { getProject, createProject, duplicateProject, addProjectCost, deleteProjectCost, setProjectStatus } from '../api/projects.js';
 import { createPayment } from '../api/receivables.js';
 import { createSale } from '../api/pos.js';
 import { printReceipt } from '../lib/receipt.js';
@@ -25,6 +25,8 @@ import { consumeMaterial } from '../api/projects.js';
 import ProjectMaterialsPanel from '../components/ProjectMaterialsPanel.jsx';
 import QuoteBuilderModal from '../components/QuoteBuilderModal.jsx';
 import { useProducts } from '../hooks/useCatalog.js';
+import Autocomplete from '../components/Autocomplete.jsx';
+import { getProjectMaterials } from '../api/projectMaterials.js';
 import { useBranches, useClients } from '../hooks/useMasters.js';
 import { createClient } from '../api/partners.js';
 import useAuthorization from '../hooks/useAuthorization.js';
@@ -674,14 +676,113 @@ function CreateProjectModal({ clients, onDone, onClose, pushToast }) {
   );
 }
 
+/**
+ * Duplicar un proyecto como plantilla.
+ *
+ * Solo se captura nombre y cliente: el backend hereda del original el centro de
+ * costo, el monto contratado, la moneda, las fechas y las notas, y replica el
+ * plan de materiales y las cotizaciones. Cambiar el cliente rehace también el
+ * membrete de las cotizaciones copiadas.
+ */
+function DuplicateProjectModal({ project, clients, onDone, onClose, pushToast }) {
+  const [form, setForm] = useState({
+    name: `Copia de ${project.name}`,
+    clientId: project.clientId != null ? String(project.clientId) : '',
+  });
+  const [resumen, setResumen] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  // Cuántas carpetas y materiales se van a copiar. El drawer solo lleva el
+  // costo, no las cuentas, así que se pide el plan aparte.
+  useEffect(() => {
+    let vigente = true;
+    getProjectMaterials(project.id)
+      // El plan trae los grupos en lista plana con parentGroupId, no anidados:
+      // el largo ya es el total de carpetas, subcarpetas incluidas.
+      .then((plan) => { if (vigente) setResumen({ carpetas: (plan?.groups ?? []).length, materiales: Number(plan?.materialCount || 0) }); })
+      .catch(() => { if (vigente) setResumen({ carpetas: 0, materiales: 0 }); });
+    return () => { vigente = false; };
+  }, [project.id]);
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!form.name.trim() || !form.clientId) {
+      pushToast?.('Indica el nombre del proyecto y el cliente', 'danger');
+      return;
+    }
+    setBusy(true);
+    try {
+      const copia = await duplicateProject(project.id, { name: form.name.trim(), clientId: Number(form.clientId) });
+      pushToast?.(`Proyecto duplicado como ${copia.code}`, 'success');
+      onDone(copia);
+    } catch (error) { pushToast?.(error.message, 'danger'); }
+    finally { setBusy(false); }
+  };
+
+  const cotizaciones = Number(project.quoteCount || 0);
+  const clienteCambia = String(project.clientId ?? '') !== form.clientId;
+
+  return (
+    <div className="modal-backdrop" onClick={() => !busy && onClose()}>
+      <div className="modal" style={{ maxWidth: 560 }} onClick={(event) => event.stopPropagation()}>
+        <div className="modal-head">
+          <div>
+            <h3>Duplicar proyecto</h3>
+            <div className="body-small muted">A partir de {project.code} · {project.name}</div>
+          </div>
+          <Button variant="ghost" iconOnly icon="x" onClick={onClose} />
+        </div>
+        <form onSubmit={submit}>
+          <div className="modal-body">
+            <div className="field" style={{ marginBottom: 12 }}>
+              <label>Nombre del proyecto *</label>
+              <input autoFocus value={form.name}
+                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
+            </div>
+            <div className="field" style={{ marginBottom: 12 }}>
+              <label>Cliente *</label>
+              <Autocomplete
+                value={form.clientId}
+                onChange={(id) => setForm((current) => ({ ...current, clientId: id == null ? '' : String(id) }))}
+                options={clients.map((client) => ({ id: client.id, name: client.name }))}
+                placeholder="Buscar cliente…"
+                emptyText="Sin clientes que coincidan"
+                allowClear={false}
+                aria-label="Cliente del proyecto duplicado"
+              />
+            </div>
+
+            <div className="cfg-hint">
+              Se copian{' '}
+              {resumen
+                ? `${resumen.carpetas} ${resumen.carpetas === 1 ? 'carpeta' : 'carpetas'} y ${resumen.materiales} ${resumen.materiales === 1 ? 'material' : 'materiales'}`
+                : 'las carpetas y materiales'}
+              {cotizaciones > 0 && `, y ${cotizaciones} ${cotizaciones === 1 ? 'cotización' : 'cotizaciones'} con número nuevo`}.
+              {' '}No se copian los cargos, consumos, facturas ni pagos del original.
+              {clienteCambia && ' Las cotizaciones copiadas quedarán a nombre del cliente nuevo.'}
+            </div>
+          </div>
+          <div className="modal-foot">
+            <Button type="button" onClick={onClose} disabled={busy}>Cancelar</Button>
+            <Button variant="accent" icon="copy" type="submit" disabled={busy}>
+              {busy ? 'Duplicando…' : 'Duplicar proyecto'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Drawer: detalle y costos ────────────────────────────────────────────────
-function ProjectDrawer({ project, onClose, onChanged, pushToast }) {
+function ProjectDrawer({ project, clients, onClose, onChanged, onDuplicated, pushToast }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [costModal, setCostModal] = useState(false);
   const [payModal, setPayModal] = useState(false);
   const [consumeModal, setConsumeModal] = useState(false);
   const [quoteBuilder, setQuoteBuilder] = useState(false);
+  const [duplicateModal, setDuplicateModal] = useState(false);
   const [materialsCost, setMaterialsCost] = useState(0);
   const [materialsLoading, setMaterialsLoading] = useState(true);
   const st = STATUS[project.status] || { label: project.status, variant: 'neutral' };
@@ -930,6 +1031,11 @@ function ProjectDrawer({ project, onClose, onChanged, pushToast }) {
           <Button icon="receipt" onClick={() => setQuoteBuilder(true)}>
             Nueva cotización
           </Button>
+          {/* Sin condición de estado: un proyecto cerrado es justo el que más
+              sirve de plantilla. */}
+          <Button icon="copy" onClick={() => setDuplicateModal(true)}>
+            Duplicar
+          </Button>
           {project.status === 'draft' && (
             <>
               <Button variant="danger" onClick={() => changeStatus('cancelled')}>
@@ -956,6 +1062,16 @@ function ProjectDrawer({ project, onClose, onChanged, pushToast }) {
             </>
           )}
         </div>
+
+        {duplicateModal && (
+          <DuplicateProjectModal
+            project={project}
+            clients={clients}
+            pushToast={pushToast}
+            onClose={() => setDuplicateModal(false)}
+            onDone={(copia) => { setDuplicateModal(false); onDuplicated?.(copia); }}
+          />
+        )}
 
         {invoiceModal && (
           <InvoiceModal project={project} pushToast={pushToast}
@@ -1019,6 +1135,13 @@ export default function Projects({ pushToast }) {
     navigate(location.pathname, { replace: true, state: null });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
+  // Tras duplicar se salta al proyecto nuevo: es lo que el usuario va a editar.
+  const openDuplicate = async (copia) => {
+    await reload();
+    try { setSelected(await getProject(copia.id)); }
+    catch { setSelected(null); }
+  };
+
   const refresh = async () => {
     await reload();
     if (selected) { try { setSelected(await getProject(selected.id)); } catch { setSelected(null); } }
@@ -1097,8 +1220,9 @@ export default function Projects({ pushToast }) {
       {showCreate && <CreateProjectModal clients={clients} pushToast={pushToast} onDone={async () => { setShowCreate(false); await reload(); }} onClose={() => setShowCreate(false)} />}
 
       {selected && (
-        <ProjectDrawer project={selected} pushToast={pushToast}
-          onChanged={refresh} onClose={() => setSelected(null)} />
+        <ProjectDrawer project={selected} clients={clients} pushToast={pushToast}
+          onChanged={refresh} onClose={() => setSelected(null)}
+          onDuplicated={openDuplicate} />
       )}
     </div>
   );
