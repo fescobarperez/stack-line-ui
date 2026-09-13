@@ -397,8 +397,9 @@ export default function UOM({ pushToast }) {
 
       {/* ── Drawer: conversiones del producto ─────────────────────────── */}
       {selected && (
-        <div className="drawer-backdrop" onClick={() => setSelected(null)}>
-          <div className="drawer" style={{ width: 540 }} onClick={e => e.stopPropagation()}>
+        <>
+          <div className="drawer-overlay" onClick={() => setSelected(null)} />
+          <div className="drawer" style={{ width: 540 }}>
             <div className="drawer-head">
               <div>
                 <div style={{ fontWeight: 500, fontSize: 14 }}>{selected.name}</div>
@@ -505,7 +506,7 @@ export default function UOM({ pushToast }) {
               <Button icon="check" variant="accent" onClick={saveProduct}>{t('uom.saveChanges', 'Guardar cambios')}</Button>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Modales */}

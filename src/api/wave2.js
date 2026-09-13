@@ -36,6 +36,8 @@ export const deleteQuoteCharge = (id, chargeId) => api.del(`/api/quotes/${id}/ch
 // con IVA (subtotal + cargos manuales + impuesto); devuelve { quoteTotal, planTotal, remaining, balanced, collected, pending, terms[], payments[] }.
 export const getQuotePlan = (id) => api.get(`/api/quotes/${id}/plan`);
 export const addQuotePaymentTerm = (id, data) => api.post(`/api/quotes/${id}/plan/terms`, data);
+/** Reparte el total en N cuotas y reemplaza el plan. Falla si ya hay cobros. */
+export const generateQuotePlan = (id, data) => api.post(`/api/quotes/${id}/plan/generate`, data);
 export const deleteQuotePaymentTerm = (id, termId) => api.del(`/api/quotes/${id}/plan/terms/${termId}`);
 
 // ── Toma física ───────────────────────────────────────────────────────

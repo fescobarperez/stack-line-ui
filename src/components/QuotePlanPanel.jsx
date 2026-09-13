@@ -2,10 +2,15 @@
 // Muestra las cuotas del plan (monto + fecha límite), permite agregarlas y
 // eliminarlas, lista los cobros reales imputados a la cotización y permite
 // registrar un cobro contra ella (payments.quote_id).
+//
+// El plan se arma en dos modos. Manual es el de siempre: una cuota a la vez.
+// Automático reparte el total en N cuotas con sus fechas y reemplaza lo que
+// hubiera. Automático se cierra en cuanto hay un cobro: regenerar borraría las
+// cuotas contra las que alguien ya pagó.
 import React, { useEffect, useState, useCallback } from 'react';
 import Button from './Button.jsx';
 import Icon from './Icon.jsx';
-import { getQuotePlan, getQuoteCharges, addQuotePaymentTerm, deleteQuotePaymentTerm } from '../api/wave2.js';
+import { getQuotePlan, getQuoteCharges, addQuotePaymentTerm, deleteQuotePaymentTerm, generateQuotePlan } from '../api/wave2.js';
 import { createPayment } from '../api/receivables.js';
 import { useTranslation } from 'react-i18next';
 
@@ -18,6 +23,16 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [term, setTerm] = useState({ amount: '', dueDate: '', notes: '' });
+  const [modo, setModo] = useState(null);   // null hasta saber si ya hay cuotas
+  const [auto, setAuto] = useState({
+    installments: '3',
+    frequency: 'mensual',
+    everyDays: '30',
+    startDate: new Date().toISOString().slice(0, 10),
+    advanceCalcType: 'percent',
+    advanceValue: '',
+  });
+  const setA = (k, v) => setAuto((f) => ({ ...f, [k]: v }));
   const [pay, setPay] = useState({ amount: '', method: 'efectivo', reference: '' });
   const setT = (k, v) => setTerm((f) => ({ ...f, [k]: v }));
   const setP = (k, v) => setPay((f) => ({ ...f, [k]: v }));
@@ -40,6 +55,8 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
   const fallbackQuoteTotal = taxableSubtotal * (1 + taxRate / 100);
   const quoteTotal = apiQuoteTotal > 0 ? apiQuoteTotal : fallbackQuoteTotal;
   const planTotal = Number(plan?.planTotal || 0);
+  // Con un cobro imputado ya no se regenera: el backend también lo rechaza.
+  const hayCobros = Number(plan?.collected || 0) > 0;
   const remaining = quoteTotal - planTotal;
   const balanced = plan != null && Math.abs(remaining) < 0.005;
 
@@ -66,6 +83,36 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
   }, [chargesVersion, quoteId, onPlanBalanceChange, pushToast, t]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Una cotización nueva no tiene cuotas y el modo útil es el automático; si ya
+  // hay plan, se respeta lo que haya sin ofrecer borrarlo de entrada.
+  useEffect(() => {
+    if (!plan) return;
+    if (modo === null) { setModo((plan.terms || []).length ? 'manual' : 'auto'); return; }
+    // Si se registra un cobro con el modo automático abierto, el formulario se
+    // queda ofreciendo un botón que el backend ya va a rechazar.
+    if (hayCobros && modo === 'auto') setModo('manual');
+  }, [plan, modo, hayCobros]);
+
+  const generar = async () => {
+    const cuotas = parseInt(auto.installments, 10);
+    if (!(cuotas >= 1)) { pushToast?.(t('quotes.autoCountRequired', 'Indica cuántas cuotas quieres generar'), 'danger'); return; }
+    setBusy(true);
+    try {
+      const next = await generateQuotePlan(quoteId, {
+        installments: cuotas,
+        frequency: auto.startDate ? auto.frequency : null,
+        everyDays: auto.frequency === 'dias' ? parseInt(auto.everyDays, 10) || null : null,
+        startDate: auto.startDate || null,
+        advanceCalcType: auto.advanceCalcType,
+        advanceValue: parseFloat(auto.advanceValue) > 0 ? parseFloat(auto.advanceValue) : null,
+      });
+      setPlan({ ...next, manualChargesTotal });
+      pushToast?.(t('quotes.planGenerated', 'Plan de cobro generado'), 'success');
+    } catch (err) {
+      pushToast?.(t('quotes.planGenerateFailed', 'No se pudo generar el plan: ') + err.message, 'danger');
+    } finally { setBusy(false); }
+  };
 
   const addTerm = async () => {
     const amount = parseFloat(term.amount);
@@ -150,8 +197,24 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
 
       <div className="quote-subsection quote-subsection--plan">
         <div className="quote-subsection-heading">
-          <div className="quote-subsection-title">{t('quotes.paymentPlan', 'Plan de pagos')}</div>
-          <div className="quote-subsection-description">{t('quotes.paymentPlanHint', 'Define las cuotas y sus fechas límite')}</div>
+          <div>
+            <div className="quote-subsection-title">{t('quotes.paymentPlan', 'Plan de pagos')}</div>
+            <div className="quote-subsection-description">{t('quotes.paymentPlanHint', 'Define las cuotas y sus fechas límite')}</div>
+          </div>
+          {canEdit && (
+            <div className="segmented plan-modo">
+              <button type="button" className={`seg ${modo === 'manual' ? 'sel' : ''}`} onClick={() => setModo('manual')}>
+                {t('quotes.planManual', 'Manual')}
+              </button>
+              <button type="button"
+                className={`seg ${modo === 'auto' ? 'sel' : ''}`}
+                onClick={() => setModo('auto')}
+                disabled={hayCobros}
+                title={hayCobros ? t('quotes.planAutoBlocked', 'La cotización ya tiene cobros: el plan no se puede regenerar') : undefined}>
+                {t('quotes.planAuto', 'Automático')}
+              </button>
+            </div>
+          )}
         </div>
         <div className="quote-subsection-card">
           <table className="data-table" style={{ width: '100%', fontSize: 12, marginBottom: 10 }}>
@@ -175,7 +238,79 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
           ))}
         </tbody>
       </table>
-          {canEdit && (
+          {canEdit && hayCobros && (
+            <div className="cfg-hint" style={{ marginBottom: 12 }}>
+              {t('quotes.planAutoBlockedHint', 'Esta cotización ya tiene cobros registrados, así que el plan solo se puede ajustar a mano: regenerarlo borraría las cuotas contra las que ya se pagó.')}
+            </div>
+          )}
+
+          {canEdit && modo === 'auto' && (
+            <div className="plan-auto">
+              <div className="plan-auto-row">
+                <div className="field-group" style={{ width: 110 }}>
+                  <label className="field-label">{t('quotes.autoCount', 'Cuotas')}</label>
+                  <input className="field-input mono" type="number" min="1" step="1"
+                    value={auto.installments} onChange={(e) => setA('installments', e.target.value)} />
+                </div>
+                <div className="field-group" style={{ width: 150 }}>
+                  <label className="field-label">{t('quotes.autoStart', 'Primera fecha')}</label>
+                  <input className="field-input" type="date"
+                    value={auto.startDate} onChange={(e) => setA('startDate', e.target.value)} />
+                </div>
+                <div className="field-group" style={{ width: 150 }}>
+                  <label className="field-label">{t('quotes.autoFrequency', 'Frecuencia')}</label>
+                  <select className="field-input" value={auto.frequency}
+                    disabled={!auto.startDate} onChange={(e) => setA('frequency', e.target.value)}>
+                    <option value="mensual">{t('quotes.freqMonthly', 'Mensual')}</option>
+                    <option value="quincenal">{t('quotes.freqBiweekly', 'Quincenal')}</option>
+                    <option value="semanal">{t('quotes.freqWeekly', 'Semanal')}</option>
+                    <option value="dias">{t('quotes.freqDays', 'Cada N días')}</option>
+                  </select>
+                </div>
+                {auto.frequency === 'dias' && (
+                  <div className="field-group" style={{ width: 100 }}>
+                    <label className="field-label">{t('quotes.autoEveryDays', 'Días')}</label>
+                    <input className="field-input mono" type="number" min="1" step="1"
+                      disabled={!auto.startDate}
+                      value={auto.everyDays} onChange={(e) => setA('everyDays', e.target.value)} />
+                  </div>
+                )}
+              </div>
+
+              <div className="plan-auto-row">
+                <div className="field-group" style={{ width: 150 }}>
+                  <label className="field-label">{t('quotes.autoAdvanceType', 'Anticipo (opcional)')}</label>
+                  <select className="field-input" value={auto.advanceCalcType}
+                    onChange={(e) => setA('advanceCalcType', e.target.value)}>
+                    <option value="percent">{t('quotes.advancePercent', 'Porcentaje')}</option>
+                    <option value="fixed">{t('quotes.advanceFixed', 'Monto fijo')}</option>
+                  </select>
+                </div>
+                <div className="field-group" style={{ width: 120 }}>
+                  <label className="field-label">{auto.advanceCalcType === 'percent' ? '%' : 'Q'}</label>
+                  <input className="field-input mono" type="number" min="0" step="0.01"
+                    placeholder={auto.advanceCalcType === 'percent' ? '50' : '0.00'}
+                    value={auto.advanceValue} onChange={(e) => setA('advanceValue', e.target.value)} />
+                </div>
+                <Button icon="check" variant="accent" onClick={generar} disabled={busy}>
+                  {t('quotes.generatePlan', 'Generar plan')}
+                </Button>
+              </div>
+
+              <div className="cfg-hint">
+                {(plan.terms || []).length > 0 && (
+                  <b>{t('quotes.autoReplaces', 'Se reemplazarán las cuotas actuales. ')}</b>
+                )}
+                {!auto.startDate
+                  ? t('quotes.autoNoDates', 'Sin primera fecha las cuotas se generan sin fecha límite.')
+                  : t('quotes.autoWithDates', 'La primera fecha es la del anticipo si lo hay; si no, la de la primera cuota.')}
+                {' '}
+                {t('quotes.autoRounding', 'El residuo del redondeo se carga a la primera cuota para que el plan cuadre exacto con el total.')}
+              </div>
+            </div>
+          )}
+
+          {canEdit && modo === 'manual' && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap' }}>
               <div className="field-group" style={{ width: 120 }}>
             <label className="field-label">{t('projects.amount', 'Monto')}</label>

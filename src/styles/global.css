@@ -1764,6 +1764,9 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
   z-index: 91;
   display: flex; flex-direction: column;
 }
+/* El detalle de una cotización lleva líneas, cargos, plan de cobro y cobros:
+   a 480px cada tabla se estruja. Es la única variante de ancho por ahora. */
+.drawer--wide { width: 880px; }
 .drawer-head {
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);
@@ -4039,4 +4042,25 @@ table.tbl tfoot td {
   font-size: 12px;
   font-weight: 400;
   color: var(--muted);
+}
+
+/* ===== Plan de cobro · modo automático ===== */
+.plan-modo { height: 32px; }
+.plan-modo .seg { padding: 0 14px; font-size: 13px; }
+.plan-modo .seg:disabled { opacity: .38; cursor: not-allowed; }
+.plan-modo .seg:disabled:hover::after { opacity: 0; }
+.plan-auto { margin-bottom: 16px; }
+.plan-auto-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+/* El encabezado ya no es solo texto: el switch va al otro extremo. */
+.quote-subsection--plan .quote-subsection-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }

@@ -582,8 +582,9 @@ export default function Quotes({ pushToast }) {
 
       {/* ── Drawer: cotización a cliente ────────────────────────────────────── */}
       {selQuote && (
-        <div className="drawer-backdrop" onClick={() => setSelected(null)}>
-          <div className="drawer" style={{ width: 600 }} onClick={e => e.stopPropagation()}>
+        <>
+          <div className="drawer-overlay" onClick={() => setSelected(null)} />
+          <div className="drawer drawer--wide">
             <div className="drawer-head">
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -786,7 +787,7 @@ export default function Quotes({ pushToast }) {
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {showDraftEdit && selQuote && selQuote.status === 'borrador' && (
@@ -807,8 +808,9 @@ export default function Quotes({ pushToast }) {
 
       {/* ── Drawer: RFQ a proveedor ─────────────────────────────────────────── */}
       {selRfq && (
-        <div className="drawer-backdrop" onClick={() => setSelectedRfq(null)}>
-          <div className="drawer" style={{ width: 600 }} onClick={e => e.stopPropagation()}>
+        <>
+          <div className="drawer-overlay" onClick={() => setSelectedRfq(null)} />
+          <div className="drawer drawer--wide">
             <div className="drawer-head">
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -958,7 +960,7 @@ export default function Quotes({ pushToast }) {
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Paso 1: elegir el proyecto. La cotización se arma desde SUS materiales,
