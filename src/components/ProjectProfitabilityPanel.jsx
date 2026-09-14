@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Icon from './Icon.jsx';
 import StatCard from './StatCard.jsx';
 import { getProjectProfitability } from '../api/reports.js';
+import { CompositionBars, DistributionChart, CashflowSeriesChart } from './ProjectInsightCharts.jsx';
 import { useNavigate } from 'react-router-dom';
 
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -129,6 +130,28 @@ export default function ProjectProfitabilityPanel({ pushToast }) {
           <div className="grid-2 rentab-grid">
             {tabla(porPorcentaje ? 'Mejor margen %' : 'Donde más gané', 'chart', 'var(--success)', datos.best || [])}
             {tabla(porPorcentaje ? 'Peor margen %' : 'Donde menos gané', 'alert', 'var(--warning)', datos.worst || [])}
+          </div>
+
+          {/* Las tablas dicen QUIÉN; estas tres dicen POR QUÉ: en qué se fue el
+              dinero, cómo se reparten los márgenes y si el conjunto de
+              proyectos se está financiando solo. */}
+          <div className="grid-2 rentab-grid" style={{ marginTop: 12 }}>
+            <div className="card">
+              <div className="card-head"><h3>En qué se fue el gasto</h3></div>
+              <div className="card-body"><CompositionBars slices={datos.composition} /></div>
+            </div>
+            <div className="card">
+              <div className="card-head"><h3>Cómo se reparten los márgenes</h3></div>
+              <div className="card-body"><DistributionChart buckets={datos.distribution} /></div>
+            </div>
+          </div>
+
+          <div className="card" style={{ marginTop: 12 }}>
+            <div className="card-head">
+              <h3>Cobros contra gastos</h3>
+              <span className="body-small muted">Acumulado de todos los proyectos del filtro</span>
+            </div>
+            <div className="card-body"><CashflowSeriesChart points={datos.cashflow} /></div>
           </div>
         </>
       )}

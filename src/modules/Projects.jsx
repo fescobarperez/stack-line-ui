@@ -23,6 +23,8 @@ import { createSale } from '../api/pos.js';
 import { printReceipt } from '../lib/receipt.js';
 import { consumeMaterial } from '../api/projects.js';
 import ProjectMaterialsPanel from '../components/ProjectMaterialsPanel.jsx';
+import VariationCard from '../components/VariationCard.jsx';
+import { CostCompositionChart, CashflowChart } from '../components/ProjectInsightCharts.jsx';
 import QuoteBuilderModal from '../components/QuoteBuilderModal.jsx';
 import { useProducts } from '../hooks/useCatalog.js';
 import Autocomplete from '../components/Autocomplete.jsx';
@@ -924,6 +926,23 @@ function ProjectDrawer({ project, clients, onClose, onChanged, onDuplicated, pus
             <StatCard icon="card" tone="err"
               label={t('projects.collected', 'Cobrado')} value={Q(project.collected)}
               foot={`${t('projects.pendingToCollect', 'Por cobrar')}: ${Q(project.pendingToCollect)}`} />
+          </div>
+
+          {/* Va después de las tarjetas y antes del detalle: resume en un solo
+              número lo que las seis de arriba dicen por partes. */}
+          {/* El coeficiente resume; las dos gráficas explican por qué. A la
+              izquierda en qué se fue el dinero, a la derecha si el proyecto se
+              financia solo o lo estás pagando de tu bolsa. */}
+          <div className="insight-row">
+            <VariationCard project={project} loading={materialsLoading} />
+            <div className="card">
+              <div className="card-head"><h3>{t('projects.costMix', 'En qué se fue el gasto')}</h3></div>
+              <div className="card-body"><CostCompositionChart project={project} /></div>
+            </div>
+            <div className="card insight-wide">
+              <div className="card-head"><h3>{t('projects.cashflow', 'Cobros contra gastos')}</h3></div>
+              <div className="card-body"><CashflowChart project={project} /></div>
+            </div>
           </div>
 
           <ProjectMaterialsPanel project={project} pushToast={pushToast} onMaterialsTotalChange={setMaterialsCost} onMaterialsLoadingChange={setMaterialsLoading} />

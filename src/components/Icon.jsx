@@ -18,6 +18,7 @@ const MAP = {
   supplier: 'local_shipping',
   pricecompare: 'price_change',
   chevron: 'chevron_right',
+  info: 'info',
   search: 'search',
   plus: 'add',
   minus: 'remove',
