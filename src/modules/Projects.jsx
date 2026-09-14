@@ -1146,6 +1146,19 @@ export default function Projects({ pushToast }) {
   const { items: clients } = useClients();
   const [selected, setSelected] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  // Búsqueda por código, nombre y cliente: son los tres datos por los que
+  // alguien recuerda un proyecto.
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return projects.filter((p) => {
+      if (statusFilter && p.status !== statusFilter) return false;
+      if (!q) return true;
+      return [p.code, p.name, p.clientName].some((v) => String(v || '').toLowerCase().includes(q));
+    });
+  }, [projects, search, statusFilter]);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -1232,10 +1245,28 @@ export default function Projects({ pushToast }) {
           valueColor={totals.margin < 0 ? 'var(--danger)' : 'var(--success)'} />
       </div>
 
+      {/* Mismo patrón que /inventory y /quotes: buscador con el ícono dentro,
+          estados como chips y el conteo a la derecha. */}
+      <div className="filterbar">
+        <div style={{ position: 'relative', width: 280 }}>
+          <Icon name="search" size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+          <input className="input" style={{ width: '100%', paddingLeft: 26 }}
+            placeholder={t('projects.searchPlaceholder', 'Buscar código, proyecto o cliente…')}
+            value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <div className="row gap-6" style={{ flexWrap: 'wrap' }}>
+          {[['', t('common.all', 'Todos')], ...Object.entries(STATUS).map(([k, v]) => [k, v.label])].map(([k, label]) => (
+            <button key={k || 'all'} className={`chip ${statusFilter === k ? 'active' : ''}`}
+              onClick={() => setStatusFilter(k)}>{label}</button>
+          ))}
+        </div>
+        <div className="grow" />
+        <span className="muted mono" style={{ fontSize: 11 }}>{filtered.length} resultados</span>
+      </div>
+
       <DataTable
-        title={t('projects.list', 'Proyectos')}
         columns={columns}
-        rows={projects}
+        rows={filtered}
         rowKey={(p) => p.id}
         pageSize={12}
         onRowClick={open}

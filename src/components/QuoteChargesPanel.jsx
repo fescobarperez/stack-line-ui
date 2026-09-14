@@ -6,7 +6,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Button from './Button.jsx';
 import Icon from './Icon.jsx';
 import { getQuoteCharges, addQuoteCharge, deleteQuoteCharge, listChargeCategories,
-  setQuoteOperatingMode, setQuoteOperatingAmount } from '../api/wave2.js';
+  setQuoteOperatingMode, setQuoteOperatingAmount, setQuoteOperatingPct } from '../api/wave2.js';
 import Autocomplete from './Autocomplete.jsx';
 import { useTranslation } from 'react-i18next';
 
@@ -22,6 +22,7 @@ export default function QuoteChargesPanel({ quoteId, canEdit = true, pushToast, 
   // por concepto ni comparar la estructura de costo entre cotizaciones.
   const [categorias, setCategorias] = useState([]);
   const [montoOperativo, setMontoOperativo] = useState('');
+  const [pctOperativo, setPctOperativo] = useState('');
   // El bloque nace plegado: la tabla debe leerse como resumen de la
   // cotización, no como el formulario de captura de los gastos.
   const [opAbierto, setOpAbierto] = useState(false);
@@ -82,7 +83,8 @@ export default function QuoteChargesPanel({ quoteId, canEdit = true, pushToast, 
     finally { setBusy(false); }
   };
 
-  const modo = summary?.operatingExpenseMode === 'detailed' ? 'detailed' : 'single';
+  const modo = ['detailed', 'percent'].includes(summary?.operatingExpenseMode)
+    ? summary.operatingExpenseMode : 'single';
   const partidasOperativas = (summary?.charges || []).filter((c) => c.operating);
   const otrosCargos = (summary?.charges || []).filter((c) => !c.operating);
 
@@ -96,6 +98,24 @@ export default function QuoteChargesPanel({ quoteId, canEdit = true, pushToast, 
       onChargesChange?.();
     } catch (err) {
       pushToast?.(t('quotes.opModeFailed', 'No se pudo cambiar el modo: ') + err.message, 'danger');
+    } finally { setBusy(false); }
+  };
+
+  const guardarPctOperativo = async () => {
+    const pct = parseFloat(pctOperativo);
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      pushToast?.(t('quotes.opPctRange', 'El porcentaje debe estar entre 0 y 100'), 'danger');
+      return;
+    }
+    setBusy(true);
+    try {
+      const next = await setQuoteOperatingPct(quoteId, pct);
+      setSummary(next);
+      setPctOperativo('');
+      onSummaryChange?.(next);
+      onChargesChange?.();
+    } catch (err) {
+      pushToast?.(t('quotes.opPctFailed', 'No se pudo guardar el porcentaje: ') + err.message, 'danger');
     } finally { setBusy(false); }
   };
 
@@ -154,7 +174,25 @@ export default function QuoteChargesPanel({ quoteId, canEdit = true, pushToast, 
    * Se arma aquí y no dentro del JSX de la tabla para no anidar dos ternarios
    * dentro de un <td>, que es donde esto se vuelve ilegible.
    */
-  const contenidoCaptura = !canEdit ? null : modo === 'single' ? (
+  const contenidoCaptura = !canEdit ? null : modo === 'percent' ? (
+    <div className="quote-op-box">
+      <div className="quote-op-box-title">{t('quotes.opPctTitle', 'Gasto operativo como porcentaje del subtotal')}</div>
+      <div className="quote-op-form is-single">
+        <div className="field-group">
+          <label className="field-label">%</label>
+          <input className="field-input mono" type="number" min="0" max="100" step="0.01"
+            placeholder={Number(summary.operatingExpensePct || 0).toFixed(2)}
+            value={pctOperativo} onChange={(e) => setPctOperativo(e.target.value)} />
+        </div>
+        <Button size="sm" icon="check" onClick={guardarPctOperativo} disabled={busy}>
+          {t('quotes.opSave', 'Guardar')}
+        </Button>
+      </div>
+      <div className="cfg-hint">
+        {t('quotes.opPctHint', 'Se recalcula solo cuando cambian las líneas de la cotización. Las partidas capturadas quedan guardadas pero no suman mientras esté en este modo.')}
+      </div>
+    </div>
+  ) : modo === 'single' ? (
           <div className="quote-op-box">
             <div className="quote-op-box-title">{t('quotes.operating', 'Gastos operativos')}</div>
             <div className="quote-op-form is-single">
@@ -256,9 +294,11 @@ export default function QuoteChargesPanel({ quoteId, canEdit = true, pushToast, 
               </button>
             </td>
             <td className="muted">
-              {modo === 'single'
-                ? t('quotes.opSingle', 'Monto único')
-                : `${partidasOperativas.length} ${partidasOperativas.length === 1 ? t('quotes.opItem', 'partida') : t('quotes.opItems', 'partidas')}`}
+              {modo === 'percent'
+                ? `${Number(summary.operatingExpensePct || 0)}% ${t('quotes.opOfSubtotal', 'del subtotal')}`
+                : modo === 'single'
+                  ? t('quotes.opSingle', 'Monto único')
+                  : `${partidasOperativas.length} ${partidasOperativas.length === 1 ? t('quotes.opItem', 'partida') : t('quotes.opItems', 'partidas')}`}
             </td>
             <td>
               {canEdit && (
@@ -270,6 +310,10 @@ export default function QuoteChargesPanel({ quoteId, canEdit = true, pushToast, 
                   <button type="button" className={`seg ${modo === 'detailed' ? 'sel' : ''}`}
                     onClick={() => cambiarModo('detailed')} disabled={busy}>
                     {t('quotes.opModeDetailed', 'Desglose')}
+                  </button>
+                  <button type="button" className={`seg ${modo === 'percent' ? 'sel' : ''}`}
+                    onClick={() => cambiarModo('percent')} disabled={busy}>
+                    {t('quotes.opModePercent', '%')}
                   </button>
                 </div>
               )}

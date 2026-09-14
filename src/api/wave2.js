@@ -34,8 +34,11 @@ export const listChargeCategories = () => api.get('/api/quotes/charge-categories
 export const createChargeCategory = (data) => api.post('/api/quotes/charge-categories', data);
 export const updateChargeCategory = (id, data) => api.put(`/api/quotes/charge-categories/${id}`, data);
 export const deleteChargeCategory = (id) => api.del(`/api/quotes/charge-categories/${id}`);
+/** Ajuste de cierre sobre la base antes de IVA. Negativo = descuento. */
+export const setQuoteAdjustment = (id, amount) => api.put(`/api/quotes/${id}/adjustment`, { amount });
 /** Gasto operativo: modo de captura y monto cuando es cifra única. */
 export const setQuoteOperatingMode = (id, mode) => api.put(`/api/quotes/${id}/operating-mode`, { mode });
+export const setQuoteOperatingPct = (id, pct) => api.put(`/api/quotes/${id}/operating-pct`, { pct });
 export const setQuoteOperatingAmount = (id, amount, description) =>
   api.put(`/api/quotes/${id}/operating-expense`, { amount, description: description || null });
 export const addQuoteCharge = (id, data) => api.post(`/api/quotes/${id}/charges`, data);

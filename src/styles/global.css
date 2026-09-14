@@ -3169,25 +3169,64 @@ table.tbl tfoot td {
 @keyframes tbl-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
 
 /* Paginación */
-.tbl-pagination {
-  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+/* Pie de la tabla: refrescar a la izquierda, filas por página y paginador a
+   la derecha. El borde y el relleno viven aquí y no en .tbl-pagination, para
+   que una tabla con refrescar y sin paginar conserve su pie. */
+.tbl-footer {
+  display: flex; align-items: center; gap: 8px;
   padding: 8px 12px;
   border-top: 1px solid var(--md-sys-color-outline-variant);
   font: 500 12px/16px var(--font-sans); letter-spacing: .5px;
   color: var(--md-sys-color-on-surface-variant);
 }
-.tbl-pagination .rows { margin-right: auto; display: inline-flex; align-items: center; gap: 6px; }
+.tbl-footer-left { display: inline-flex; align-items: center; gap: 4px; margin-right: auto; }
+.tbl-pagination {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  flex-wrap: wrap;
+}
+/* El `margin-right: auto` que empujaba el selector se fue con el pie nuevo:
+   ahora el bloque entero va a la derecha y el selector abre el grupo. */
+.tbl-pagination .rows { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 640px) {
+  .tbl-footer { flex-wrap: wrap; }
+  .tbl-pagination .tbl-range { display: none; }
+}
 .tbl-pagination .tbl-range,
 .tbl-pagination .tbl-page { font-variant-numeric: tabular-nums; }
+/* Selector de filas por página.
+   `appearance: none` quita la flecha nativa —que en cada sistema operativo se
+   ve distinta y desentona con el resto de la interfaz— y se dibuja una propia
+   con un SVG en el fondo. El padding derecho le deja sitio. */
 .tbl-page-size {
-  font: inherit; color: var(--md-sys-color-on-surface);
-  background: transparent;
+  appearance: none; -webkit-appearance: none;
+  font: 500 12px/16px var(--font-sans); letter-spacing: .5px;
+  color: var(--md-sys-color-on-surface);
+  background-color: var(--surface-2);
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
   border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--shape-xs);
-  padding: 2px 4px;
+  border-radius: var(--shape-sm);
+  padding: 5px 26px 5px 10px;
   cursor: pointer;
+  transition: border-color var(--dur-short) var(--ease-standard),
+              background-color var(--dur-short) var(--ease-standard);
 }
-.tbl-page-size:focus { outline: none; border-color: var(--md-sys-color-primary); }
+.tbl-page-size:hover {
+  background-color: var(--surface-3);
+  border-color: var(--md-sys-color-outline);
+}
+.tbl-page-size:focus-visible {
+  outline: none;
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent);
+}
+/* Las opciones desplegadas las pinta el sistema: sin esto, en modo oscuro
+   salen con fondo claro heredado del user-agent. */
+.tbl-page-size option {
+  background: var(--surface);
+  color: var(--md-sys-color-on-surface);
+}
 
 /* ============================================================
    Confirm dialog M3 (componente ConfirmDialog / useConfirm)
@@ -4369,3 +4408,17 @@ table.tbl tfoot td {
 @media (max-width: 560px) {
   .dist-list li { grid-template-columns: 96px minmax(0, 1fr) 28px; }
 }
+
+/* ===== Cotización · ajuste de cierre ===== */
+.quote-adj-row {
+  display: grid;
+  grid-template-columns: 1fr 120px auto;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  font: 400 12px/16px var(--font-sans); letter-spacing: .4px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.quote-adj-row .field-input { text-align: right; padding: 5px 8px; }

@@ -1,6 +1,7 @@
 // Stackline — Cotizaciones a clientes + RFQ a proveedores
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import StatCard from '../components/StatCard.jsx';
+import DataTable from '../components/DataTable.jsx';
 import { useTranslation } from 'react-i18next';
 import { useTaxRate, useProjects } from '../hooks/useOperations.js';
 import { getClientByNit } from '../api/partners.js';
@@ -8,7 +9,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import { useClientQuotes, useSupplierRfqs, mapQuote, mapRfq } from '../hooks/useQuotes.js';
-import { getQuote, getQuoteCharges, createQuote as apiCreateQuote, updateQuoteStatus, listSettings } from '../api/wave2.js';
+import { getQuote, getQuoteCharges, createQuote as apiCreateQuote, updateQuoteStatus, listSettings, setQuoteAdjustment } from '../api/wave2.js';
 import { sessionCompany } from '../api/auth.js';
 import { renderQuotePdfWindow } from '../lib/quotePdf.js';
 import QuoteBuilderModal from '../components/QuoteBuilderModal.jsx';
@@ -187,12 +188,28 @@ export default function Quotes({ pushToast }) {
   const [selected,     setSelected]     = useState(null);
   const [selectedPlanBalanced, setSelectedPlanBalanced] = useState(null);
   const [chargesVersion, setChargesVersion] = useState(0);
-  const [manualChargesTotal, setManualChargesTotal] = useState(0);
+  // El resumen completo del backend: es la cascada autoritativa —la misma que
+  // se guarda en la cotización y sale en el PDF—. Antes solo se conservaba la
+  // suma de cargos y el resto de la pantalla lo recalculaba por su cuenta.
+  const [chargeSummary, setChargeSummary] = useState(null);
+  // Borrador del ajuste mientras se teclea. Vacío = mostrar el guardado.
+  const [ajusteBorrador, setAjusteBorrador] = useState('');
+  const [guardandoAjuste, setGuardandoAjuste] = useState(false);
   const handlePlanBalanceChange = useCallback((balanced) => setSelectedPlanBalanced(balanced), []);
   const handleChargesChange = useCallback(() => setChargesVersion((version) => version + 1), []);
-  const handleChargeSummary = useCallback((summary) => {
-    setManualChargesTotal(Number(summary?.fixedTotal || 0) + Number(summary?.percentTotal || 0));
-  }, []);
+  const handleChargeSummary = useCallback((summary) => setChargeSummary(summary || null), []);
+  const guardarAjuste = useCallback(async (quoteId) => {
+    const monto = parseFloat(ajusteBorrador);
+    if (!Number.isFinite(monto)) { pushToast(t('quotes.adjInvalid', 'Indica un monto válido'), 'danger'); return; }
+    setGuardandoAjuste(true);
+    try {
+      setChargeSummary(await setQuoteAdjustment(quoteId, monto));
+      setAjusteBorrador('');
+      setChargesVersion((v) => v + 1);
+    } catch (err) {
+      pushToast(t('quotes.adjFailed', 'No se pudo guardar el ajuste: ') + err.message, 'danger');
+    } finally { setGuardandoAjuste(false); }
+  }, [ajusteBorrador, pushToast, t]);
   const [drawerTab,    setDrawerTab]    = useState('detail');
   const [showCreate,   setShowCreate]   = useState(Boolean(location.state?.newQuoteFor));
   // Proyecto elegido para el constructor de cotización desde materiales.
@@ -220,7 +237,7 @@ export default function Quotes({ pushToast }) {
     setQuoteType(type);
     setSelected(null);
     setSelectedPlanBalanced(null);
-    setManualChargesTotal(0);
+    setChargeSummary(null);
     setSelectedRfq(null);
     setStatusFilter('');
     setSearch('');
@@ -230,6 +247,77 @@ export default function Quotes({ pushToast }) {
 
   // — KPIs clientes —
   const pipeline    = quotes.filter(q => ['borrador', 'enviada', 'aprobada'].includes(q.status));
+  /**
+   * Columnas de la lista de cotizaciones.
+   *
+   * `sortValue` donde el render no es ordenable por sí solo: la fecha se pinta
+   * formateada y el total es un cálculo, así que sin él DataTable ordenaría por
+   * el texto que ve —"14/09/2026" antes que "03/10/2026"— en vez de por la
+   * fecha real.
+   */
+  const quoteColumns = [
+    { key: 'id', header: t('quotes.quoteNo', 'Cotización'), sortable: true, mono: true, width: 150 },
+    { key: 'client', header: t('common.client', 'Cliente'), sortable: true,
+      sortValue: (q) => q.client?.name || '',
+      render: (q) => (<>
+        <div style={{ fontWeight: 500 }}>{q.client?.name}</div>
+        {q.client?.contact && <div className="muted" style={{ fontSize: 11 }}>{q.client.contact}</div>}
+      </>) },
+    { key: 'date', header: t('common.date', 'Fecha'), sortable: true, className: 'muted',
+      sortValue: (q) => q.date || '', render: (q) => fmtDate(q.date) },
+    { key: 'validUntil', header: t('quotes.validUntil', 'Válida hasta'), sortable: true,
+      sortValue: (q) => q.validUntil || '',
+      render: (q) => {
+        const vencida = q.validUntil < today && !['convertida', 'rechazada', 'vencida'].includes(q.status);
+        return <span style={{ color: vencida ? 'var(--danger)' : 'inherit' }}>{fmtDate(q.validUntil)}</span>;
+      } },
+    { key: 'items', header: t('quotes.items', 'Ítems'), align: 'center', sortable: true,
+      sortValue: (q) => (q.items || []).length, render: (q) => (q.items || []).length },
+    { key: 'total', header: t('quotes.totalWithIva', 'Total (c/IVA)'), align: 'right', sortable: true,
+      sortValue: (q) => computeTotals(q.items, taxRate).total,
+      render: (q) => <span className="num" style={{ fontWeight: 500 }}>{Q(computeTotals(q.items, taxRate).total)}</span> },
+    { key: 'status', header: t('common.status', 'Estado'), sortable: true,
+      render: (q) => <span className={`badge-m3 ${STATUS_CLASS[q.status]}`}>{STATUS_LABEL[q.status]}</span> },
+  ];
+
+  /**
+   * Columnas de la lista de RFQ.
+   *
+   * El total solo se muestra cuando el proveedor ya puso precios; hasta
+   * entonces sería un Q0.00 que se lee como «me lo dan gratis» en vez de
+   * «todavía no responde». Al ordenar, esas filas pesan −1 para que queden al
+   * fondo y no compitan con montos reales.
+   */
+  const rfqColumns = [
+    { key: 'id', header: t('quotes.rfqNo', 'Solicitud'), sortable: true, mono: true, width: 150 },
+    { key: 'supplier', header: t('common.supplier', 'Proveedor'), sortable: true,
+      sortValue: (r) => r.supplier?.name || '',
+      render: (r) => (<>
+        <div style={{ fontWeight: 500 }}>{r.supplier?.name}</div>
+        {r.supplier?.contact && <div className="muted" style={{ fontSize: 11 }}>{r.supplier.contact}</div>}
+      </>) },
+    { key: 'date', header: t('common.date', 'Fecha'), sortable: true, className: 'muted',
+      sortValue: (r) => r.date || '', render: (r) => fmtDate(r.date) },
+    { key: 'deadline', header: t('quotes.respondBefore', 'Resp. antes'), sortable: true,
+      sortValue: (r) => r.deadline || '',
+      render: (r) => {
+        const vencida = r.deadline && r.deadline < today && ['solicitada', 'recibida'].includes(r.status);
+        return <span style={{ color: vencida ? 'var(--danger)' : 'inherit' }}>{r.deadline ? fmtDate(r.deadline) : '—'}</span>;
+      } },
+    { key: 'leadTime', header: t('quotes.leadTime', 'T. entrega'), sortable: true, render: (r) => r.leadTime || '—' },
+    { key: 'paymentTerms', header: t('quotes.paymentTerm', 'Plazo pago'), sortable: true, render: (r) => r.paymentTerms || '—' },
+    { key: 'total', header: t('quotes.totalWithIva', 'Total (c/IVA)'), align: 'right', sortable: true,
+      sortValue: (r) => ((r.items || []).some((i) => i.unitPrice > 0) ? computeTotals(r.items, taxRate).total : -1),
+      render: (r) => {
+        const conPrecios = (r.items || []).some((i) => i.unitPrice > 0);
+        return conPrecios
+          ? <span className="num" style={{ fontWeight: 500 }}>{Q(computeTotals(r.items, taxRate).total)}</span>
+          : <span className="muted">{t('quotes.pending', 'Pendiente')}</span>;
+      } },
+    { key: 'status', header: t('common.status', 'Estado'), sortable: true,
+      render: (r) => <span className={`badge-m3 ${RFQ_CLASS[r.status]}`}>{RFQ_LABEL[r.status]}</span> },
+  ];
+
   const pipelineAmt = pipeline.reduce((s, q) => s + computeTotals(q.items, taxRate).total, 0);
   const approvedAmt = quotes.filter(q => q.status === 'aprobada').reduce((s, q) => s + computeTotals(q.items, taxRate).total, 0);
 
@@ -262,7 +350,8 @@ export default function Quotes({ pushToast }) {
 
   const openDrawer  = async (q) => {
     setSelectedPlanBalanced(null);
-    setManualChargesTotal(0);
+    setChargeSummary(null);
+    setAjusteBorrador('');
     setSelected(q); setDrawerTab('detail');
     try { setSelected(mapQuote(await getQuote(q.backendId))); } catch { /* deja el de la lista */ }
   };
@@ -436,59 +525,38 @@ export default function Quotes({ pushToast }) {
             />
           </div>
 
-          <div className="filterbar" style={{ marginBottom: 12 }}>
-            <div className="field-wrap search-wrap">
-              <Icon name="search" className="field-icon" size={13} />
-              <input className="field-input" placeholder={t('quotes.searchPlaceholder', 'Buscar cotización o cliente…')} value={search} onChange={e => setSearch(e.target.value)} />
+          {/* Mismo patrón que la barra de /inventory: buscador con el ícono
+              dentro, filtros como chips y el conteo de resultados a la
+              derecha. Los estados pasan de select a chips porque son siete y
+              cortos: se ven todos de un vistazo y se cambian con un clic. */}
+          <div className="filterbar">
+            <div style={{ position: 'relative', width: 280 }}>
+              <Icon name="search" size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+              <input className="input" style={{ width: '100%', paddingLeft: 26 }}
+                placeholder={t('quotes.searchPlaceholder', 'Buscar cotización o cliente…')}
+                value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <select className="field-input" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-              <option value="">{t('quotes.allStatuses', 'Todos los estados')}</option>
-              {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            <div className="row gap-6" style={{ flexWrap: 'wrap' }}>
+              {[['', t('common.all', 'Todos')], ...Object.entries(STATUS_LABEL)].map(([k, v]) => (
+                <button key={k || 'all'} className={`chip ${statusFilter === k ? 'active' : ''}`}
+                  onClick={() => setStatusFilter(k)}>{v}</button>
+              ))}
+            </div>
+            <div className="grow" />
+            <span className="muted mono" style={{ fontSize: 11 }}>{filtered.length} resultados</span>
           </div>
 
-          <div className="card">
-            <div className="table-wrap" style={{ border: 'none', margin: 0, borderRadius: 0 }}>
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th>{t('quotes.quoteNo', 'Cotización')}</th>
-                    <th>{t('common.client', 'Cliente')}</th>
-                    <th>{t('common.date', 'Fecha')}</th>
-                    <th>{t('quotes.validUntil', 'Válida hasta')}</th>
-                    <th style={{ textAlign: 'center' }}>{t('quotes.items', 'Ítems')}</th>
-                    <th style={{ textAlign: 'right' }}>{t('quotes.totalWithIva', 'Total (c/IVA)')}</th>
-                    <th>{t('common.status', 'Estado')}</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(q => {
-                    const { total }  = computeTotals(q.items, taxRate);
-                    const isExpired  = q.validUntil < today && !['convertida', 'rechazada', 'vencida'].includes(q.status);
-                    return (
-                      <tr key={q.id} onClick={() => openDrawer(q)} style={{ cursor: 'pointer' }}>
-                        <td><span className="mono" style={{ fontWeight: 500, fontSize: 12 }}>{q.id}</span></td>
-                        <td>
-                          <div style={{ fontWeight: 500 }}>{q.client.name}</div>
-                          <div className="muted" style={{ fontSize: 11 }}>{q.client.contact}</div>
-                        </td>
-                        <td className="muted">{fmtDate(q.date)}</td>
-                        <td style={{ color: isExpired ? 'var(--danger)' : 'var(--text-2)' }}>{fmtDate(q.validUntil)}</td>
-                        <td style={{ textAlign: 'center' }}>{q.items.length}</td>
-                        <td className="num" style={{ fontWeight: 500 }}>{Q(total)}</td>
-                        <td><span className={`badge-m3 ${STATUS_CLASS[q.status]}`}>{STATUS_LABEL[q.status]}</span></td>
-                        <td><Button variant="ghost" onClick={e => { e.stopPropagation(); openDrawer(q); }}>{t('common.view', 'Ver')}</Button></td>
-                      </tr>
-                    );
-                  })}
-                  {filtered.length === 0 && (
-                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--muted)' }}>{t('quotes.noQuotes', 'Sin cotizaciones')}</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <DataTable
+            rowKey={(q) => q.id}
+            columns={quoteColumns}
+            rows={filtered}
+            density="compact"
+            pageSize={12}
+            onRowClick={openDrawer}
+            onView={openDrawer}
+            empty={t('quotes.noQuotes', 'Sin cotizaciones')}
+            emptyIcon="receipt"
+          />
         </>
       )}
 
@@ -520,66 +588,37 @@ export default function Quotes({ pushToast }) {
             />
           </div>
 
-          <div className="filterbar" style={{ marginBottom: 12 }}>
-            <div className="field-wrap search-wrap">
-              <Icon name="search" className="field-icon" size={13} />
-              <input className="field-input" placeholder={t('quotes.rfqSearchPlaceholder', 'Buscar RFQ o proveedor…')} value={rfqSearch} onChange={e => setRfqSearch(e.target.value)} />
+          {/* Misma barra que la pestaña de cotizaciones: son hermanas dentro
+              del mismo módulo y verlas distintas al cambiar de pestaña haría
+              dudar de cuál es la buena. */}
+          <div className="filterbar">
+            <div style={{ position: 'relative', width: 280 }}>
+              <Icon name="search" size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+              <input className="input" style={{ width: '100%', paddingLeft: 26 }}
+                placeholder={t('quotes.rfqSearchPlaceholder', 'Buscar RFQ o proveedor…')}
+                value={rfqSearch} onChange={e => setRfqSearch(e.target.value)} />
             </div>
-            <select className="field-input" value={rfqFilter} onChange={e => setRfqFilter(e.target.value)}>
-              <option value="">{t('quotes.allStatuses', 'Todos los estados')}</option>
-              {Object.entries(RFQ_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            <div className="row gap-6" style={{ flexWrap: 'wrap' }}>
+              {[['', t('common.all', 'Todos')], ...Object.entries(RFQ_LABEL)].map(([k, v]) => (
+                <button key={k || 'all'} className={`chip ${rfqFilter === k ? 'active' : ''}`}
+                  onClick={() => setRfqFilter(k)}>{v}</button>
+              ))}
+            </div>
+            <div className="grow" />
+            <span className="muted mono" style={{ fontSize: 11 }}>{filteredRfqs.length} resultados</span>
           </div>
 
-          <div className="card">
-            <div className="table-wrap" style={{ border: 'none', margin: 0, borderRadius: 0 }}>
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th>{t('quotes.rfqNo', 'Solicitud')}</th>
-                    <th>{t('common.supplier', 'Proveedor')}</th>
-                    <th>{t('common.date', 'Fecha')}</th>
-                    <th>{t('quotes.respondBefore', 'Resp. antes')}</th>
-                    <th>{t('quotes.leadTime', 'T. entrega')}</th>
-                    <th>{t('quotes.paymentTerm', 'Plazo pago')}</th>
-                    <th style={{ textAlign: 'right' }}>{t('quotes.totalWithIva', 'Total (c/IVA)')}</th>
-                    <th>{t('common.status', 'Estado')}</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRfqs.map(r => {
-                    const { total }   = computeTotals(r.items, taxRate);
-                    const hasPrices   = r.items.some(i => i.unitPrice > 0);
-                    const isOverdue   = r.deadline && r.deadline < today && ['solicitada', 'recibida'].includes(r.status);
-                    return (
-                      <tr key={r.id} onClick={() => openRfqDrawer(r)} style={{ cursor: 'pointer' }}>
-                        <td><span className="mono" style={{ fontWeight: 500, fontSize: 12 }}>{r.id}</span></td>
-                        <td>
-                          <div style={{ fontWeight: 500 }}>{r.supplier.name}</div>
-                          <div className="muted" style={{ fontSize: 11 }}>{r.supplier.contact}</div>
-                        </td>
-                        <td className="muted">{fmtDate(r.date)}</td>
-                        <td style={{ color: isOverdue ? 'var(--danger)' : 'var(--text-2)' }}>
-                          {r.deadline ? fmtDate(r.deadline) : '—'}
-                        </td>
-                        <td>{r.leadTime}</td>
-                        <td>{r.paymentTerms}</td>
-                        <td className="num" style={{ fontWeight: 500, color: hasPrices ? 'var(--text)' : 'var(--muted)' }}>
-                          {hasPrices ? Q(total) : t('quotes.pending', 'Pendiente')}
-                        </td>
-                        <td><span className={`badge-m3 ${RFQ_CLASS[r.status]}`}>{RFQ_LABEL[r.status]}</span></td>
-                        <td><Button variant="ghost" onClick={e => { e.stopPropagation(); openRfqDrawer(r); }}>{t('common.view', 'Ver')}</Button></td>
-                      </tr>
-                    );
-                  })}
-                  {filteredRfqs.length === 0 && (
-                    <tr><td colSpan={9} style={{ textAlign: 'center', padding: 32, color: 'var(--muted)' }}>{t('quotes.noRequests', 'Sin solicitudes')}</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <DataTable
+            rowKey={(r) => r.id}
+            columns={rfqColumns}
+            rows={filteredRfqs}
+            density="compact"
+            pageSize={12}
+            onRowClick={openRfqDrawer}
+            onView={openRfqDrawer}
+            empty={t('quotes.noRequests', 'Sin solicitudes')}
+            emptyIcon="truck"
+          />
         </>
       )}
 
@@ -606,12 +645,15 @@ export default function Quotes({ pushToast }) {
 
             <div className="drawer-body">
               {drawerTab === 'detail' && (() => {
-                const { lines, total } = computeTotals(selQuote.items, taxRate);
-                const operatingCostSubtotal = total + manualChargesTotal;
-                const profitAmount = Number(selQuote.profitAmount || 0);
-                const operationalSubtotal = operatingCostSubtotal + profitAmount;
-                const operationalIva = operationalSubtotal * (taxRate / 100);
-                const operationalTotal = operationalSubtotal + operationalIva;
+                // `lines` sigue saliendo de computeTotals: son las filas de la
+                // tabla. Los totales ya NO, porque el frontend los rehacía con
+                // otra regla de IVA que la del backend —extraía el impuesto de
+                // un total que ya lo incluía mientras el bloque de abajo lo
+                // sumaba encima— y el PDF imprimía un tercer número.
+                const { lines } = computeTotals(selQuote.items, taxRate);
+                const resumen = chargeSummary;
+                const num = (v) => Number(v || 0);
+                const tasa = resumen ? num(resumen.taxRate) : taxRate;
                 return (
                   <>
                     <section className="quote-section quote-section--detail">
@@ -694,14 +736,55 @@ export default function Quotes({ pushToast }) {
                     />
 
                     <div className="quote-fiscal-card" style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginTop: 14, marginBottom: 14 }}>
-                      {[[t('projects.operatingCosts', 'Costos operativos'), Q(operatingCostSubtotal)], [t('projects.profit', 'Ganancia'), Q(profitAmount)], [t('quotes.subtotalNoIva', 'Subtotal sin IVA'), Q(operationalSubtotal)], [`${t('common.iva', 'IVA')} (${taxRate}%)`, Q(operationalIva)]].map(([l, v]) => (
-                        <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5, color: 'var(--text-2)' }}>
-                          <span>{l}</span><span className="mono">{v}</span>
+                      {!resumen ? (
+                        <div className="muted" style={{ fontSize: 12 }}>{t('common.loading', 'Cargando…')}</div>
+                      ) : (<>
+                        {[
+                          [t('quotes.calcSubtotal', 'Subtotal'), Q(resumen.subtotal)],
+                          // El porcentaje va siempre, se haya capturado como
+                          // monto o como porcentaje: es la lectura que el
+                          // negocio usa para comparar entre cotizaciones.
+                          [`${t('quotes.calcOperating', 'Gastos operativos')}${num(resumen.subtotal) > 0
+                              ? ` (${(num(resumen.operatingExpenses) / num(resumen.subtotal) * 100).toFixed(1)}%)` : ''}`,
+                            Q(resumen.operatingExpenses)],
+                          ...(num(resumen.otherCharges) !== 0
+                            ? [[t('quotes.calcOtherCharges', 'Otros cargos'), Q(resumen.otherCharges)]] : []),
+                          [t('quotes.calcProfitBase', 'Base de ganancia'), Q(resumen.operatingCost)],
+                          [`${t('projects.profit', 'Ganancia')}${resumen.profitCalcType === 'percent' ? ` (${num(resumen.profitValue)}%)` : ''}`, Q(resumen.profitAmount)],
+                          // Los tres renglones del ajuste solo cuando hay uno:
+                          // sin ajuste serían la misma cifra repetida tres veces.
+                          ...(num(resumen.manualAdjustment) !== 0 ? [
+                            [t('quotes.calcBeforeAdj', 'Base antes de ajuste'), Q(resumen.taxableSubtotal)],
+                            [t('quotes.calcAdjustment', 'Ajuste'), Q(resumen.manualAdjustment)],
+                          ] : []),
+                          [t('quotes.calcAdjustedBase', 'Base ajustada'), Q(resumen.adjustedBase)],
+                          [`${t('common.iva', 'IVA')} (${tasa}%)`, Q(resumen.tax)],
+                        ].map(([l, v]) => (
+                          <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5, color: 'var(--text-2)' }}>
+                            <span>{l}</span><span className="mono">{v}</span>
+                          </div>
+                        ))}
+
+                        {/* El ajuste se teclea aquí mismo, en el renglón donde
+                            se lee: llevarlo a otro formulario obligaría a
+                            perder de vista la base sobre la que se aplica. */}
+                        {selQuote.status === 'borrador' && (
+                          <div className="quote-adj-row">
+                            <span>{t('quotes.calcAdjustment', 'Ajuste')}</span>
+                            <input className="field-input mono" type="number" step="0.01"
+                              placeholder={Number(resumen.manualAdjustment).toFixed(2)}
+                              value={ajusteBorrador}
+                              onChange={(e) => setAjusteBorrador(e.target.value)} />
+                            <Button size="sm" icon="check" disabled={guardandoAjuste || ajusteBorrador === ''}
+                              onClick={() => guardarAjuste(selQuote.backendId)}>
+                              {t('common.apply', 'Aplicar')}
+                            </Button>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, fontSize: 14, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                          <span>{t('common.total', 'TOTAL').toUpperCase()}</span><span className="mono">{Q(resumen.total)}</span>
                         </div>
-                      ))}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, fontSize: 14, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-                        <span>{t('common.total', 'TOTAL').toUpperCase()}</span><span className="mono">{Q(operationalTotal)}</span>
-                      </div>
+                      </>)}
                     </div>
 
                     </section>

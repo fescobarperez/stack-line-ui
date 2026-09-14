@@ -148,7 +148,10 @@ export default function DataTable({
       )
     : null);
 
-  const showToolbar = title || onRefresh || toolbar;
+  const showToolbar = title || toolbar;
+  // El pie existe si hay algo que poner en él: paginación, el refrescar, o
+  // ambos. Con onRefresh y sin paginar, el botón se queda solo a la izquierda.
+  const showFooter = onRefresh || (paginated && !loading && sorted.length > 0);
 
   const cls = ['tbl', density, stickyFirst && 'sticky-1', zebra && 'zebra', className]
     .filter(Boolean)
@@ -159,13 +162,7 @@ export default function DataTable({
       {showToolbar && (
         <div className="tbl-toolbar">
           {title && <span className="tbl-title">{title}</span>}
-          <span className="tbl-toolbar-actions">
-            {toolbar}
-            {onRefresh && (
-              <button className="icon-btn" title="Refrescar" aria-label="Refrescar"
-                onClick={onRefresh}><Icon name="refresh" size={20} /></button>
-            )}
-          </span>
+          <span className="tbl-toolbar-actions">{toolbar}</span>
         </div>
       )}
       <div className="tbl-scroll">
@@ -282,8 +279,16 @@ export default function DataTable({
         </div>
       )}
 
-      {paginated && !loading && sorted.length > 0 && (
-        <div className="tbl-pagination">
+      {showFooter && (
+        <div className="tbl-footer">
+          <div className="tbl-footer-left">
+            {onRefresh && (
+              <button className="icon-btn" title="Refrescar" aria-label="Refrescar"
+                onClick={onRefresh}><Icon name="refresh" size={20} /></button>
+            )}
+          </div>
+          {paginated && !loading && sorted.length > 0 && (
+          <div className="tbl-pagination">
           <label className="rows">
             Filas por página:{' '}
             <select
@@ -331,6 +336,8 @@ export default function DataTable({
           >
             <Icon name="last_page" size={20} />
           </button>
+          </div>
+          )}
         </div>
       )}
     </div>
