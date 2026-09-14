@@ -1,5 +1,6 @@
 // Stackline — Variantes de Producto
 import React, { useState, useMemo } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
@@ -186,17 +187,19 @@ export default function Variants({ pushToast }) {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <select className="input" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
-          <option value="all">{t('variants.allCategories', 'Todas las categorías')}</option>
-          {categories.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-        </select>
-        <select className="input" value={filterAttr} onChange={e => setFilterAttr(e.target.value)}>
-          <option value="all">{t('variants.allAttributes', 'Todos los atributos')}</option>
-          <option value="tamaño">{t('variants.attrSize', 'Tamaño')}</option>
-          <option value="peso">{t('variants.attrWeight', 'Peso')}</option>
-          <option value="sabor">{t('variants.attrFlavor', 'Sabor')}</option>
-          <option value="color">{t('variants.attrColor', 'Color')}</option>
-        </select>
+        <Autocomplete value={filterCat}
+          onChange={(id) => setFilterCat(id == null || id === '' ? 'all' : String(id))}
+          options={[{ id: 'all', name: t('variants.allCategories', 'Todas las categorías') },
+            ...categories.map((c) => ({ id: c, name: c.charAt(0).toUpperCase() + c.slice(1) }))]}
+          allowClear={false}
+          emptyText={t('common.noResults', 'Sin coincidencias')}
+          aria-label={t('common.category', 'Categoría')} />
+        <Autocomplete value={filterAttr}
+          onChange={(id) => setFilterAttr(id == null || id === '' ? 'all' : String(id))}
+          options={[{ id: 'all', name: t('variants.allAttributes', 'Todos los atributos') }, { id: 'tamaño', name: t('variants.attrSize', 'Tamaño') }, { id: 'peso', name: t('variants.attrWeight', 'Peso') }, { id: 'sabor', name: t('variants.attrFlavor', 'Sabor') }, { id: 'color', name: t('variants.attrColor', 'Color') }]}
+          allowClear={false}
+          emptyText="Sin coincidencias"
+          aria-label="Atributo" />
       </div>
 
       {/* Tabla de grupos */}
@@ -312,20 +315,20 @@ function GroupModal({ products = [], onClose, onSave }) {
           </div>
           <div className="field">
             <label className="field-label">{t('common.product', 'Producto del catálogo')}</label>
-            <select className="field-input" value={productId} onChange={e => setProductId(e.target.value)}>
-              <option value="">{t('common.selectDots', 'Seleccionar…')}</option>
-              {filtered.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            <Autocomplete value={productId} onChange={(id) => setProductId(id == null ? '' : String(id))}
+              options={filtered.map((p2) => ({ id: p2.id, name: p2.name }))}
+              placeholder={t('common.selectDots', 'Seleccionar…')}
+              emptyText={t('inventory.empty', 'Sin productos')}
+              aria-label={t('common.product', 'Producto')} />
           </div>
           <div className="field">
             <label className="field-label">{t('variants.attributeType', 'Tipo de atributo')}</label>
-            <select className="field-input" value={attrType} onChange={e => setAttrType(e.target.value)}>
-              <option value="tamaño">{t('variants.attrSize', 'Tamaño')}</option>
-              <option value="peso">{t('variants.attrWeight', 'Peso')}</option>
-              <option value="sabor">{t('variants.attrFlavor', 'Sabor')}</option>
-              <option value="color">{t('variants.attrColor', 'Color')}</option>
-              <option value="otro">{t('variants.attrOther', 'Otro')}</option>
-            </select>
+            <Autocomplete value={attrType}
+              onChange={(id) => setAttrType(id == null ? '' : String(id))}
+              options={[{ id: 'tamaño', name: t('variants.attrSize', 'Tamaño') }, { id: 'peso', name: t('variants.attrWeight', 'Peso') }, { id: 'sabor', name: t('variants.attrFlavor', 'Sabor') }, { id: 'color', name: t('variants.attrColor', 'Color') }, { id: 'otro', name: t('variants.attrOther', 'Otro') }]}
+              allowClear={false}
+              emptyText="Sin coincidencias"
+              aria-label="Tipo de atributo" />
           </div>
         </div>
         <div className="modal-foot">

@@ -1,5 +1,6 @@
 // Stackline — Usuarios & Roles (ES module)
 import React, { useState, useMemo, useEffect } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import DataTable from '../components/DataTable.jsx';
@@ -256,19 +257,22 @@ export default function Users({ pushToast }) {
                 onChange={e => setSearch(e.target.value)}
               />
             </div>
-            <select className="input" value={filterRole} onChange={e => setFilterRole(e.target.value)}>
-              <option value="">{t('users.allRoles', 'Todos los roles')}</option>
-              {roleList.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <select className="input" value={filterBranch} onChange={e => setFilterBranch(e.target.value)}>
-              <option value="">{t('users.allBranches', 'Todas las sucursales')}</option>
-              {branchList.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-            <select className="input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-              <option value="">{t('users.allStatuses', 'Todos los estados')}</option>
-              <option value="active">{t('users.activeOnly', 'Activos')}</option>
-              <option value="inactive">{t('users.inactiveOnly', 'Inactivos')}</option>
-            </select>
+            <Autocomplete value={filterRole} onChange={(id) => setFilterRole(id == null ? '' : String(id))}
+              options={roleList.map((r) => ({ id: r, name: r }))}
+              placeholder={t('users.allRoles', 'Todos los roles')}
+              emptyText={t('users.noRoles', 'Sin roles')}
+              aria-label={t('users.role', 'Rol')} />
+            <Autocomplete value={filterBranch} onChange={(id) => setFilterBranch(id == null ? '' : String(id))}
+              options={branchList.map((b) => ({ id: b, name: b }))}
+              placeholder={t('users.allBranches', 'Todas las sucursales')}
+              emptyText={t('common.noBranches', 'Sin sucursales')}
+              aria-label={t('common.branch', 'Sucursal')} />
+            <Autocomplete value={filterStatus}
+              onChange={(id) => setFilterStatus(id == null ? '' : String(id))}
+              options={[{ id: 'active', name: t('users.activeOnly', 'Activos') }, { id: 'inactive', name: t('users.inactiveOnly', 'Inactivos') }]}
+              placeholder={t('users.allStatuses', 'Todos los estados')}
+              emptyText="Sin coincidencias"
+              aria-label="Estado" />
             <div className="grow"></div>
             <span className="muted mono" style={{ fontSize: 11 }}>{filteredUsers.length} {t('users.results', 'resultados')}</span>
             {(search || filterRole || filterBranch || filterStatus) && (
@@ -486,34 +490,37 @@ export default function Users({ pushToast }) {
                 </div>
                 <div className="field">
                   <label>{t('users.role', 'Rol *')}</label>
-                  <select value={userForm.role} onChange={e => setUF('role', e.target.value)}>
-                    <option value="">{t('users.form.selectRole', 'Seleccionar…')}</option>
-                    {roles.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
-                  </select>
+                  <Autocomplete value={userForm.role} onChange={(id) => setUF('role', id == null ? '' : String(id))}
+                    options={roles.map((r) => ({ id: r.name, name: r.name }))}
+                    placeholder={t('users.form.selectRole', 'Seleccionar…')}
+                    emptyText={t('users.noRoles', 'Sin roles')}
+                    aria-label={t('users.role', 'Rol')} />
                   {userErrors.role && <span className="login-error">{userErrors.role}</span>}
                 </div>
                 <div className="field">
                   <label>{t('common.branch', 'Sucursal *')}</label>
-                  <select value={userForm.branch} onChange={e => setUF('branch', e.target.value)}>
-                    <option value="">{t('users.form.selectBranch', 'Seleccionar…')}</option>
-                    {branchesData.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
-                  </select>
+                  <Autocomplete value={userForm.branch} onChange={(id) => setUF('branch', id == null ? '' : String(id))}
+                    options={branchesData.map((b) => ({ id: b.name, name: b.name }))}
+                    placeholder={t('users.form.selectBranch', 'Seleccionar…')}
+                    emptyText={t('common.noBranches', 'Sin sucursales')}
+                    aria-label={t('common.branch', 'Sucursal')} />
                   {userErrors.branch && <span className="login-error">{userErrors.branch}</span>}
                 </div>
                 <div className="field">
                   <label>{t('users.form.manager', 'Jefe directo')}</label>
-                  <select value={userForm.managerId} onChange={e => setUF('managerId', e.target.value)}>
-                    <option value="">{t('users.form.noManager', 'Sin jefe (raíz)')}</option>
-                    {users.filter(u => !editingUser || u.id !== editingUser.id)
-                      .map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
+                  <Autocomplete value={userForm.managerId} onChange={(id) => setUF('managerId', id == null ? '' : String(id))}
+                    options={users.filter((u) => !editingUser || u.id !== editingUser.id).map((u) => ({ id: u.id, name: u.name }))}
+                    placeholder={t('users.form.noManager', 'Sin jefe (raíz)')}
+                    emptyText={t('users.noUsers', 'Sin usuarios')}
+                    aria-label={t('users.manager', 'Jefe')} />
                 </div>
                 <div className="field">
                   <label>{t('users.form.authLevel', 'Nivel de autoridad')}</label>
-                  <select value={userForm.authLevelId} onChange={e => setUF('authLevelId', e.target.value)}>
-                    <option value="">{t('users.form.noLevel', 'Operativo (no aprueba)')}</option>
-                    {authLevels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                  </select>
+                  <Autocomplete value={userForm.authLevelId} onChange={(id) => setUF('authLevelId', id == null ? '' : String(id))}
+                    options={authLevels.map((l) => ({ id: l.id, name: l.name }))}
+                    placeholder={t('users.form.noLevel', 'Operativo (no aprueba)')}
+                    emptyText={t('users.noLevels', 'Sin niveles')}
+                    aria-label={t('users.authLevel', 'Nivel de autorización')} />
                 </div>
                 {/* Solo tiene sentido para quien aprueba: a un operativo le
                     ocupaba media pantalla sin decidir nada. */}

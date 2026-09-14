@@ -5,6 +5,8 @@
 // El cliente solo ve la descripción y el precio; los materiales quedan
 // internos. No hay entrada manual de productos.
 import React, { useEffect, useMemo, useState } from 'react';
+import DatePicker from './DatePicker.jsx';
+import Autocomplete from './Autocomplete.jsx';
 import Button from '../components/Button.jsx';
 import Icon from '../components/Icon.jsx';
 import TreeView from './TreeView.jsx';
@@ -344,23 +346,20 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
                 </div>
                 <div className="field-group" style={{ marginBottom: 8 }}>
                   <label className="field-label">{t('quotes.lineDestination', 'Línea destino')}</label>
-                  <select
-                    className="field-input"
-                    value={targetLineId}
-                    onChange={(e) => setTargetLineId(e.target.value)}
-                  >
-                    <option value="new">{t('quotes.createNewLine', 'Crear una línea nueva')}</option>
-                    {appendingToDraft && (draftQuotes.find((draft) => String(draft.id) === String(targetQuoteId))?.items || []).map((item) => (
-                      <option key={`draft:${item.id}`} value={`draft:${item.id}`}>
-                        {t('quotes.addToLine', 'Agregar a')} · {item.productName || `Línea ${item.id}`}
-                      </option>
-                    ))}
-                    {lines.map((line, index) => (
-                      <option key={`local:${line.key}`} value={`local:${line.key}`}>
-                        {t('quotes.addToLine', 'Agregar a')} · {line.description || `${t('quotes.line', 'Línea')} ${index + 1}`}
-                      </option>
-                    ))}
-                  </select>
+                  <Autocomplete value={targetLineId} onChange={(id) => setTargetLineId(id == null || id === '' ? 'new' : String(id))}
+                    options={[{ id: 'new', name: t('quotes.createNewLine', 'Crear una línea nueva') },
+                      ...(appendingToDraft
+                        ? (draftQuotes.find((draft) => String(draft.id) === String(targetQuoteId))?.items || []).map((item) => ({
+                            id: `draft:${item.id}`,
+                            name: `${t('quotes.addToLine', 'Agregar a')} · ${item.productName || `Línea ${item.id}`}`,
+                          }))
+                        : []),
+                      ...lines.map((line, index) => ({
+                        id: `local:${line.key}`,
+                        name: `${t('quotes.addToLine', 'Agregar a')} · ${line.description || `${t('quotes.line', 'Línea')} ${index + 1}`}`,
+                      }))]}
+                    allowClear={false} emptyText={t('common.noResults', 'Sin coincidencias')}
+                    aria-label={t('quotes.targetLine', 'Línea destino')} />
                 </div>
                 <Button icon="plus" variant="accent" onClick={addSelectionAsLine}>
                   {targetLineId === 'new' ? t('quotes.makeLine', 'Crear línea con la selección') : t('quotes.addMaterialsToLine', 'Agregar materiales a la línea')}
@@ -373,24 +372,18 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
           <div>
             <div className="field-group" style={{ marginBottom: 16 }}>
               <label className="field-label">{t('quotes.lineDestination', 'Destino de las líneas')}</label>
-              <select className="field-input" value={targetQuoteId} onChange={(e) => { setTargetQuoteId(e.target.value); setTargetLineId('new'); }}>
-                <option value="new">{t('quotes.createNewQuote', 'Crear una cotización nueva')}</option>
-                {draftQuotes.map((draft) => (
-                  <option key={draft.id} value={draft.id}>{draft.docNumber} · {draft.clientName || 'Borrador'}</option>
-                ))}
-              </select>
+              <Autocomplete value={targetQuoteId}
+                onChange={(id) => { setTargetQuoteId(id == null || id === '' ? 'new' : String(id)); setTargetLineId('new'); }}
+                options={[{ id: 'new', name: t('quotes.createNewQuote', 'Crear una cotización nueva') },
+                  ...draftQuotes.map((draft) => ({ id: draft.id, name: `${draft.docNumber} · ${draft.clientName || 'Borrador'}` }))]}
+                allowClear={false} emptyText={t('quotes.noDrafts', 'Sin borradores')}
+                aria-label={t('quotes.targetQuote', 'Cotización destino')} />
             </div>
             {!appendingToDraft && (
               <div className="field-group" style={{ marginBottom: 16 }}>
                 <label className="field-label">{t('quotes.validUntil', 'Fecha de expiración')} *</label>
-                <input
-                  className="field-input"
-                  type="date"
-                  value={validUntil}
-                  min={today}
-                  onChange={(e) => setValidUntil(e.target.value)}
-                  required
-                />
+                <DatePicker value={validUntil} onChange={(iso) => setValidUntil(iso)} min={today}
+                  aria-label={t('quotes.validUntil', 'Fecha de expiración')} />
                 <div className="cfg-hint">{t('quotes.validUntilHint', 'Después de esta fecha la cotización ya no será válida para el cliente.')}</div>
               </div>
             )}
@@ -438,10 +431,12 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
                 {t('quotes.companyProfit', 'GANANCIA DE LA EMPRESA')}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                <select className="field-input" style={{ width: 100 }} value={profit.calcType} onChange={(e) => setProfitField('calcType', e.target.value)}>
-                  <option value="fixed">{t('quotes.fixed', 'Fijo')}</option>
-                  <option value="percent">%</option>
-                </select>
+                <Autocomplete value={profit.calcType}
+                  onChange={(id) => setProfitField('calcType', id == null ? '' : String(id))}
+                  options={[{ id: 'fixed', name: t('quotes.fixed', 'Fijo') }, { id: 'percent', name: '%' }]}
+                  allowClear={false}
+                  emptyText="Sin coincidencias"
+                  aria-label="Cálculo de utilidad" />
                 <input className="field-input mono" type="number" min="0" step="0.01" style={{ width: 120 }} value={profit.value} onChange={(e) => setProfitField('value', e.target.value)} placeholder={profit.calcType === 'percent' ? '%' : 'Q'} />
               </div>
 
@@ -457,10 +452,12 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
               </div>
             ))}
             <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', marginTop: 6, flexWrap: 'wrap' }}>
-              <select className="field-input" style={{ width: 90 }} value={charge.calcType} onChange={(e) => setCh('calcType', e.target.value)}>
-                <option value="fixed">{t('quotes.fixed', 'Fijo')}</option>
-                <option value="percent">{t('quotes.percent', '%')}</option>
-              </select>
+              <Autocomplete value={charge.calcType}
+                onChange={(id) => setCh('calcType', id == null ? '' : String(id))}
+                options={[{ id: 'fixed', name: t('quotes.fixed', 'Fijo') }, { id: 'percent', name: t('quotes.percent', '%') }]}
+                allowClear={false}
+                emptyText="Sin coincidencias"
+                aria-label="Cálculo del cargo" />
               <input className="field-input" style={{ flex: 1, minWidth: 120 }} placeholder={t('quotes.chargeDescPh', 'Descripción (mano de obra…)')}
                 value={charge.description} onChange={(e) => setCh('description', e.target.value)} />
               <input className="field-input mono" type="number" min="0" step="0.01" style={{ width: 90 }} placeholder={charge.calcType === 'percent' ? '%' : 'Q'}

@@ -2,6 +2,8 @@
 // Data-driven contra el modelo real del backend: cuentas + movimientos (con flag
 // reconciled) + registros de conciliación (fecha extracto + saldo banco → diferencia).
 import React, { useState, useEffect, useCallback } from 'react';
+import DatePicker from '../components/DatePicker.jsx';
+import Autocomplete from '../components/Autocomplete.jsx';
 import StatCard from '../components/StatCard.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
@@ -64,10 +66,11 @@ export default function BankReconciliation({ pushToast }) {
           </div>
         </div>
         <div className="page-head-actions">
-          <select className="field-input" value={accountId ?? ''} onChange={(e) => setAccountId(e.target.value ? Number(e.target.value) : null)}>
-            {accounts.length === 0 && <option value="">—</option>}
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.bankName || a.alias || a.accountCode} · {a.accountNumber || a.accountCode}</option>)}
-          </select>
+          <Autocomplete value={accountId ?? ''}
+            onChange={(id) => setAccountId(id ? Number(id) : null)}
+            options={accounts.map((a) => ({ id: a.id, name: `${a.bankName || a.alias || a.accountCode} · ${a.accountNumber || a.accountCode}` }))}
+            placeholder="—" emptyText={t('banks.noAccounts', 'Sin cuentas')}
+            aria-label={t('banks.account', 'Cuenta')} />
           <Button icon="check" disabled={accountId == null} onClick={() => setShowRec(true)}>{t('bankrec.reconcile', 'Conciliar')}
           </Button>
         </div>
@@ -178,7 +181,9 @@ export default function BankReconciliation({ pushToast }) {
               <div className="muted" style={{ fontSize: 12 }}>Saldo en libros actual: <strong>{Q(account?.bookBalance)}</strong></div>
               <div className="field">
                 <label>{t('bankrec.statementDate', 'Fecha del extracto')}</label>
-                <input type="date" value={recForm.statementDate} onChange={(e) => setRecForm((f) => ({ ...f, statementDate: e.target.value }))} />
+                <DatePicker value={recForm.statementDate}
+                  onChange={(iso) => setRecForm((f) => ({ ...f, statementDate: iso }))}
+                  aria-label="Fecha del estado" />
               </div>
               <div className="field">
                 <label>{t('bankrec.bankBalance', 'Saldo según extracto bancario')}</label>

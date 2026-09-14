@@ -8,6 +8,8 @@
 // hubiera. Automático se cierra en cuanto hay un cobro: regenerar borraría las
 // cuotas contra las que alguien ya pagó.
 import React, { useEffect, useState, useCallback } from 'react';
+import Autocomplete from './Autocomplete.jsx';
+import DatePicker from './DatePicker.jsx';
 import Button from './Button.jsx';
 import Icon from './Icon.jsx';
 import { getQuotePlan, getQuoteCharges, addQuotePaymentTerm, deleteQuotePaymentTerm, generateQuotePlan } from '../api/wave2.js';
@@ -256,18 +258,17 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
                 </div>
                 <div className="field-group" style={{ width: 150 }}>
                   <label className="field-label">{t('quotes.autoStart', 'Primera fecha')}</label>
-                  <input className="field-input" type="date"
-                    value={auto.startDate} onChange={(e) => setA('startDate', e.target.value)} />
+                  <DatePicker value={auto.startDate} onChange={(iso) => setA('startDate', iso)}
+                    aria-label={t('quotes.autoStart', 'Primera fecha')} />
                 </div>
                 <div className="field-group" style={{ width: 150 }}>
                   <label className="field-label">{t('quotes.autoFrequency', 'Frecuencia')}</label>
-                  <select className="field-input" value={auto.frequency}
-                    disabled={!auto.startDate} onChange={(e) => setA('frequency', e.target.value)}>
-                    <option value="mensual">{t('quotes.freqMonthly', 'Mensual')}</option>
-                    <option value="quincenal">{t('quotes.freqBiweekly', 'Quincenal')}</option>
-                    <option value="semanal">{t('quotes.freqWeekly', 'Semanal')}</option>
-                    <option value="dias">{t('quotes.freqDays', 'Cada N días')}</option>
-                  </select>
+                  <Autocomplete value={auto.frequency}
+                    onChange={(id) => setA('frequency', id == null ? '' : String(id))}
+                    options={[{ id: 'mensual', name: t('quotes.freqMonthly', 'Mensual') }, { id: 'quincenal', name: t('quotes.freqBiweekly', 'Quincenal') }, { id: 'semanal', name: t('quotes.freqWeekly', 'Semanal') }, { id: 'dias', name: t('quotes.freqDays', 'Cada N días') }]}
+                    allowClear={false}
+                    emptyText="Sin coincidencias"
+                    aria-label="Frecuencia" />
                 </div>
                 {auto.frequency === 'dias' && (
                   <div className="field-group" style={{ width: 100 }}>
@@ -282,11 +283,12 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
               <div className="plan-auto-row">
                 <div className="field-group" style={{ width: 150 }}>
                   <label className="field-label">{t('quotes.autoAdvanceType', 'Anticipo (opcional)')}</label>
-                  <select className="field-input" value={auto.advanceCalcType}
-                    onChange={(e) => setA('advanceCalcType', e.target.value)}>
-                    <option value="percent">{t('quotes.advancePercent', 'Porcentaje')}</option>
-                    <option value="fixed">{t('quotes.advanceFixed', 'Monto fijo')}</option>
-                  </select>
+                  <Autocomplete value={auto.advanceCalcType}
+                    onChange={(id) => setA('advanceCalcType', id == null ? '' : String(id))}
+                    options={[{ id: 'percent', name: t('quotes.advancePercent', 'Porcentaje') }, { id: 'fixed', name: t('quotes.advanceFixed', 'Monto fijo') }]}
+                    allowClear={false}
+                    emptyText="Sin coincidencias"
+                    aria-label="Anticipo" />
                 </div>
                 <div className="field-group" style={{ width: 120 }}>
                   <label className="field-label">{auto.advanceCalcType === 'percent' ? '%' : 'Q'}</label>
@@ -320,7 +322,8 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
           </div>
           <div className="field-group" style={{ width: 150 }}>
             <label className="field-label">{t('quotes.dueDate', 'Fecha límite')}</label>
-            <input className="field-input" type="date" value={term.dueDate} onChange={(e) => setT('dueDate', e.target.value)} />
+            <DatePicker value={term.dueDate} onChange={(iso) => setT('dueDate', iso)}
+              aria-label={t('quotes.dueDate', 'Fecha límite')} />
           </div>
           <div className="field-group" style={{ flex: 1, minWidth: 140 }}>
             <label className="field-label">{t('common.notes', 'Notas')}</label>
@@ -365,13 +368,12 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
           </div>
           <div className="field-group" style={{ width: 140 }}>
             <label className="field-label">{t('projects.method', 'Método')}</label>
-            <select className="field-input" value={pay.method} onChange={(e) => setP('method', e.target.value)}>
-              <option value="efectivo">Efectivo</option>
-              <option value="transferencia">Transferencia</option>
-              <option value="deposito">Depósito</option>
-              <option value="cheque">Cheque</option>
-              <option value="tarjeta">Tarjeta</option>
-            </select>
+            <Autocomplete value={pay.method}
+              onChange={(id) => setP('method', id == null ? '' : String(id))}
+              options={[{ id: 'efectivo', name: 'Efectivo' }, { id: 'transferencia', name: 'Transferencia' }, { id: 'deposito', name: 'Depósito' }, { id: 'cheque', name: 'Cheque' }, { id: 'tarjeta', name: 'Tarjeta' }]}
+              allowClear={false}
+              emptyText="Sin coincidencias"
+              aria-label="Método" />
           </div>
           <div className="field-group" style={{ flex: 1, minWidth: 140 }}>
             <label className="field-label">{t('quotes.reference', 'Referencia')}</label>

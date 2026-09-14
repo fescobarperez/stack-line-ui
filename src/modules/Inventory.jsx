@@ -1,5 +1,6 @@
 // Stackline — InventoryModule (ES module)
 import Icon from '../components/Icon.jsx';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
@@ -280,9 +281,11 @@ function InventoryModule({ pushToast }) {
               <Icon name="search" size={12} style={{position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', color:'var(--muted)'}}/>
               <input className="input" style={{width:'100%', paddingLeft:26}} placeholder={t('inventory.searchPlaceholder', 'Buscar SKU, código de barras o nombre…')} value={search} onChange={e=>setSearch(e.target.value)}/>
             </div>
-            <select className="input" value={cat} onChange={e=>setCat(e.target.value)}>
-              {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <Autocomplete value={cat} onChange={(id) => setCat(id == null || id === '' ? 'todos' : String(id))}
+              options={CATEGORIES.map((c) => ({ id: c.id, name: c.name }))}
+              allowClear={false}
+              emptyText={t('common.noResults', 'Sin coincidencias')}
+              aria-label={t('inventory.headers.category', 'Categoría')} />
             <div className="row gap-6">
               {[
                 ['all', t('common.all', 'Todos')],
@@ -713,17 +716,19 @@ function InventoryModule({ pushToast }) {
               <div className="field"><label>Código de barras / SKU</label>
                 <input placeholder="7501..." value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))}/></div>
               <div className="field"><label>{t('inventory.headers.category', 'Categoría')}</label>
-                <select value={form.cat} onChange={e => setForm(f => ({ ...f, cat: e.target.value }))}>
-                  {CATEGORIES.filter(c=>c.id!=='todos').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <Autocomplete value={form.cat} onChange={(id) => setForm((f) => ({ ...f, cat: id == null ? '' : String(id) }))}
+                  options={CATEGORIES.filter((c) => c.id !== 'todos').map((c) => ({ id: c.id, name: c.name }))}
+                  allowClear={false}
+                  emptyText={t('common.noResults', 'Sin coincidencias')}
+                  aria-label={t('inventory.headers.category', 'Categoría')} />
               </div>
               <div className="field"><label>{t('inventory.itemType', 'Tipo de artículo')}</label>
-                <select value={form.itemType}
-                  onChange={e => setForm(f => ({ ...f, itemType: e.target.value }))}>
-                  <option value="sellable">{t('inventory.itemTypeSellable', 'Vendible (POS)')}</option>
-                  <option value="raw_material">{t('inventory.itemTypeRaw', 'Materia prima')}</option>
-                  <option value="service">{t('inventory.itemTypeService', 'Servicio / mano de obra')}</option>
-                </select>
+                <Autocomplete value={form.itemType}
+                  onChange={(id) => setForm(f => ({ ...f, itemType: id == null ? '' : String(id) }))}
+                  options={[{ id: 'sellable', name: t('inventory.itemTypeSellable', 'Vendible (POS)') }, { id: 'raw_material', name: t('inventory.itemTypeRaw', 'Materia prima') }, { id: 'service', name: t('inventory.itemTypeService', 'Servicio / mano de obra') }]}
+                  allowClear={false}
+                  emptyText="Sin coincidencias"
+                  aria-label="Tipo de artículo" />
                 <span className="cfg-hint">
                   {form.itemType === 'sellable'
                     ? t('inventory.itemTypeHintSellable', 'Se ofrece en el punto de venta.')
@@ -733,9 +738,12 @@ function InventoryModule({ pushToast }) {
                 </span>
               </div>
               <div className="field"><label>Unidad de medida</label>
-                <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}>
-                  <option>Unidad</option><option>Paquete</option><option>Kg</option><option>Libra</option><option>Litro</option>
-                </select>
+                <Autocomplete value={form.unit}
+                  onChange={(id) => setForm(f => ({ ...f, unit: id == null ? '' : String(id) }))}
+                  options={[{ id: 'Unidad', name: 'Unidad' }, { id: 'Paquete', name: 'Paquete' }, { id: 'Kg', name: 'Kg' }, { id: 'Libra', name: 'Libra' }, { id: 'Litro', name: 'Litro' }]}
+                  allowClear={false}
+                  emptyText="Sin coincidencias"
+                  aria-label="Unidad de medida" />
               </div>
               {/* Solo para lo que se compra en una presentación y se gasta en
                   otra: un paquete de 100 tornillos que se consumen de a uno.
@@ -755,10 +763,11 @@ function InventoryModule({ pushToast }) {
                 </div>
               </div>
               <div className="field"><label>{t('inventory.headers.supplier', 'Proveedor')}</label>
-                <select value={form.supplierId} onChange={e => setForm(f => ({ ...f, supplierId: e.target.value }))}>
-                  <option value="">—</option>
-                  {SUPPLIERS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                <Autocomplete value={form.supplierId} onChange={(id) => setForm((f) => ({ ...f, supplierId: id == null ? '' : String(id) }))}
+                  options={SUPPLIERS.map((sp) => ({ id: sp.id, name: sp.name }))}
+                  placeholder="—"
+                  emptyText={t('purchases.noSuppliers', 'Sin proveedores')}
+                  aria-label={t('inventory.headers.supplier', 'Proveedor')} />
               </div>
               <div className="field"><label>Costo unitario (Q)</label>
                 <input type="number" placeholder="0.00" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))}/></div>

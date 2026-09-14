@@ -1,5 +1,7 @@
 // Stackline — Conteo Físico de Inventario
 import React, { useState, useMemo } from 'react';
+import DatePicker from '../components/DatePicker.jsx';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
@@ -463,25 +465,23 @@ function NewSessionModal({ branches = [], onClose, onSave }) {
           <div className="form-grid">
             <div className="field">
               <label className="field-label">Fecha del conteo</label>
-              <input type="date" className="field-input" value={date} onChange={e => setDate(e.target.value)} />
+              <DatePicker value={date} onChange={(iso) => setDate(iso)}
+                aria-label={t('common.date', 'Fecha')} />
             </div>
             <div className="field">
               <label className="field-label">{t('common.branch', 'Sucursal')}</label>
-              <select className="field-input" value={branchId} onChange={e => setBranchId(e.target.value)}>
-                <option value="">{t('common.selectDots', 'Seleccionar…')}</option>
-                {branches.map(b => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
+              <Autocomplete value={branchId} onChange={(id) => setBranchId(id == null ? '' : String(id))}
+                options={branches.map((b) => ({ id: b.id, name: b.name }))}
+                placeholder={t('common.selectDots', 'Seleccionar…')}
+                emptyText={t('common.noBranches', 'Sin sucursales')}
+                aria-label={t('common.branch', 'Sucursal')} />
             </div>
           </div>
           <div className="field">
             <label className="field-label">{t('common.category', 'Categoría')} a contar</label>
-            <select className="field-input" value={category} onChange={e => setCategory(e.target.value)}>
-              {Object.entries(CAT_LABEL).map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
-              ))}
-            </select>
+            <Autocomplete value={category} onChange={(id) => setCategory(id == null ? '' : String(id))}
+              options={Object.entries(CAT_LABEL).map(([v, l]) => ({ id: v, name: l }))}
+              allowClear={false} emptyText="Sin categorías" aria-label="Categoría" />
           </div>
           <div className="field">
             <label className="field-label">Responsable del conteo</label>

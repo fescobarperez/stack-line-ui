@@ -1,6 +1,7 @@
 // Stackline — Cuentas por Cobrar (CxC) · antigüedad de saldos
 // Data-driven: /api/receivables/aging (hook useAging) + /api/payments (usePayments).
 import React, { useState, useEffect } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
@@ -284,13 +285,12 @@ export default function CxC({ pushToast }) {
               </div>
               <div className="field">
                 <label>Método</label>
-                <select value={payForm.method} onChange={(e) => setPayForm((f) => ({ ...f, method: e.target.value }))}>
-                  <option value="efectivo">Efectivo</option>
-                  <option value="transferencia">Transferencia</option>
-                  <option value="deposito">Depósito</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="tarjeta">Tarjeta</option>
-                </select>
+                <Autocomplete value={payForm.method}
+                  onChange={(id) => setPayForm((f) => ({ ...f, method: id == null ? '' : String(id) }))}
+                  options={[{ id: 'efectivo', name: 'Efectivo' }, { id: 'transferencia', name: 'Transferencia' }, { id: 'deposito', name: 'Depósito' }, { id: 'cheque', name: 'Cheque' }, { id: 'tarjeta', name: 'Tarjeta' }]}
+                  allowClear={false}
+                  emptyText="Sin coincidencias"
+                  aria-label="Método" />
               </div>
               {/* Solo cuando el dinero entra a un banco. El backend lo exige
                   para esos métodos: sin cuenta, el cobro baja CxC pero no
@@ -298,15 +298,11 @@ export default function CxC({ pushToast }) {
               {NEEDS_BANK.has(payForm.method) && (
                 <div className="field">
                   <label>Cuenta bancaria *</label>
-                  <select value={payForm.bankAccountId}
-                    onChange={(e) => setPayForm((f) => ({ ...f, bankAccountId: e.target.value }))}>
-                    <option value="">Seleccionar…</option>
-                    {BANK_ACCOUNTS.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.bankName || a.accountCode} · {a.accountNumber || a.alias} ({a.currency})
-                      </option>
-                    ))}
-                  </select>
+                  <Autocomplete value={payForm.bankAccountId}
+                    onChange={(id) => setPayForm((f) => ({ ...f, bankAccountId: id == null ? '' : String(id) }))}
+                    options={BANK_ACCOUNTS.map((a) => ({ id: a.id, name: `${a.bankName || a.accountCode} · ${a.accountNumber || a.alias} (${a.currency})` }))}
+                    placeholder="Seleccionar…" emptyText="Sin cuentas bancarias"
+                    aria-label="Cuenta bancaria" />
                 </div>
               )}
               {/* Efectivo y cheque entran a una cuenta de caja. Elegir cuál
@@ -315,12 +311,11 @@ export default function CxC({ pushToast }) {
                 <div className="field">
                   <label>Cuenta de caja</label>
                   {CASH_ACCOUNTS.length > 0 ? (
-                    <select value={payForm.cashAccountId}
-                      onChange={(e) => setPayForm((f) => ({ ...f, cashAccountId: e.target.value }))}>
-                      {CASH_ACCOUNTS.map((a) => (
-                        <option key={a.id} value={a.id}>{a.code} · {a.name}</option>
-                      ))}
-                    </select>
+                    <Autocomplete value={payForm.cashAccountId}
+                      onChange={(id) => setPayForm((f) => ({ ...f, cashAccountId: id == null ? '' : String(id) }))}
+                      options={CASH_ACCOUNTS.map((a) => ({ id: a.id, name: `${a.code} · ${a.name}` }))}
+                      allowClear={false} emptyText="Sin cuentas de caja"
+                      aria-label="Cuenta de caja" />
                   ) : (
                     <div className="muted" style={{ fontSize: 12, color: 'var(--danger)' }}>
                       No hay cuentas de caja de detalle. Crea una cuenta de activo (débito) en Contabilidad.

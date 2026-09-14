@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Autocomplete from './Autocomplete.jsx';
 import Button from './Button.jsx';
 import InlineCreate from './InlineCreate.jsx';
 import Icon from './Icon.jsx';
@@ -66,7 +67,7 @@ function CreateProductInline({ suppliers, onCreate, onCreateSupplier, onCreated,
       </div>
       <div className="field" style={{ marginTop: 10 }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-          <div className="field" style={{ flex: 1 }}><label>Proveedor *</label><select value={form.supplierId} onChange={(event) => set('supplierId', event.target.value)}><option value="">Seleccionar proveedor…</option>{availableSuppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select></div>
+          <div className="field" style={{ flex: 1 }}><label>Proveedor *</label><Autocomplete value={form.supplierId} onChange={(id) => set('supplierId', id == null ? '' : String(id))} options={availableSuppliers.map((supplier) => ({ id: supplier.id, name: supplier.name }))} placeholder="Seleccionar proveedor…" emptyText="Sin proveedores" aria-label="Proveedor" /></div>
           <Button type="button" size="sm" icon="plus" onClick={() => setCreatingSupplier((current) => !current)}>{creatingSupplier ? 'Cerrar' : 'Crear proveedor'}</Button>
         </div>
         {creatingSupplier && <CreateSupplierInline onCreate={onCreateSupplier} onCreated={handleSupplierCreated} onCancel={() => setCreatingSupplier(false)} pushToast={pushToast} />}

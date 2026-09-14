@@ -1,6 +1,7 @@
 // Stackline — Cuentas por Pagar (CxP)
 // Data-driven: /api/purchase-invoices + /api/supplier-payments (aging client-side).
 import React, { useState, useMemo } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
@@ -267,12 +268,12 @@ export default function CxP({ pushToast }) {
               <Icon name="search" className="icon" size={13} />
               <input className="search-input" placeholder={t('cxp.searchPlaceholder', 'Buscar proveedor o documento…')} value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <select className="input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-              <option value="all">{t('common.all', 'Todos')} los estados</option>
-              <option value="open">Abiertos</option>
-              <option value="partial">Parciales</option>
-              <option value="paid">{t('common.completed', 'Pagados')}</option>
-            </select>
+            <Autocomplete value={filterStatus}
+              onChange={(id) => setFilterStatus(id == null || id === '' ? 'all' : String(id))}
+              options={[{ id: 'all', name: `${t('common.all', 'Todos')} los estados` }, { id: 'open', name: 'Abiertos' }, { id: 'partial', name: 'Parciales' }, { id: 'paid', name: t('common.completed', 'Pagados') }]}
+              allowClear={false}
+              emptyText="Sin coincidencias"
+              aria-label="Estado" />
           </div>
 
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -446,11 +447,9 @@ function PayModal({ bill, onClose, onSave }) {
           </div>
           <div className="field">
             <label className="field-label">{t('clients.payment.method', 'Método de pago')}</label>
-            <select className="field-input" value={method} onChange={e => setMethod(e.target.value)}>
-              {PAY_METHODS.map(m => (
-                <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
-              ))}
-            </select>
+            <Autocomplete value={method} onChange={(id) => setMethod(id == null ? '' : String(id))}
+              options={PAY_METHODS.map((m) => ({ id: m, name: m.charAt(0).toUpperCase() + m.slice(1) }))}
+              allowClear={false} emptyText="Sin métodos" aria-label="Método de pago" />
           </div>
           {method !== 'efectivo' && (
             <div className="field">

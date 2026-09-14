@@ -1,5 +1,6 @@
 // Stackline — Módulo de Compras / Órdenes de Compra
 import React, { useState, useMemo } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
@@ -159,28 +160,30 @@ function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
             <div className="form-grid" style={{ marginBottom: 16 }}>
               <div className="field">
                 <label className="field-label">{t('common.supplier', 'Proveedor')}</label>
-                <select className="field-input" value={supplierId} onChange={e => setSupplierId(e.target.value)}>
-                  <option value="">{t('purchases.noSupplier', '— Sin asignar —')}</option>
-                  {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                <Autocomplete value={supplierId} onChange={(id) => setSupplierId(id == null ? '' : String(id))}
+                  options={suppliers.map((s2) => ({ id: s2.id, name: s2.name }))}
+                  placeholder={t('purchases.noSupplier', '— Sin asignar —')}
+                  emptyText={t('purchases.noSuppliers', 'Sin proveedores')}
+                  aria-label={t('common.supplier', 'Proveedor')} />
               </div>
               <div className="field">
                 <label className="field-label">{t('purchases.project', 'Proyecto')}</label>
-                <select className="field-input" value={projectId} onChange={e => setProjectId(e.target.value)}>
-                  <option value="">{t('purchases.noProject', '— Ninguno —')}</option>
-                  {projects.filter(p => p.status === 'open')
-                    .map(p => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
-                </select>
+                <Autocomplete value={projectId} onChange={(id) => setProjectId(id == null ? '' : String(id))}
+                  options={projects.filter((p2) => p2.status === 'open').map((p2) => ({ id: p2.id, name: `${p2.code} · ${p2.name}` }))}
+                  placeholder={t('purchases.noProject', '— Ninguno —')}
+                  emptyText={t('purchases.noProjects', 'Sin proyectos abiertos')}
+                  aria-label={t('common.project', 'Proyecto')} />
                 <span className="cfg-hint">
                   {t('purchases.projectHint', 'Se contabiliza como comprometido hasta que llegue la factura.')}
                 </span>
               </div>
               <div className="field">
                 <label className="field-label">{t('purchases.destBranch', 'Sucursal destino *')}</label>
-                <select className="field-input" value={branchId} onChange={e => setBranchId(e.target.value)} required>
-                  <option value="">{t('purchases.selectBranch', 'Seleccionar...')}</option>
-                  {branches.filter(b => b.status === 'active').map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
+                <Autocomplete value={branchId} onChange={(id) => setBranchId(id == null ? '' : String(id))}
+                  options={branches.filter((b) => b.status === 'active').map((b) => ({ id: b.id, name: b.name }))}
+                  placeholder={t('purchases.selectBranch', 'Seleccionar...')}
+                  emptyText={t('common.noBranches', 'Sin sucursales')}
+                  aria-label={t('common.branch', 'Sucursal')} />
               </div>
               <div className="field span-2">
                 <label className="field-label">{t('common.notes', 'Notas')}</label>
@@ -579,17 +582,19 @@ export default function Purchases({ pushToast }) {
           <input className="search-input" placeholder={t('purchases.searchPlaceholder', 'Buscar por OC o proveedor…')}
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="field-input" style={{ width: 'auto' }} value={statusFilter} onChange={e => setStatus(e.target.value)}>
-          <option value="all">{t('purchases.allStatuses', 'Todos los estados')}</option>
-          <option value="pending">{t('common.pending', 'Pendiente')}</option>
-          <option value="partial">{t('purchases.partial', 'Parcial')}</option>
-          <option value="received">{t('purchases.receivedStatus', 'Recibida')}</option>
-          <option value="cancelled">{t('common.cancelled', 'Cancelada')}</option>
-        </select>
-        <select className="field-input" style={{ width: 'auto' }} value={supplierFilter} onChange={e => setSupplier(e.target.value)}>
-          <option value="all">{t('purchases.allSuppliers', 'Todos los proveedores')}</option>
-          {SUPPLIERS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+        <Autocomplete value={statusFilter}
+          onChange={(id) => setStatus(id == null || id === '' ? 'all' : String(id))}
+          options={[{ id: 'all', name: t('purchases.allStatuses', 'Todos los estados') }, { id: 'pending', name: t('common.pending', 'Pendiente') }, { id: 'partial', name: t('purchases.partial', 'Parcial') }, { id: 'received', name: t('purchases.receivedStatus', 'Recibida') }, { id: 'cancelled', name: t('common.cancelled', 'Cancelada') }]}
+          allowClear={false}
+          emptyText="Sin coincidencias"
+          aria-label="Estado" />
+        <Autocomplete value={supplierFilter}
+          onChange={(id) => setSupplier(id == null || id === '' ? 'all' : String(id))}
+          options={[{ id: 'all', name: t('purchases.allSuppliers', 'Todos los proveedores') },
+            ...SUPPLIERS.map((s2) => ({ id: s2.id, name: s2.name }))]}
+          allowClear={false}
+          emptyText={t('purchases.noSuppliers', 'Sin proveedores')}
+          aria-label={t('common.supplier', 'Proveedor')} />
         <span className="filterbar-count">{t('common.results', { count: visibleRows.length })}</span>
       </div>
 

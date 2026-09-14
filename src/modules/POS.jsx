@@ -2,6 +2,7 @@
 // Data-driven: productos/categorías reales; el cobro crea una venta real
 // (POST /api/sales) contra la caja abierta y descuenta stock en el backend.
 import Icon from '../components/Icon.jsx';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Button from '../components/Button.jsx';
 import { applyPromotions } from '../api/marketing.js';
 import { useProducts, useCategories } from '../hooks/useCatalog.js';
@@ -304,15 +305,17 @@ function POSModule({ pushToast }) {
             <span className="nm">{client.name}</span>
             <span className="nit mono">NIT {client.nit}</span>
           </div>
-          <select
-            value={client.type}
-            onChange={e => setClient(c => ({ ...c, type: e.target.value }))}
-          >
-            <option>{t('pos.clientTypes.cf', 'Consumidor final')}</option>
-            <option>{t('pos.clientTypes.retail', 'Minorista')}</option>
-            <option>{t('pos.clientTypes.wholesale', 'Mayorista')}</option>
-            <option>{t('pos.clientTypes.exempt', 'Exento')}</option>
-          </select>
+          <Autocomplete value={client.type}
+            onChange={(id) => setClient((c) => ({ ...c, type: id == null ? '' : String(id) }))}
+            options={[
+              { id: t('pos.clientTypes.cf', 'Consumidor final'), name: t('pos.clientTypes.cf', 'Consumidor final') },
+              { id: t('pos.clientTypes.retail', 'Minorista'), name: t('pos.clientTypes.retail', 'Minorista') },
+              { id: t('pos.clientTypes.wholesale', 'Mayorista'), name: t('pos.clientTypes.wholesale', 'Mayorista') },
+              { id: t('pos.clientTypes.exempt', 'Exento'), name: t('pos.clientTypes.exempt', 'Exento') },
+            ]}
+            allowClear={false}
+            emptyText="Sin coincidencias"
+            aria-label="Tipo de cliente" />
           <Button variant="ghost" size="sm">{t('pos.changeClient', 'Cambiar')}</Button>
         </div>
 
@@ -394,10 +397,12 @@ function POSModule({ pushToast }) {
           <div className="row">
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {t('pos.manualDiscount', 'Descuento manual')}
-              <select value={discountType} onChange={e => setDiscountType(e.target.value)}>
-                <option value="%">%</option>
-                <option value="Q">Q</option>
-              </select>
+              <Autocomplete value={discountType}
+                onChange={(id) => setDiscountType(id == null ? '' : String(id))}
+                options={[{ id: '%', name: '%' }, { id: 'Q', name: 'Q' }]}
+                allowClear={false}
+                emptyText="Sin coincidencias"
+                aria-label="Tipo de descuento" />
               <input
                 type="number" min="0" step="0.01"
                 max={discountType === '%' ? 100 : subtotal}

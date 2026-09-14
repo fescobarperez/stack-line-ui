@@ -1,5 +1,6 @@
 // Stackline — Devoluciones · Notas de Crédito FEL
 import React, { useState, useMemo } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
@@ -130,18 +131,18 @@ export default function Returns({ pushToast }) {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <select className="input" value={filterType} onChange={e => setFilterType(e.target.value)}>
-          <option value="all">{t('returns.allTypes', 'Todos los tipos')}</option>
-          <option value="anulacion">{t('returns.typeAnulacion', 'Anulación total')}</option>
-          <option value="devolucion">{t('returns.typeDevolucion', 'Devolución')}</option>
-          <option value="descuento">{t('returns.typeDescuento', 'Descuento post-venta')}</option>
-        </select>
-        <select className="input" value={filterFel} onChange={e => setFilterFel(e.target.value)}>
-          <option value="all">{t('returns.allFelStatus', 'Todo estado FEL')}</option>
-          <option value="autorizada">{t('returns.felAuthorized', 'Autorizadas')}</option>
-          <option value="pendiente">{t('returns.felPending', 'Pendientes')}</option>
-          <option value="rechazada">{t('returns.felRejected', 'Rechazadas')}</option>
-        </select>
+        <Autocomplete value={filterType}
+          onChange={(id) => setFilterType(id == null || id === '' ? 'all' : String(id))}
+          options={[{ id: 'all', name: t('returns.allTypes', 'Todos los tipos') }, { id: 'anulacion', name: t('returns.typeAnulacion', 'Anulación total') }, { id: 'devolucion', name: t('returns.typeDevolucion', 'Devolución') }, { id: 'descuento', name: t('returns.typeDescuento', 'Descuento post-venta') }]}
+          allowClear={false}
+          emptyText="Sin coincidencias"
+          aria-label="Tipo" />
+        <Autocomplete value={filterFel}
+          onChange={(id) => setFilterFel(id == null || id === '' ? 'all' : String(id))}
+          options={[{ id: 'all', name: t('returns.allFelStatus', 'Todo estado FEL') }, { id: 'autorizada', name: t('returns.felAuthorized', 'Autorizadas') }, { id: 'pendiente', name: t('returns.felPending', 'Pendientes') }, { id: 'rechazada', name: t('returns.felRejected', 'Rechazadas') }]}
+          allowClear={false}
+          emptyText="Sin coincidencias"
+          aria-label="Estado FEL" />
       </div>
 
       {/* Tabla */}
@@ -338,11 +339,12 @@ function CreateModal({ onClose, onSave }) {
           {/* Tipo */}
           <div className="field">
             <label className="field-label">{t('returns.ncType', 'Tipo de nota de crédito')}</label>
-            <select className="field-input" value={type} onChange={e => setType(e.target.value)}>
-              <option value="anulacion">{t('returns.typeAnulacion', 'Anulación total')}</option>
-              <option value="devolucion">{t('returns.typeDevolucionProducts', 'Devolución de productos')}</option>
-              <option value="descuento">{t('returns.typeDescuento', 'Descuento post-venta')}</option>
-            </select>
+            <Autocomplete value={type}
+              onChange={(id) => setType(id == null ? '' : String(id))}
+              options={[{ id: 'anulacion', name: t('returns.typeAnulacion', 'Anulación total') }, { id: 'devolucion', name: t('returns.typeDevolucionProducts', 'Devolución de productos') }, { id: 'descuento', name: t('returns.typeDescuento', 'Descuento post-venta') }]}
+              allowClear={false}
+              emptyText="Sin coincidencias"
+              aria-label="Tipo de nota" />
           </div>
 
           {/* Ticket */}

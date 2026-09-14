@@ -6,6 +6,8 @@
 // El catálogo de bancos (con SWIFT/país) NO lo modela el backend: el banco es texto
 // libre en la cuenta, por eso ese tab está oculto (pendiente backend).
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import DatePicker from '../components/DatePicker.jsx';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
@@ -285,14 +287,15 @@ export default function Banks({ pushToast }) {
                 onChange={e => setSearch(e.target.value)}
               />
             </div>
-            <select className="input" value={filterCuenta} onChange={e => setFilterCuenta(e.target.value)}>
-              <option value="">{t('banks.allAccounts', 'Todas las cuentas')}</option>
-              {accounts.map(a => <option key={a.id} value={a.id}>{a.alias}</option>)}
-            </select>
-            <select className="input" value={filterTipo} onChange={e => setFilterTipo(e.target.value)}>
-              <option value="">{t('banks.allTypes', 'Todos los tipos')}</option>
-              {Object.entries(TIPO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            <Autocomplete value={filterCuenta} onChange={(id) => setFilterCuenta(id == null ? '' : String(id))}
+              options={accounts.map((a) => ({ id: a.id, name: a.alias }))}
+              placeholder={t('banks.allAccounts', 'Todas las cuentas')}
+              emptyText={t('banks.noAccounts', 'Sin cuentas')}
+              aria-label={t('banks.account', 'Cuenta')} />
+            <Autocomplete value={filterTipo} onChange={(id) => setFilterTipo(id == null ? '' : String(id))}
+              options={Object.entries(TIPO_LABEL).map(([k, v]) => ({ id: k, name: v }))}
+              placeholder={t('banks.allTypes', 'Todos los tipos')}
+              emptyText="Sin coincidencias" aria-label="Tipo" />
             <Button icon="download" variant="ghost" size="sm">{t('common.export', 'Exportar')}</Button>
           </div>
           <table className="mtable">
@@ -464,11 +467,12 @@ export default function Banks({ pushToast }) {
                 </div>
                 <div className="field">
                   <label>{t('common.type', 'Tipo')}</label>
-                  <select value={formCuenta.tipo} onChange={e => setFormCuenta(f => ({ ...f, tipo: e.target.value }))}>
-                    <option value="monetaria">{t('banks.types.monetary', 'Monetaria')}</option>
-                    <option value="ahorro">{t('banks.types.savings', 'Ahorro')}</option>
-                    <option value="inversion">{t('banks.types.investment', 'Inversión')}</option>
-                  </select>
+                  <Autocomplete value={formCuenta.tipo}
+                    onChange={(id) => setFormCuenta(f => ({ ...f, tipo: id == null ? '' : String(id) }))}
+                    options={[{ id: 'monetaria', name: t('banks.types.monetary', 'Monetaria') }, { id: 'ahorro', name: t('banks.types.savings', 'Ahorro') }, { id: 'inversion', name: t('banks.types.investment', 'Inversión') }]}
+                    allowClear={false}
+                    emptyText="Sin coincidencias"
+                    aria-label="Tipo de cuenta" />
                 </div>
                 <div className="field">
                   <label>{t('banks.accountNumber', 'N.° de cuenta')}</label>
@@ -480,10 +484,12 @@ export default function Banks({ pushToast }) {
                 </div>
                 <div className="field">
                   <label>{t('banks.currency', 'Moneda')}</label>
-                  <select value={formCuenta.moneda} onChange={e => setFormCuenta(f => ({ ...f, moneda: e.target.value }))}>
-                    <option value="GTQ">GTQ — Quetzal</option>
-                    <option value="USD">USD — Dólar</option>
-                  </select>
+                  <Autocomplete value={formCuenta.moneda}
+                    onChange={(id) => setFormCuenta(f => ({ ...f, moneda: id == null ? '' : String(id) }))}
+                    options={[{ id: 'GTQ', name: 'GTQ — Quetzal' }, { id: 'USD', name: 'USD — Dólar' }]}
+                    allowClear={false}
+                    emptyText="Sin coincidencias"
+                    aria-label="Tipo de movimiento" />
                 </div>
                 <div className="field span-2">
                   <label>{t('banks.openingBalance', 'Saldo inicial')}</label>
@@ -520,21 +526,19 @@ export default function Banks({ pushToast }) {
               <div className="form-grid">
                 <div className="field span-2">
                   <label>{t('banks.originAccount', 'Cuenta origen')}</label>
-                  <select value={formTrf.origen} onChange={e => setFormTrf(f => ({ ...f, origen: e.target.value }))}>
-                    <option value="">{t('common.selectDots', 'Seleccionar…')}</option>
-                    {accounts.filter(a => a.estado === 'activa').map(a => (
-                      <option key={a.id} value={a.id}>{a.alias} ({a.moneda})</option>
-                    ))}
-                  </select>
+                  <Autocomplete value={formTrf.origen} onChange={(id) => setFormTrf((f) => ({ ...f, origen: id == null ? '' : String(id) }))}
+                    options={accounts.filter((a) => a.estado === 'activa').map((a) => ({ id: a.id, name: `${a.alias} (${a.moneda})` }))}
+                    placeholder={t('common.selectDots', 'Seleccionar…')}
+                    emptyText={t('banks.noAccounts', 'Sin cuentas')}
+                    aria-label={t('banks.from', 'Cuenta origen')} />
                 </div>
                 <div className="field span-2">
                   <label>{t('banks.destinationAccount', 'Cuenta destino')}</label>
-                  <select value={formTrf.destino} onChange={e => setFormTrf(f => ({ ...f, destino: e.target.value }))}>
-                    <option value="">{t('common.selectDots', 'Seleccionar…')}</option>
-                    {accounts.filter(a => a.estado === 'activa' && String(a.id) !== String(formTrf.origen)).map(a => (
-                      <option key={a.id} value={a.id}>{a.alias} ({a.moneda})</option>
-                    ))}
-                  </select>
+                  <Autocomplete value={formTrf.destino} onChange={(id) => setFormTrf((f) => ({ ...f, destino: id == null ? '' : String(id) }))}
+                    options={accounts.filter((a) => a.estado === 'activa' && String(a.id) !== String(formTrf.origen)).map((a) => ({ id: a.id, name: `${a.alias} (${a.moneda})` }))}
+                    placeholder={t('common.selectDots', 'Seleccionar…')}
+                    emptyText={t('banks.noAccounts', 'Sin cuentas')}
+                    aria-label={t('banks.to', 'Cuenta destino')} />
                 </div>
                 <div className="field">
                   <label>{t('common.amount', 'Monto')}</label>
@@ -554,11 +558,8 @@ export default function Banks({ pushToast }) {
                 </div>
                 <div className="field">
                   <label>{t('common.date', 'Fecha')}</label>
-                  <input
-                    type="date"
-                    value={formTrf.fecha}
-                    onChange={e => setFormTrf(f => ({ ...f, fecha: e.target.value }))}
-                  />
+                  <DatePicker value={formTrf.fecha} onChange={(iso) => setFormTrf((f) => ({ ...f, fecha: iso }))}
+                    aria-label={t('common.date', 'Fecha')} />
                 </div>
                 <div className="field span-2">
                   <label>{t('banks.concept', 'Concepto')}</label>

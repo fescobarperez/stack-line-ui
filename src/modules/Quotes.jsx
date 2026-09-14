@@ -1,7 +1,9 @@
 // Stackline — Cotizaciones a clientes + RFQ a proveedores
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import DatePicker from '../components/DatePicker.jsx';
 import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
+import Autocomplete from '../components/Autocomplete.jsx';
 import { useTranslation } from 'react-i18next';
 import { useTaxRate, useProjects } from '../hooks/useOperations.js';
 import { getClientByNit } from '../api/partners.js';
@@ -109,8 +111,8 @@ function CreateRFQModal({ onSave, onClose }) {
 
           <div className="field-group" style={{ maxWidth: 220 }}>
             <label className="field-label">{t('quotes.respondBefore', 'Responder antes de')}</label>
-            <input className="field-input" type="date" value={deadline} min={today}
-              onChange={e => setDeadline(e.target.value)} />
+            <DatePicker value={deadline} onChange={(iso) => setDeadline(iso)} min={today}
+              aria-label={t('quotes.respondBefore', 'Resp. antes')} />
           </div>
 
           <div>
@@ -1061,16 +1063,15 @@ export default function Quotes({ pushToast }) {
             <div className="modal-body">
               <div className="field-group">
                 <label className="field-label">{t('quotes.project', 'Proyecto')}</label>
-                <select className="field-input" defaultValue=""
-                  onChange={(e) => {
-                    const p = (projects || []).find((x) => String(x.id) === e.target.value);
-                    if (p) setBuilderProject(p);
-                  }}>
-                  <option value="" disabled>{t('common.select', 'Seleccionar…')}</option>
-                  {(projects || []).map((p) => (
-                    <option key={p.id} value={p.id}>{p.code} · {p.name}</option>
-                  ))}
-                </select>
+                <Autocomplete value={builderProject?.id ?? ''}
+                  onChange={(id) => {
+                    const elegido = (projects || []).find((x) => String(x.id) === String(id));
+                    if (elegido) setBuilderProject(elegido);
+                  }}
+                  options={(projects || []).map((p2) => ({ id: p2.id, name: `${p2.code} · ${p2.name}` }))}
+                  placeholder={t('common.select', 'Seleccionar…')}
+                  emptyText={t('projects.empty', 'Sin proyectos')}
+                  aria-label={t('quotes.project', 'Proyecto')} />
                 <div className="cfg-hint">{t('quotes.pickProjectHint', 'La cotización se compone de los materiales planificados del proyecto.')}</div>
               </div>
             </div>

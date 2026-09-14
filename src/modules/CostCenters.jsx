@@ -2,6 +2,7 @@
 // Data-driven contra /api/cost-centers (hook useCostCenters). El análisis de gasto
 // por centro se omite: el backend aún no etiqueta transacciones con centro de costo.
 import React, { useState, useMemo } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
@@ -35,10 +36,12 @@ function CenterModal({ center, onSave, onClose }) {
             </div>
             <div className="field-group">
               <label className="field-label">{t('common.type', 'Tipo')}</label>
-              <select className="field-input" value={form.type} onChange={(e) => set('type', e.target.value)}>
-                <option value="cost">{t('costcenters.typeCost', 'Centro de Costo')}</option>
-                <option value="profit">{t('costcenters.typeProfit', 'Centro de Utilidad')}</option>
-              </select>
+              <Autocomplete value={form.type}
+                onChange={(id) => set('type', id == null ? '' : String(id))}
+                options={[{ id: 'cost', name: t('costcenters.typeCost', 'Centro de Costo') }, { id: 'profit', name: t('costcenters.typeProfit', 'Centro de Utilidad') }]}
+                allowClear={false}
+                emptyText="Sin coincidencias"
+                aria-label="Tipo" />
             </div>
           </div>
           <div className="field-group">
@@ -47,9 +50,9 @@ function CenterModal({ center, onSave, onClose }) {
           </div>
           <div className="field-group">
             <label className="field-label">{t('costcenters.group', 'Grupo')}</label>
-            <select className="field-input" value={form.group} onChange={(e) => set('group', e.target.value)}>
-              {GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
-            </select>
+            <Autocomplete value={form.group} onChange={(id) => set('group', id == null ? '' : String(id))}
+              options={GROUPS.map((g) => ({ id: g, name: g }))}
+              allowClear={false} emptyText="Sin grupos" aria-label="Grupo" />
           </div>
           <div className="field-group">
             <label className="field-label">{t('costcenters.monthlyBudget', 'Presupuesto mensual (Q)')}</label>

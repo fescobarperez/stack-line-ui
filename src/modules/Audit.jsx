@@ -1,5 +1,6 @@
 // Stackline — Auditoría · Log de actividad
 import React, { useState, useMemo, useEffect } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { listAuditLog } from '../api/wave2.js';
@@ -150,25 +151,22 @@ export default function Audit() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <select className="input" value={filterModule} onChange={e => setFilterModule(e.target.value)}>
-          <option value="all">{t('audit.allModules', 'Todos los módulos')}</option>
-          {uniqueModules.map(m => (
-            <option key={m} value={m}>{MODULE_LABEL[m] || m}</option>
-          ))}
-        </select>
-        <select className="input" value={filterUser} onChange={e => setFilterUser(e.target.value)}>
-          <option value="all">{t('audit.allUsers', 'Todos los usuarios')}</option>
-          {uniqueUsers.map(u => (
-            <option key={u.id} value={u.id}>{u.name}</option>
-          ))}
-        </select>
-        <select className="input" value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)}>
-          <option value="all">{t('audit.allSeverity', 'Toda la severidad')}</option>
-          <option value="success">OK</option>
-          <option value="info">Info</option>
-          <option value="warning">{t('audit.warning', 'Aviso')}</option>
-          <option value="danger">{t('audit.critical', 'Crítico')}</option>
-        </select>
+        <Autocomplete value={filterModule} onChange={(id) => setFilterModule(id == null || id === '' ? 'all' : String(id))}
+          options={[{ id: 'all', name: t('audit.allModules', 'Todos los módulos') },
+            ...uniqueModules.map((m) => ({ id: m, name: MODULE_LABEL[m] || m }))]}
+          allowClear={false} emptyText={t('common.noResults', 'Sin coincidencias')}
+          aria-label={t('audit.module', 'Módulo')} />
+        <Autocomplete value={filterUser} onChange={(id) => setFilterUser(id == null || id === '' ? 'all' : String(id))}
+          options={[{ id: 'all', name: t('audit.allUsers', 'Todos los usuarios') },
+            ...uniqueUsers.map((u) => ({ id: u.id, name: u.name }))]}
+          allowClear={false} emptyText={t('users.noUsers', 'Sin usuarios')}
+          aria-label={t('common.user', 'Usuario')} />
+        <Autocomplete value={filterSeverity}
+          onChange={(id) => setFilterSeverity(id == null || id === '' ? 'all' : String(id))}
+          options={[{ id: 'all', name: t('audit.allSeverity', 'Toda la severidad') }, { id: 'success', name: 'OK' }, { id: 'info', name: 'Info' }, { id: 'warning', name: t('audit.warning', 'Aviso') }, { id: 'danger', name: t('audit.critical', 'Crítico') }]}
+          allowClear={false}
+          emptyText="Sin coincidencias"
+          aria-label="Severidad" />
       </div>
 
       {/* Tabla de log */}

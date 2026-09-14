@@ -2,6 +2,7 @@
 // Data-driven: consume /api/accounting/{balance-sheet,income-statement} con
 // fallback calculado del mock (hook useFinancialStatements).
 import React, { useState } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import StatCard from '../components/StatCard.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
@@ -55,10 +56,11 @@ export default function FinancialStatements() {
           </div>
         </div>
         <div className="page-head-actions">
-          <select className="field-input" value={periodId ?? ''} onChange={(e) => setPeriodId(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">{t('financials.allPeriods', 'Todos los períodos')}</option>
-            {periods.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          <Autocomplete value={periodId ?? ''} onChange={(id) => setPeriodId(id ? Number(id) : null)}
+            options={periods.map((p2) => ({ id: p2.id, name: p2.name }))}
+            placeholder={t('financials.allPeriods', 'Todos los períodos')}
+            emptyText={t('accounting.noPeriods', 'Sin períodos')}
+            aria-label={t('accounting.period', 'Período')} />
           <Button icon="receipt" onClick={() => window.print()}>{t('common.print', 'Imprimir')}
           </Button>
         </div>

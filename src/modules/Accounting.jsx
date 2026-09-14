@@ -1,5 +1,7 @@
 // Stackline — Módulo de Contabilidad
 import React, { useState, useMemo, useEffect } from 'react';
+import DatePicker from '../components/DatePicker.jsx';
+import Autocomplete from '../components/Autocomplete.jsx';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
@@ -54,10 +56,11 @@ function NewAccountModal({ accounts, onSave, onClose }) {
               </div>
               <div className="field">
                 <label className="field-label">{t('accounting.parentAccount', 'Cuenta padre')}</label>
-                <select className="field-input" value={form.parentCode} onChange={e => set('parentCode', e.target.value)}>
-                  <option value="">{t('accounting.root', '— Raíz —')}</option>
-                  {accounts.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
-                </select>
+                <Autocomplete value={form.parentCode} onChange={(id) => set('parentCode', id == null ? '' : String(id))}
+                  options={accounts.map((a) => ({ id: a.code, name: `${a.code} · ${a.name}` }))}
+                  placeholder={t('accounting.root', '— Raíz —')}
+                  emptyText={t('accounting.noAccounts', 'Sin cuentas')}
+                  aria-label={t('accounting.parentAccount', 'Cuenta padre')} />
               </div>
               <div className="field span-2">
                 <label className="field-label">{t('accounting.nameRequired', 'Nombre *')}</label>
@@ -65,20 +68,21 @@ function NewAccountModal({ accounts, onSave, onClose }) {
               </div>
               <div className="field">
                 <label className="field-label">{t('accounting.level', 'Nivel')}</label>
-                <select className="field-input" value={form.level} onChange={e => set('level', e.target.value)}>
-                  <option value="1">{t('accounting.level1', '1 — Clase')}</option>
-                  <option value="2">{t('accounting.level2', '2 — Grupo')}</option>
-                  <option value="3">{t('accounting.level3', '3 — Cuenta')}</option>
-                  <option value="4">{t('accounting.level4', '4 — Subcuenta')}</option>
-                  <option value="5">{t('accounting.level5', '5 — Auxiliar')}</option>
-                </select>
+                <Autocomplete value={form.level}
+                  onChange={(id) => set('level', id == null ? '' : String(id))}
+                  options={[{ id: '1', name: t('accounting.level1', '1 — Clase') }, { id: '2', name: t('accounting.level2', '2 — Grupo') }, { id: '3', name: t('accounting.level3', '3 — Cuenta') }, { id: '4', name: t('accounting.level4', '4 — Subcuenta') }, { id: '5', name: t('accounting.level5', '5 — Auxiliar') }]}
+                  allowClear={false}
+                  emptyText="Sin coincidencias"
+                  aria-label="Nivel" />
               </div>
               <div className="field">
                 <label className="field-label">{t('accounting.normalBalance', 'Saldo normal')}</label>
-                <select className="field-input" value={form.normalBalance} onChange={e => set('normalBalance', e.target.value)}>
-                  <option value="debit">{t('accounting.debit', 'Débito (Activo/Gasto)')}</option>
-                  <option value="credit">{t('accounting.credit', 'Crédito (Pasivo/Ingreso)')}</option>
-                </select>
+                <Autocomplete value={form.normalBalance}
+                  onChange={(id) => set('normalBalance', id == null ? '' : String(id))}
+                  options={[{ id: 'debit', name: t('accounting.debit', 'Débito (Activo/Gasto)') }, { id: 'credit', name: t('accounting.credit', 'Crédito (Pasivo/Ingreso)') }]}
+                  allowClear={false}
+                  emptyText="Sin coincidencias"
+                  aria-label="Saldo normal" />
               </div>
               <div className="field span-2">
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
@@ -136,13 +140,16 @@ function NewEntryModal({ accounts, periods, onSave, onClose }) {
             <div className="form-grid" style={{ marginBottom: 16 }}>
               <div className="field">
                 <label className="field-label">{t('accounting.dateRequired', 'Fecha *')}</label>
-                <input className="field-input" type="date" value={form.date} onChange={e => set('date', e.target.value)} required />
+                <DatePicker value={form.date} onChange={(iso) => set('date', iso)}
+                  aria-label={t('common.date', 'Fecha')} />
               </div>
               <div className="field">
                 <label className="field-label">{t('accounting.period', 'Período')}</label>
-                <select className="field-input" value={form.periodId} onChange={e => set('periodId', e.target.value)}>
-                  {periods.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                <Autocomplete value={form.periodId} onChange={(id) => set('periodId', id == null ? '' : String(id))}
+                  options={periods.map((p2) => ({ id: p2.id, name: p2.name }))}
+                  allowClear={false}
+                  emptyText={t('accounting.noPeriods', 'Sin períodos')}
+                  aria-label={t('accounting.period', 'Período')} />
               </div>
               <div className="field span-2">
                 <label className="field-label">{t('accounting.descriptionRequired', 'Descripción *')}</label>
@@ -168,11 +175,11 @@ function NewEntryModal({ accounts, periods, onSave, onClose }) {
                 {lines.map((line, idx) => (
                   <tr key={idx}>
                     <td>
-                      <select className="field-input" style={{ fontSize: 12 }} value={line.accountCode}
-                        onChange={e => setLine(idx, 'accountCode', e.target.value)}>
-                        <option value="">{t('accounting.selectAccount', '— Seleccionar cuenta —')}</option>
-                        {leafAccounts.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
-                      </select>
+                      <Autocomplete value={line.accountCode} onChange={(id) => setLine(idx, 'accountCode', id == null ? '' : String(id))}
+                        options={leafAccounts.map((a) => ({ id: a.code, name: `${a.code} · ${a.name}` }))}
+                        placeholder={t('accounting.selectAccount', '— Seleccionar cuenta —')}
+                        emptyText={t('accounting.noAccounts', 'Sin cuentas')}
+                        aria-label={t('accounting.account', 'Cuenta')} />
                     </td>
                     <td>
                       <input type="number" min="0" step="0.01" className="field-input mono" style={{ textAlign: 'right', padding: '4px 8px', fontSize: 14 }}
@@ -523,11 +530,12 @@ export default function Accounting({ pushToast }) {
               <input className="search-input" placeholder={t('accounting.searchEntries', 'Buscar partida o referencia…')}
                 value={entrySearch} onChange={e => setEntrySearch(e.target.value)} />
             </div>
-            <select className="field-input" style={{ width: 'auto' }} value={entryType} onChange={e => setEntryType(e.target.value)}>
-              <option value="all">{t('accounting.allTypes', 'Todos los tipos')}</option>
-              <option value="auto">{t('accounting.automaticPlural', 'Automáticas')}</option>
-              <option value="manual">{t('accounting.manualPlural', 'Manuales')}</option>
-            </select>
+            <Autocomplete value={entryType}
+              onChange={(id) => setEntryType(id == null || id === '' ? 'all' : String(id))}
+              options={[{ id: 'all', name: t('accounting.allTypes', 'Todos los tipos') }, { id: 'auto', name: t('accounting.automaticPlural', 'Automáticas') }, { id: 'manual', name: t('accounting.manualPlural', 'Manuales') }]}
+              allowClear={false}
+              emptyText="Sin coincidencias"
+              aria-label="Tipo de partida" />
             <span className="muted" style={{ fontSize: 12 }}>{filteredEntries.length} {t('accounting.voucherCount', 'comprobante')}{filteredEntries.length !== 1 ? 's' : ''}</span>
           </div>
           <DataTable

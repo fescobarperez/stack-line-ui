@@ -1,5 +1,6 @@
 // Stackline — Módulo de Clientes (CRM básico)
 import React, { useState, useMemo, useEffect } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
@@ -59,12 +60,12 @@ function ClientForm({ initial = {}, onSave, onCancel }) {
         </div>
         <div className="field">
           <label className="field-label">{t('clients.form.type', 'Tipo de cliente')}</label>
-          <select className="field-input" value={form.clientType} onChange={e => set('clientType', e.target.value)}>
-            <option value="CF">{t('clients.form.types.cf', 'CF (Consumidor Final)')}</option>
-            <option value="minorista">{t('clients.form.types.retail', 'Minorista')}</option>
-            <option value="mayorista">{t('clients.form.types.wholesale', 'Mayorista')}</option>
-            <option value="exento">{t('clients.form.types.exempt', 'Exento de IVA')}</option>
-          </select>
+          <Autocomplete value={form.clientType}
+            onChange={(id) => set('clientType', id == null ? '' : String(id))}
+            options={[{ id: 'CF', name: t('clients.form.types.cf', 'CF (Consumidor Final)') }, { id: 'minorista', name: t('clients.form.types.retail', 'Minorista') }, { id: 'mayorista', name: t('clients.form.types.wholesale', 'Mayorista') }, { id: 'exento', name: t('clients.form.types.exempt', 'Exento de IVA') }]}
+            allowClear={false}
+            emptyText="Sin coincidencias"
+            aria-label={t('clients.form.clientType','Tipo de cliente')} />
         </div>
         <div className="field span-2">
           <label className="field-label">{t('clients.form.address', 'Dirección')}</label>
@@ -134,12 +135,12 @@ function PaymentModal({ client, onSave, onClose }) {
             </div>
             <div className="field" style={{ marginBottom: 12 }}>
               <label className="field-label">{t('clients.payment.method', 'Forma de pago')}</label>
-              <select className="field-input" value={form.paymentMethod} onChange={e => set('paymentMethod', e.target.value)}>
-                <option value="efectivo">{t('clients.payment.methods.cash', 'Efectivo')}</option>
-                <option value="transferencia">{t('clients.payment.methods.transfer', 'Transferencia')}</option>
-                <option value="cheque">{t('clients.payment.methods.check', 'Cheque')}</option>
-                <option value="tarjeta">{t('clients.payment.methods.card', 'Tarjeta')}</option>
-              </select>
+              <Autocomplete value={form.paymentMethod}
+                onChange={(id) => set('paymentMethod', id == null ? '' : String(id))}
+                options={[{ id: 'efectivo', name: t('clients.payment.methods.cash', 'Efectivo') }, { id: 'transferencia', name: t('clients.payment.methods.transfer', 'Transferencia') }, { id: 'cheque', name: t('clients.payment.methods.check', 'Cheque') }, { id: 'tarjeta', name: t('clients.payment.methods.card', 'Tarjeta') }]}
+                allowClear={false}
+                emptyText="Sin coincidencias"
+                aria-label={t('clients.payment.method','Método de pago')} />
             </div>
             <div className="field" style={{ marginBottom: 12 }}>
               <label className="field-label">{t('clients.payment.reference', 'Referencia / No. cheque')}</label>
@@ -466,19 +467,18 @@ export default function Clients({ pushToast }) {
                 onChange={e => setSearch(e.target.value)}
               />
             </div>
-            <select className="field-input" style={{ width: 'auto' }} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-              <option value="all">Todos los tipos</option>
-              <option value="CF">CF</option>
-              <option value="minorista">Minorista</option>
-              <option value="mayorista">Mayorista</option>
-              <option value="exento">Exento</option>
-            </select>
-            <select className="field-input" style={{ width: 'auto' }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-              <option value="all">Todos los estados</option>
-              <option value="active">{t('common.active', 'Activos')}</option>
-              <option value="inactive">{t('common.inactive', 'Inactivos')}</option>
-              <option value="blocked">Bloqueados</option>
-            </select>
+            <Autocomplete value={typeFilter}
+              onChange={(id) => setTypeFilter(id == null || id === '' ? 'all' : String(id))}
+              options={[{ id: 'all', name: 'Todos los tipos' }, { id: 'CF', name: 'CF' }, { id: 'minorista', name: 'Minorista' }, { id: 'mayorista', name: 'Mayorista' }, { id: 'exento', name: 'Exento' }]}
+              allowClear={false}
+              emptyText="Sin coincidencias"
+              aria-label="Tipo de cliente" />
+            <Autocomplete value={statusFilter}
+              onChange={(id) => setStatusFilter(id == null || id === '' ? 'all' : String(id))}
+              options={[{ id: 'all', name: 'Todos los estados' }, { id: 'active', name: t('common.active', 'Activos') }, { id: 'inactive', name: t('common.inactive', 'Inactivos') }, { id: 'blocked', name: 'Bloqueados' }]}
+              allowClear={false}
+              emptyText="Sin coincidencias"
+              aria-label="Estado" />
             <span className="muted" style={{ fontSize: 12 }}>{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
           </div>
 

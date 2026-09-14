@@ -8,6 +8,7 @@
 // mantenimiento donde usa el dato, no en una lista plana que crece sin criterio.
 // El patrón menú + contenedor es el mismo de /config.
 import Icon from '../components/Icon.jsx';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Button from '../components/Button.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { useBranches, useSuppliers } from '../hooks/useMasters.js';
@@ -382,9 +383,9 @@ function CatalogModal({ spec, initial, isEdit, onClose, onSave }) {
               <div className="field span-2" key={f.key}>
                 <label className="field-label">{f.label}{f.required ? ' *' : ''}</label>
                 {f.type === 'select' ? (
-                  <select className="field-input" value={form[f.key]} onChange={(e) => set(f.key, e.target.value)}>
-                    {f.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
+                  <Autocomplete value={form[f.key]} onChange={(id) => set(f.key, id == null ? '' : String(id))}
+                    options={f.options.map(([v, l]) => ({ id: v, name: l }))}
+                    allowClear={false} emptyText="Sin opciones" aria-label={f.label} />
                 ) : (
                   <input className="field-input" placeholder={f.placeholder || ''} value={form[f.key]} onChange={(e) => set(f.key, e.target.value)} />
                 )}

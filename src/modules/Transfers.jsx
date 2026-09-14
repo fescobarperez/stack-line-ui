@@ -1,5 +1,6 @@
 // Stackline — Módulo de Transferencias entre Sucursales
 import React, { useState, useMemo } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
@@ -72,20 +73,22 @@ function NewTransferModal({ branches, products, onSave, onClose }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 12, alignItems: 'end', marginBottom: 16 }}>
               <div className="field">
                 <label className="field-label">Sucursal origen *</label>
-                <select className="field-input" value={fromBranch} onChange={e => setFrom(e.target.value)} required>
-                  <option value="">Seleccionar...</option>
-                  {branches.filter(b => b.status === 'active').map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
-                </select>
+                <Autocomplete value={fromBranch} onChange={(id) => setFrom(id == null ? '' : String(id))}
+                  options={branches.filter((b) => b.status === 'active').map((b) => ({ id: b.name, name: b.name }))}
+                  placeholder="Seleccionar..."
+                  emptyText={t('common.noBranches', 'Sin sucursales')}
+                  aria-label={t('transfers.from', 'Sucursal origen')} />
               </div>
               <div style={{ textAlign: 'center', color: 'var(--accent)', paddingBottom: 8 }}>
                 <Icon name="transfer" size={20} />
               </div>
               <div className="field">
                 <label className="field-label">Sucursal destino *</label>
-                <select className="field-input" value={toBranch} onChange={e => setTo(e.target.value)} required>
-                  <option value="">Seleccionar...</option>
-                  {branches.filter(b => b.status === 'active' && b.name !== fromBranch).map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
-                </select>
+                <Autocomplete value={toBranch} onChange={(id) => setTo(id == null ? '' : String(id))}
+                  options={branches.filter((b) => b.status === 'active' && b.name !== fromBranch).map((b) => ({ id: b.name, name: b.name }))}
+                  placeholder="Seleccionar..."
+                  emptyText={t('common.noBranches', 'Sin sucursales')}
+                  aria-label={t('transfers.to', 'Sucursal destino')} />
               </div>
             </div>
 
@@ -386,17 +389,19 @@ export default function Transfers({ pushToast }) {
           <input className="search-input" placeholder={t('transfers.searchPlaceholder', 'No. transferencia, sucursal…')}
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="field-input" style={{ width: 'auto' }} value={statusFilter} onChange={e => setStatus(e.target.value)}>
-          <option value="all">{t('common.all', 'Todos')} los estados</option>
-          <option value="draft">{t('common.draft', 'Borrador')}</option>
-          <option value="in_transit">En tránsito</option>
-          <option value="completed">{t('common.completed', 'Completado')}</option>
-          <option value="cancelled">{t('common.cancelled', 'Cancelado')}</option>
-        </select>
-        <select className="field-input" style={{ width: 'auto' }} value={branchFilter} onChange={e => setBranch(e.target.value)}>
-          <option value="all">{t('common.allFem', 'Todas')} las sucursales</option>
-          {BRANCHES.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
-        </select>
+        <Autocomplete value={statusFilter}
+          onChange={(id) => setStatus(id == null || id === '' ? 'all' : String(id))}
+          options={[{ id: 'all', name: `${t('common.all', 'Todos')} los estados` }, { id: 'draft', name: t('common.draft', 'Borrador') }, { id: 'in_transit', name: 'En tránsito' }, { id: 'completed', name: t('common.completed', 'Completado') }, { id: 'cancelled', name: t('common.cancelled', 'Cancelado') }]}
+          allowClear={false}
+          emptyText="Sin coincidencias"
+          aria-label="Estado" />
+        <Autocomplete value={branchFilter}
+          onChange={(id) => setBranch(id == null || id === '' ? 'all' : String(id))}
+          options={[{ id: 'all', name: `${t('common.allFem', 'Todas')} las sucursales` },
+            ...BRANCHES.map((b) => ({ id: b.name, name: b.name }))]}
+          allowClear={false}
+          emptyText={t('common.noBranches', 'Sin sucursales')}
+          aria-label={t('common.branch', 'Sucursal')} />
         <span className="muted" style={{ fontSize: 12 }}>{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 

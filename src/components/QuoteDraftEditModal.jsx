@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import Autocomplete from './Autocomplete.jsx';
+import DatePicker from './DatePicker.jsx';
 import Button from './Button.jsx';
 import Icon from './Icon.jsx';
 import { updateQuote } from '../api/wave2.js';
@@ -72,15 +74,18 @@ export default function QuoteDraftEditModal({ quote, onClose, onSaved, pushToast
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
             <div className="field-group">
               <label className="field-label">{t('quotes.validUntil', 'Fecha de expiración')} *</label>
-              <input className="field-input" type="date" min={quote.date || today} value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+              <DatePicker value={validUntil} onChange={(iso) => setValidUntil(iso)} min={quote.date || today}
+                aria-label={t('quotes.validUntil', 'Fecha de expiración')} />
             </div>
             <div className="field-group">
               <label className="field-label">{t('quotes.companyProfit', 'Ganancia de la empresa')}</label>
               <div style={{ display: 'flex', gap: 8 }}>
-                <select className="field-input" style={{ width: 110 }} value={profitCalcType} onChange={(e) => setProfitCalcType(e.target.value)}>
-                  <option value="fixed">{t('quotes.fixed', 'Fijo')}</option>
-                  <option value="percent">%</option>
-                </select>
+                <Autocomplete value={profitCalcType}
+                  onChange={(id) => setProfitCalcType(id == null ? '' : String(id))}
+                  options={[{ id: 'fixed', name: t('quotes.fixed', 'Fijo') }, { id: 'percent', name: '%' }]}
+                  allowClear={false}
+                  emptyText="Sin coincidencias"
+                  aria-label="Estado" />
                 <input className="field-input mono" type="number" min="0" step="0.01" value={profitValue} onChange={(e) => setProfitValue(e.target.value)} placeholder={profitCalcType === 'percent' ? '%' : 'Q'} />
               </div>
             </div>

@@ -1,5 +1,7 @@
 // Stackline — Payroll / Planilla module (Guatemala)
 import React, { useState, useMemo } from 'react';
+import DatePicker from '../components/DatePicker.jsx';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
@@ -441,11 +443,13 @@ export default function Payroll({ pushToast }) {
               <input className="search-input" placeholder={t('payroll.searchEmployee', 'Buscar empleado…')}
                 value={search} onChange={e => setSearch(e.target.value)}/>
             </div>
-            <select className="field-input" value={deptFilter}
-              onChange={e => setDeptFilter(e.target.value)} style={{width:'auto'}}>
-              <option value="todos">{t('payroll.allDepartments', 'Todos los departamentos')}</option>
-              {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <Autocomplete value={deptFilter}
+              onChange={(id) => setDeptFilter(id == null || id === '' ? 'todos' : String(id))}
+              options={[{ id: 'todos', name: t('payroll.allDepartments', 'Todos los departamentos') },
+                ...DEPARTAMENTOS.map((d) => ({ id: d, name: d }))]}
+              allowClear={false}
+              emptyText={t('payroll.noDepartments', 'Sin departamentos')}
+              aria-label={t('payroll.headers.department', 'Departamento')} />
             <span className="muted" style={{fontSize:11, marginLeft:'auto'}}>
               {filteredEmps.length} {t('payroll.employees', 'empleados')}
             </span>
@@ -862,19 +866,25 @@ function NewEmployeeModal({ onClose, onSave }) {
             </div>
             <div className="field">
               <label className="field-label">{t('payroll.headers.department', 'Departamento')}</label>
-              <select className="field-input" value={dept} onChange={e => { setDept(e.target.value); setPos((PUESTOS_BY_DEPT[e.target.value] || [''])[0]); }}>
-                {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
+              <Autocomplete value={dept}
+                onChange={(id) => { const d = id == null ? '' : String(id); setDept(d); setPos((PUESTOS_BY_DEPT[d] || [''])[0]); }}
+                options={DEPARTAMENTOS.map((d) => ({ id: d, name: d }))}
+                allowClear={false}
+                emptyText={t('payroll.noDepartments', 'Sin departamentos')}
+                aria-label={t('payroll.headers.department', 'Departamento')} />
             </div>
             <div className="field">
               <label className="field-label">{t('payroll.headers.position', 'Puesto')}</label>
-              <select className="field-input" value={pos} onChange={e => setPos(e.target.value)}>
-                {puestos.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
+              <Autocomplete value={pos} onChange={(id) => setPos(id == null ? '' : String(id))}
+                options={puestos.map((p2) => ({ id: p2, name: p2 }))}
+                allowClear={false}
+                emptyText={t('payroll.noPositions', 'Sin puestos')}
+                aria-label={t('payroll.headers.position', 'Puesto')} />
             </div>
             <div className="field">
               <label className="field-label">{t('payroll.hiredDate', 'Fecha de ingreso')}</label>
-              <input className="field-input" type="date" value={hired} onChange={e => setHired(e.target.value)} />
+              <DatePicker value={hired} onChange={(iso) => setHired(iso)}
+                aria-label={t('payroll.hired', 'Fecha de ingreso')} />
             </div>
             <div className="field">
               <label className="field-label">DPI</label>

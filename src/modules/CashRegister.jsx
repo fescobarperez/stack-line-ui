@@ -2,6 +2,7 @@
 // Data-driven: /api/cash-registers (open/close). El backend calcula ventas/efectivo/
 // tarjeta/diferencia a partir de las ventas de la caja.
 import React, { useState, useMemo } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
@@ -72,12 +73,11 @@ function OpenModal({ cashPoints, onSave, onClose }) {
           <div className="modal-body">
             <div className="field" style={{ marginBottom: 12 }}>
               <label className="field-label">{t('cash.cashPoint', 'Caja')} *</label>
-              <select className="field-input" value={cashPointId} onChange={e => setCashPointId(e.target.value)} required>
-                <option value="">{t('cash.selectCashPoint', 'Seleccionar caja…')}</option>
-                {free.map(c => (
-                  <option key={c.id} value={c.id}>{c.branchName} · {c.code} — {c.name}</option>
-                ))}
-              </select>
+              <Autocomplete value={cashPointId} onChange={(id) => setCashPointId(id == null ? '' : String(id))}
+                options={free.map((c) => ({ id: c.id, name: `${c.branchName} · ${c.code} — ${c.name}` }))}
+                placeholder={t('cash.selectCashPoint', 'Seleccionar caja…')}
+                emptyText={t('cash.noCashPoints', 'Sin cajas libres')}
+                aria-label={t('cash.cashPoint', 'Caja')} />
               {free.length === 0 && (
                 <div className="alert" style={{ marginTop: 8 }}>
                   <Icon name="alert" size={16} />

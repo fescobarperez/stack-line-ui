@@ -2,6 +2,8 @@
 // Data-driven: activos desde /api/fixed-assets (hook useAssets). La depreciación
 // línea recta se calcula en el front sobre el costo/fecha reales.
 import React, { useState, useMemo, useEffect } from 'react';
+import DatePicker from '../components/DatePicker.jsx';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
@@ -273,17 +275,19 @@ export default function FixedAssets({ pushToast }) {
               <input className="search-input" placeholder={t('fixedassets.searchPlaceholder', 'Buscar activo…')}
                 value={search} onChange={e => setSearch(e.target.value)}/>
             </div>
-            <select className="field-input" value={catFilter}
-              onChange={e => setCatFilter(e.target.value)} style={{width:'auto'}}>
-              <option value="todos">{t('fixedassets.allCategories', 'Todas las categorías')}</option>
-              {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <select className="field-input" value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)} style={{width:'auto'}}>
-              <option value="todos">{t('fixedassets.allStatuses', 'Todos los estados')}</option>
-              <option value="active">{t('fixedassets.statusActive', 'Activos')}</option>
-              <option value="baja">{t('fixedassets.statusRetired', 'Dados de baja')}</option>
-            </select>
+            <Autocomplete value={catFilter}
+              onChange={(id) => setCatFilter(id == null || id === '' ? 'todos' : String(id))}
+              options={[{ id: 'todos', name: t('fixedassets.allCategories', 'Todas las categorías') },
+                ...CATEGORIES.map((c) => ({ id: c.id, name: c.name }))]}
+              allowClear={false}
+              emptyText={t('common.noResults', 'Sin coincidencias')}
+              aria-label={t('common.category', 'Categoría')} />
+            <Autocomplete value={statusFilter}
+              onChange={(id) => setStatusFilter(id == null || id === '' ? 'todos' : String(id))}
+              options={[{ id: 'todos', name: t('fixedassets.allStatuses', 'Todos los estados') }, { id: 'active', name: t('fixedassets.statusActive', 'Activos') }, { id: 'baja', name: t('fixedassets.statusRetired', 'Dados de baja') }]}
+              allowClear={false}
+              emptyText="Sin coincidencias"
+              aria-label="Estado" />
             <span className="muted" style={{fontSize:11, marginLeft:'auto'}}>{filtered.length} {t('fixedassets.records', 'registros')}</span>
           </div>
 
@@ -650,16 +654,17 @@ export default function FixedAssets({ pushToast }) {
                 </div>
                 <div className="field">
                   <label className="field-label">{t('fixedassets.satCategory', 'Categoría SAT')}</label>
-                  <select className="field-input" value={newForm.cat} onChange={e => setNew('cat', e.target.value)}>
-                    {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-                  </select>
+                  <Autocomplete value={newForm.cat} onChange={(id) => setNew('cat', id == null ? '' : String(id))}
+                    options={CATEGORIES.map((c) => ({ id: c.id, name: `${c.icon} ${c.name}` }))}
+                    allowClear={false}
+                    emptyText={t('common.noResults', 'Sin coincidencias')}
+                    aria-label={t('common.category', 'Categoría')} />
                 </div>
                 <div className="field">
                   <label className="field-label">{t('common.branch', 'Sucursal')}</label>
-                  <select className="field-input" value={newForm.branch} onChange={e => setNew('branch', e.target.value)}>
-                    {['Zona 10','Central','Zona 1','Zona 15','Mixco'].map(b =>
-                      <option key={b} value={b}>{b}</option>)}
-                  </select>
+                  <Autocomplete value={newForm.branch} onChange={(id) => setNew('branch', id == null ? '' : String(id))}
+                    options={['Zona 10', 'Central', 'Zona 1', 'Zona 15', 'Mixco'].map((b) => ({ id: b, name: b }))}
+                    allowClear={false} emptyText="Sin sucursales" aria-label="Sucursal" />
                 </div>
                 <div className="field">
                   <label className="field-label">{t('fixedassets.acquisitionCost', 'Costo de adquisición (Q)')}</label>
@@ -668,8 +673,8 @@ export default function FixedAssets({ pushToast }) {
                 </div>
                 <div className="field">
                   <label className="field-label">{t('fixedassets.acquisitionDate', 'Fecha de adquisición')}</label>
-                  <input className="field-input" type="date"
-                    value={newForm.acquired} onChange={e => setNew('acquired', e.target.value)}/>
+                  <DatePicker value={newForm.acquired} onChange={(iso) => setNew('acquired', iso)}
+                    aria-label={t('fixedassets.acquired', 'Fecha de adquisición')} />
                 </div>
                 <div className="field span-2">
                   <label className="field-label">{t('fixedassets.serialPlateOptional', 'No. de serie / placa (opcional)')}</label>
@@ -746,14 +751,19 @@ export default function FixedAssets({ pushToast }) {
               </div>
               <div className="field" style={{marginTop:16}}>
                 <label className="field-label">{t('fixedassets.retirementReason', 'Motivo de la baja')}</label>
-                <select className="field-input" value={bajaReason} onChange={e => setBajaReason(e.target.value)}>
-                  <option>{t('fixedassets.reasons.obsolescence', 'Obsolescencia')}</option>
-                  <option>{t('fixedassets.reasons.irreparableFault', 'Falla irreparable')}</option>
-                  <option>{t('fixedassets.reasons.sale', 'Venta del activo')}</option>
-                  <option>{t('fixedassets.reasons.theft', 'Robo o pérdida')}</option>
-                  <option>{t('fixedassets.reasons.donation', 'Donación')}</option>
-                  <option>{t('fixedassets.reasons.other', 'Otro')}</option>
-                </select>
+                <Autocomplete value={bajaReason}
+                  onChange={(id) => setBajaReason(id == null ? '' : String(id))}
+                  options={[
+                    { id: t('fixedassets.reasons.obsolescence', 'Obsolescencia'), name: t('fixedassets.reasons.obsolescence', 'Obsolescencia') },
+                    { id: t('fixedassets.reasons.irreparableFault', 'Falla irreparable'), name: t('fixedassets.reasons.irreparableFault', 'Falla irreparable') },
+                    { id: t('fixedassets.reasons.sale', 'Venta del activo'), name: t('fixedassets.reasons.sale', 'Venta del activo') },
+                    { id: t('fixedassets.reasons.theft', 'Robo o pérdida'), name: t('fixedassets.reasons.theft', 'Robo o pérdida') },
+                    { id: t('fixedassets.reasons.donation', 'Donación'), name: t('fixedassets.reasons.donation', 'Donación') },
+                    { id: t('fixedassets.reasons.other', 'Otro'), name: t('fixedassets.reasons.other', 'Otro') },
+                  ]}
+                  allowClear={false}
+                  emptyText="Sin coincidencias"
+                  aria-label="Motivo de baja" />
               </div>
 
               {/* Partida contable de disposición (automática) */}
@@ -834,10 +844,11 @@ function DisposalConfigModal({ accounts, pushToast, onClose }) {
   const AccountSelect = ({ label, value, onChange }) => (
     <div className="field" style={{ marginBottom: 12 }}>
       <label className="field-label">{label}</label>
-      <select className="field-input" value={value} onChange={e => onChange(e.target.value)}>
-        <option value="">{t('common.selectDots', 'Seleccionar…')}</option>
-        {accounts.map(ac => <option key={ac.id} value={ac.id}>{ac.code} · {ac.name}</option>)}
-      </select>
+      <Autocomplete value={value} onChange={(id) => onChange(id == null ? '' : String(id))}
+        options={accounts.map((ac) => ({ id: ac.id, name: `${ac.code} · ${ac.name}` }))}
+        placeholder={t('common.selectDots', 'Seleccionar…')}
+        emptyText={t('accounting.noAccounts', 'Sin cuentas')}
+        aria-label={t('accounting.account', 'Cuenta')} />
     </div>
   );
 

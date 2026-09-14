@@ -230,11 +230,12 @@ export default function QuoteChargesPanel({ quoteId, canEdit = true, pushToast, 
               </div>
               <div className="field-group">
                 <label className="field-label">{t('quotes.chargeCalc', 'Cálculo')}</label>
-                <select className="field-input" value={partida.calcType}
-                  onChange={(e) => setPa('calcType', e.target.value)}>
-                  <option value="fixed">{t('quotes.fixed', 'fijo')}</option>
-                  <option value="percent">%</option>
-                </select>
+                <Autocomplete value={partida.calcType}
+                  onChange={(id) => setPa('calcType', id == null ? '' : String(id))}
+                  options={[{ id: 'fixed', name: t('quotes.fixed', 'fijo') }, { id: 'percent', name: '%' }]}
+                  allowClear={false}
+                  emptyText="Sin coincidencias"
+                  aria-label="Cálculo" />
               </div>
               <div className="field-group">
                 <label className="field-label">{partida.calcType === 'percent' ? '%' : t('projects.amount', 'Monto')}</label>
@@ -389,10 +390,12 @@ export default function QuoteChargesPanel({ quoteId, canEdit = true, pushToast, 
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginTop: 10, flexWrap: 'wrap' }}>
             <div className="field-group" style={{ width: 120 }}>
             <label className="field-label">{t('quotes.chargeType', 'Tipo')}</label>
-            <select className="field-input" value={form.calcType} onChange={(e) => set('calcType', e.target.value)}>
-              <option value="fixed">{t('quotes.fixed', 'Fijo')}</option>
-              <option value="percent">{t('quotes.percent', 'Porcentaje')}</option>
-            </select>
+            <Autocomplete value={form.calcType}
+              onChange={(id) => set('calcType', id == null ? '' : String(id))}
+              options={[{ id: 'fixed', name: t('quotes.fixed', 'Fijo') }, { id: 'percent', name: t('quotes.percent', 'Porcentaje') }]}
+              allowClear={false}
+              emptyText="Sin coincidencias"
+              aria-label="Cálculo" />
           </div>
           <div className="field-group" style={{ width: 140 }}>
             <label className="field-label">{t('quotes.category', 'Categoría')}</label>

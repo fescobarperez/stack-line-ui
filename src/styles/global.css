@@ -883,8 +883,44 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
   border-radius: var(--r-md);
   padding: 7px 10px;
   outline: none;
+  height: var(--control-h);
+  box-sizing: border-box;
+}
+/* El textarea es el único que crece: fijarle el alto lo volvería un input. */
+.field textarea { height: auto; min-height: var(--control-h); }
+
+/* Apariencia común de los <select> que se quedan como tales: los enumerados
+   cortos, donde un autocomplete costaría un clic de más. La flecha nativa se
+   dibuja distinta en cada sistema operativo, así que se reemplaza por una
+   propia —el mismo tratamiento que el selector de filas por página. */
+.field select,
+select.field-input,
+select.input {
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 30px;
+  cursor: pointer;
+}
+.field select:hover,
+select.field-input:hover,
+select.input:hover { border-color: var(--md-sys-color-outline); }
+/* Las opciones desplegadas las pinta el sistema: sin esto, en modo oscuro
+   salen con fondo claro heredado del user-agent. */
+.field select option,
+select.field-input option,
+select.input option {
+  background: var(--surface);
+  color: var(--md-sys-color-on-surface);
 }
 .field input:focus, .field select:focus, .field textarea:focus, .input:focus { border-color: var(--accent); }
+
+/* Alto único de los controles de formulario.
+   Antes .field-input no fijaba alto y heredaba la fuente del contexto: el
+   mismo campo medía 32, 36 o 40px según dónde cayera, y nunca coincidía con
+   los botones y autocompletes que tenía al lado. */
+:root { --control-h: 40px; }
 
 /* ===== Filter bar ===== */
 .filterbar {
@@ -1766,7 +1802,10 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
 }
 /* El detalle de una cotización lleva líneas, cargos, plan de cobro y cobros:
    a 480px cada tabla se estruja. Es la única variante de ancho por ahora. */
-.drawer--wide { width: 880px; }
+/* Un solo ancho para los drawers de detalle. Los de cotización y proyecto
+   llevan tablas, gráficas y cascadas de cálculo: a 480px se estrujan, y
+   tenerlos en dos tamaños casi iguales solo daba a elegir sin criterio. */
+.drawer--wide { width: min(1180px, 96vw); }
 .drawer-head {
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);
@@ -1968,10 +2007,16 @@ table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
   color: var(--text);
   border-radius: var(--r-md);
   padding: 7px 10px;
-  font: inherit;
+  /* Tamaño propio y no `inherit`: heredar la fuente hacía que el alto del
+     campo dependiera del contenedor. */
+  font: 400 14px/20px var(--font-sans);
+  letter-spacing: .25px;
   outline: none;
   width: 100%;
+  height: var(--control-h);
+  box-sizing: border-box;
 }
+textarea.field-input { height: auto; min-height: var(--control-h); }
 .field-input:focus { border-color: var(--accent); }
 .field-input.mono { font-family: var(--font-mono); }
 
@@ -4422,3 +4467,111 @@ table.tbl tfoot td {
   color: var(--md-sys-color-on-surface-variant);
 }
 .quote-adj-row .field-input { text-align: right; padding: 5px 8px; }
+
+/* ===== DatePicker ===== */
+/* El campo cerrado usa el mismo alto que el resto de los controles: es la
+   razón de ser del token. Es un <button> y no un <input> porque no se teclea
+   —la fecha se elige en el calendario— y así hereda foco y teclado gratis. */
+.datepicker { position: relative; width: 100%; }
+.datepicker-field {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  height: var(--control-h);
+  box-sizing: border-box;
+  /* El sitio de la «x» se reserva siempre: dependerlo de :has() lo dejaría al
+     albur del navegador, y así el texto no salta cuando se limpia la fecha. */
+  padding: 0 32px 0 10px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  font: 400 14px/20px var(--font-sans); letter-spacing: .25px;
+  cursor: pointer;
+}
+.datepicker-field:hover:not(:disabled) { border-color: var(--md-sys-color-outline); }
+.datepicker-field.is-open,
+.datepicker-field:focus-visible { outline: none; border-color: var(--accent); }
+.datepicker-field:disabled { opacity: .38; cursor: not-allowed; }
+.datepicker-icon { color: var(--muted); flex-shrink: 0; }
+.datepicker-placeholder { color: var(--muted); }
+/* La «x» se superpone al campo; sin sitio reservado el texto pasaría por
+   debajo, así que el campo cede espacio a la derecha cuando existe. */
+/* Sin fondo en reposo: el círculo permanente competía con el campo y se leía
+   como un segundo control. Aparece al pasar el cursor, y el botón es cuadrado
+   con el icono centrado por grid para que el círculo quede concéntrico. */
+.datepicker-clear {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center;
+  width: 22px; height: 22px; padding: 0;
+  border: none; border-radius: 50%;
+  background: transparent; color: var(--muted);
+  cursor: pointer;
+  transition: background var(--dur-short) var(--ease-standard),
+              color var(--dur-short) var(--ease-standard);
+}
+.datepicker-clear:hover { background: var(--surface-3); color: var(--text); }
+.datepicker-clear:focus-visible {
+  outline: none;
+  background: var(--surface-3);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 30%, transparent);
+}
+/* El span del icono es inline y arrastra el espacio de línea: en block, el
+   grid lo centra de verdad y la «x» queda en el eje del círculo. */
+.datepicker-clear .msi { display: block; }
+
+.datepicker-panel {
+  z-index: 300;   /* sobre modales (100), bajo confirm (400) y loading (9000) */
+  width: 280px;
+  padding: 10px;
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+}
+.datepicker-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.datepicker-month {
+  font: 500 14px/20px var(--font-sans); letter-spacing: .1px;
+  color: var(--md-sys-color-on-surface);
+}
+.datepicker-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.datepicker-weekdays span {
+  display: grid; place-items: center;
+  height: 26px;
+  font: 500 11px/16px var(--font-sans); letter-spacing: .5px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.datepicker-day {
+  height: 34px;
+  border: none; border-radius: 50%;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font: 400 13px/20px var(--font-sans);
+  cursor: pointer;
+}
+.datepicker-day:hover:not(:disabled) { background: var(--surface-2); }
+.datepicker-day.is-outside { color: var(--muted); }
+/* Hoy se marca con un borde y la selección con relleno: si ambos usaran
+   relleno, el día de hoy parecería estar elegido. */
+.datepicker-day.is-today { box-shadow: inset 0 0 0 1px var(--md-sys-color-outline); }
+.datepicker-day.is-selected {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  font-weight: 500;
+}
+.datepicker-day:disabled { opacity: .3; cursor: not-allowed; }
+.datepicker-foot {
+  display: flex; gap: 12px; justify-content: flex-end;
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.datepicker-link {
+  border: none; background: none; padding: 0;
+  color: var(--md-sys-color-primary);
+  font: 500 12px/16px var(--font-sans); letter-spacing: .5px;
+  cursor: pointer;
+}
+.datepicker-link:hover { text-decoration: underline; }

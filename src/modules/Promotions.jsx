@@ -1,5 +1,7 @@
 // Stackline — Promotions / Motor de Promociones
 import React, { useState, useMemo } from 'react';
+import DatePicker from '../components/DatePicker.jsx';
+import Autocomplete from '../components/Autocomplete.jsx';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
@@ -546,22 +548,23 @@ export default function Promotions({ pushToast }) {
                   <div className="form-grid">
                     <div className="field">
                       <label className="field-label">{t('promotions.productCategory', 'Categoría de producto')}</label>
-                      <select className="field-input" value={form.category} onChange={e => setF('category', e.target.value)}>
-                        <option value="">{t('promotions.allCategories', 'Todas las categorías')}</option>
-                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
+                      <Autocomplete value={form.category} onChange={(id) => setF('category', id == null ? '' : String(id))}
+                        options={CATEGORIES.map((c) => ({ id: c, name: c }))}
+                        placeholder={t('promotions.allCategories', 'Todas las categorías')}
+                        emptyText={t('common.noResults', 'Sin coincidencias')}
+                        aria-label={t('common.category', 'Categoría')} />
                     </div>
                     <div className="field">
                       <label className="field-label">{t('promotions.clientType', 'Tipo de cliente')}</label>
-                      <select className="field-input" value={form.clientType} onChange={e => setF('clientType', e.target.value)}>
-                        {CLIENT_TYPES.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
+                      <Autocomplete value={form.clientType} onChange={(id) => setF('clientType', id == null ? '' : String(id))}
+                        options={CLIENT_TYPES.map((c) => ({ id: c, name: c }))}
+                        allowClear={false} emptyText="Sin tipos" aria-label="Tipo de cliente" />
                     </div>
                     <div className="field">
                       <label className="field-label">{t('common.branch', 'Sucursales')}</label>
-                      <select className="field-input" value={form.branches} onChange={e => setF('branches', e.target.value)}>
-                        {BRANCHES_OPT.map(b => <option key={b} value={b}>{b}</option>)}
-                      </select>
+                      <Autocomplete value={form.branches} onChange={(id) => setF('branches', id == null ? '' : String(id))}
+                        options={BRANCHES_OPT.map((b) => ({ id: b, name: b }))}
+                        allowClear={false} emptyText="Sin sucursales" aria-label="Sucursales" />
                     </div>
                     <div className="field">
                       <label className="field-label">{t('promotions.specificProduct', 'Producto específico (opcional)')}</label>
@@ -584,13 +587,13 @@ export default function Promotions({ pushToast }) {
                   <div className="form-grid">
                     <div className="field">
                       <label className="field-label">{t('promotions.startDate', 'Fecha inicio')}</label>
-                      <input className="field-input" type="date" value={form.dateStart}
-                        onChange={e => setF('dateStart', e.target.value)}/>
+                      <DatePicker value={form.dateStart} onChange={(iso) => setF('dateStart', iso)}
+                        aria-label={t('promotions.dateStart', 'Fecha de inicio')} />
                     </div>
                     <div className="field">
                       <label className="field-label">{t('promotions.endDate', 'Fecha fin')}</label>
-                      <input className="field-input" type="date" value={form.dateEnd}
-                        onChange={e => setF('dateEnd', e.target.value)}/>
+                      <DatePicker value={form.dateEnd} onChange={(iso) => setF('dateEnd', iso)}
+                        aria-label={t('promotions.dateEnd', 'Fecha de fin')} />
                     </div>
                     <div className="field">
                       <label className="field-label">{t('promotions.startTime', 'Hora inicio (opcional)')}</label>

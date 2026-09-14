@@ -1,5 +1,6 @@
 // Stackline — Módulo de Configuración del sistema
 import React, { useState, useEffect } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import { useTranslation } from 'react-i18next';
@@ -294,19 +295,20 @@ export default function Config({ pushToast }) {
               </div>
               <Section title={t('config.fel.sectionTitle', 'Certificador FEL (SAT Guatemala)')} icon="receipt">
                 <Field label={t('config.fel.provider', 'Certificador')}>
-                  <select className="field-input" value={config.felProvider} onChange={e => set('felProvider', e.target.value)}>
-                    <option value="">{t('config.fel.noProvider', '— Sin configurar —')}</option>
-                    <option value="infile">Infile</option>
-                    <option value="g4s">G4S</option>
-                    <option value="ecofactura">Ecofactura</option>
-                    <option value="digifact">Digifact</option>
-                  </select>
+                  <Autocomplete value={config.felProvider}
+                    onChange={(id) => set('felProvider', id == null ? '' : String(id))}
+                    options={[{ id: 'infile', name: 'Infile' }, { id: 'g4s', name: 'G4S' }, { id: 'ecofactura', name: 'Ecofactura' }, { id: 'digifact', name: 'Digifact' }]}
+                    placeholder={t('config.fel.noProvider', '— Sin configurar —')}
+                    emptyText="Sin coincidencias"
+                    aria-label="Proveedor FEL" />
                 </Field>
                 <Field label={t('config.fel.environment', 'Ambiente')}>
-                  <select className="field-input" value={config.felEnvironment} onChange={e => set('felEnvironment', e.target.value)}>
-                    <option value="sandbox">{t('config.fel.sandbox', 'Pruebas (sandbox)')}</option>
-                    <option value="produccion">{t('config.fel.production', 'Producción')}</option>
-                  </select>
+                  <Autocomplete value={config.felEnvironment}
+                    onChange={(id) => set('felEnvironment', id == null ? '' : String(id))}
+                    options={[{ id: 'sandbox', name: t('config.fel.sandbox', 'Pruebas (sandbox)') }, { id: 'produccion', name: t('config.fel.production', 'Producción') }]}
+                    allowClear={false}
+                    emptyText="Sin coincidencias"
+                    aria-label="Ambiente" />
                 </Field>
                 <Field label={t('config.fel.felUser', 'Usuario FEL')} span={2}>
                   <input className="field-input" type="email" value={config.felUser} onChange={e => set('felUser', e.target.value)} />
@@ -347,11 +349,12 @@ export default function Config({ pushToast }) {
             <div className="card cfg-card">
               <Section title={t('config.taxes.sectionTitle', 'Configuración de impuestos (Guatemala)')} icon="tag">
                 <Field label={t('config.taxes.regime', 'Régimen fiscal')}>
-                  <select className="field-input" value={config.taxRegime} onChange={e => set('taxRegime', e.target.value)}>
-                    <option value="General">{t('config.taxes.regimeGeneral', 'Régimen General (IVA 12%)')}</option>
-                    <option value="PequenioContribuyente">{t('config.taxes.regimeSmall', 'Pequeño Contribuyente (5% sobre ventas)')}</option>
-                    <option value="Exento">{t('config.taxes.regimeExempt', 'Exento de IVA')}</option>
-                  </select>
+                  <Autocomplete value={config.taxRegime}
+                    onChange={(id) => set('taxRegime', id == null ? '' : String(id))}
+                    options={[{ id: 'General', name: t('config.taxes.regimeGeneral', 'Régimen General (IVA 12%)') }, { id: 'PequenioContribuyente', name: t('config.taxes.regimeSmall', 'Pequeño Contribuyente (5% sobre ventas)') }, { id: 'Exento', name: t('config.taxes.regimeExempt', 'Exento de IVA') }]}
+                    allowClear={false}
+                    emptyText="Sin coincidencias"
+                    aria-label="Régimen fiscal" />
                 </Field>
                 <Field label={t('config.taxes.ivaRate', 'Tasa IVA (%)')}
                   hint={t('config.taxes.ivaRateHint', 'Porcentaje: 12 = 12%. Se aplica a ventas y cotizaciones nuevas.')}>
@@ -395,10 +398,12 @@ export default function Config({ pushToast }) {
             <div className="card cfg-card">
               <Section title={t('config.inventory.sectionTitle', 'Parámetros de inventario')} icon="box">
                 <Field label={t('config.inventory.valuationMethod', 'Método de valoración de inventario')} span={2} hint={t('config.inventory.valuationMethodHint', 'Afecta el costo calculado para el kardex y los estados financieros.')}>
-                  <select className="field-input" value={config.valuationMethod} onChange={e => set('valuationMethod', e.target.value)}>
-                    <option value="average">{t('config.inventory.methodAverage', 'Promedio Ponderado (recomendado)')}</option>
-                    <option value="fifo">{t('config.inventory.methodFifo', 'PEPS — Primero en Entrar, Primero en Salir')}</option>
-                  </select>
+                  <Autocomplete value={config.valuationMethod}
+                    onChange={(id) => set('valuationMethod', id == null ? '' : String(id))}
+                    options={[{ id: 'average', name: t('config.inventory.methodAverage', 'Promedio Ponderado (recomendado)') }, { id: 'fifo', name: t('config.inventory.methodFifo', 'PEPS — Primero en Entrar, Primero en Salir') }]}
+                    allowClear={false}
+                    emptyText="Sin coincidencias"
+                    aria-label="Método de valuación" />
                 </Field>
                 <Field label={t('config.inventory.lowStockThreshold', 'Umbral de alerta de stock bajo')} hint={t('config.inventory.lowStockHint', 'Fracción del stock mínimo. 0.20 = alerta cuando stock ≤ 20% del mínimo.')}>
                   <input className="field-input mono" value={config.lowStockThreshold}

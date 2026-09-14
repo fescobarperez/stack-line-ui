@@ -24,6 +24,7 @@ import { printReceipt } from '../lib/receipt.js';
 import { consumeMaterial } from '../api/projects.js';
 import ProjectMaterialsPanel from '../components/ProjectMaterialsPanel.jsx';
 import VariationCard from '../components/VariationCard.jsx';
+import DatePicker from '../components/DatePicker.jsx';
 import { CostCompositionChart, CashflowChart } from '../components/ProjectInsightCharts.jsx';
 import QuoteBuilderModal from '../components/QuoteBuilderModal.jsx';
 import { useProducts } from '../hooks/useCatalog.js';
@@ -113,9 +114,9 @@ function CostModal({ project, onDone, onClose, pushToast }) {
             <div className="field-row">
               <div className="field">
                 <label className="field-label">{t('projects.source', 'Origen')}</label>
-                <select className="field-input" value={form.source} onChange={(e) => set('source', e.target.value)}>
-                  {Object.entries(SOURCES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
+                <Autocomplete value={form.source} onChange={(id) => set('source', id == null ? '' : String(id))}
+                  options={Object.entries(SOURCES).map(([k, v]) => ({ id: k, name: v.label }))}
+                  allowClear={false} emptyText="Sin orígenes" aria-label="Origen del cargo" />
               </div>
               <div className="field">
                 <label className="field-label">{t('projects.amount', 'Monto')} *</label>
@@ -133,8 +134,8 @@ function CostModal({ project, onDone, onClose, pushToast }) {
             <div className="field-row" style={{ marginBottom: 0 }}>
               <div className="field">
                 <label className="field-label">{t('projects.costDate', 'Fecha')}</label>
-                <input className="field-input" type="date" value={form.costDate}
-                  onChange={(e) => set('costDate', e.target.value)} />
+                <DatePicker value={form.costDate} onChange={(iso) => set('costDate', iso)}
+                  aria-label={t('projects.costDate', 'Fecha')} />
               </div>
             </div>
           </div>
@@ -232,24 +233,26 @@ function ConsumeModal({ project, onDone, onClose, pushToast }) {
             )}
             <div className="field" style={{ marginBottom: 12 }}>
               <label className="field-label">{t('projects.material', 'Material')} *</label>
-              <select className="field-input" value={form.productId}
-                onChange={(e) => set('productId', e.target.value)}>
-                <option value="">{t('common.select', 'Seleccionar…')}</option>
-                {materials.map((m) => (
-                  <option key={m.id} value={m.id}>{m.sku} · {m.name}</option>
-                ))}
-              </select>
+              <Autocomplete
+                value={form.productId}
+                onChange={(id) => set('productId', id == null ? '' : String(id))}
+                options={materials.map((m) => ({ id: m.id, name: `${m.sku} · ${m.name}` }))}
+                placeholder={t('common.select', 'Seleccionar…')}
+                emptyText={t('projects.noMaterials', 'Sin materiales')}
+                aria-label={t('common.product', 'Producto')} />
             </div>
             {/* El material se queda a lo ancho: la opción es "SKU · nombre" y
                 a media fila se corta. Bodega y cantidad sí caben en pareja. */}
             <div className="field-row">
               <div className="field">
                 <label className="field-label">{t('common.branch', 'Bodega / sucursal')} *</label>
-                <select className="field-input" value={form.branchId}
-                  onChange={(e) => set('branchId', e.target.value)}>
-                  <option value="">{t('common.select', 'Seleccionar…')}</option>
-                  {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
+                <Autocomplete
+                  value={form.branchId}
+                  onChange={(id) => set('branchId', id == null ? '' : String(id))}
+                  options={branches.map((b) => ({ id: b.id, name: b.name }))}
+                  placeholder={t('common.select', 'Seleccionar…')}
+                  emptyText={t('common.noBranches', 'Sin sucursales')}
+                  aria-label={t('common.branch', 'Sucursal')} />
               </div>
               <div className="field">
                 <label className="field-label">{t('projects.quantity', 'Cantidad')} *</label>
@@ -509,13 +512,12 @@ function PaymentModal({ project, onDone, onClose, pushToast }) {
               </div>
               <div className="field">
                 <label className="field-label">{t('projects.method', 'Método')}</label>
-                <select className="field-input" value={form.method} onChange={(e) => set('method', e.target.value)}>
-                  <option value="efectivo">Efectivo</option>
-                  <option value="transferencia">Transferencia</option>
-                  <option value="deposito">Depósito</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="tarjeta">Tarjeta</option>
-                </select>
+                <Autocomplete value={form.method}
+                  onChange={(id) => set('method', id == null ? '' : String(id))}
+                  options={[{ id: 'efectivo', name: 'Efectivo' }, { id: 'transferencia', name: 'Transferencia' }, { id: 'deposito', name: 'Depósito' }, { id: 'cheque', name: 'Cheque' }, { id: 'tarjeta', name: 'Tarjeta' }]}
+                  allowClear={false}
+                  emptyText="Sin coincidencias"
+                  aria-label="Método de pago" />
               </div>
             </div>
             {/* El backend exige la cuenta en transferencia y depósito: sin ella
@@ -523,15 +525,16 @@ function PaymentModal({ project, onDone, onClose, pushToast }) {
             {NEEDS_BANK.has(form.method) && (
               <div className="field" style={{ marginBottom: 12 }}>
                 <label className="field-label">{t('projects.bankAccount', 'Cuenta bancaria')} *</label>
-                <select className="field-input" value={form.bankAccountId}
-                  onChange={(e) => set('bankAccountId', e.target.value)}>
-                  <option value="">{t('common.select', 'Seleccionar…')}</option>
-                  {BANK_ACCOUNTS.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.bankName || a.accountCode} · {a.accountNumber || a.alias} ({a.currency})
-                    </option>
-                  ))}
-                </select>
+                <Autocomplete
+                  value={form.bankAccountId}
+                  onChange={(id) => set('bankAccountId', id == null ? '' : String(id))}
+                  options={BANK_ACCOUNTS.map((a) => ({
+                    id: a.id,
+                    name: `${a.bankName || a.accountCode} · ${a.accountNumber || a.alias} (${a.currency})`,
+                  }))}
+                  placeholder={t('common.select', 'Seleccionar…')}
+                  emptyText={t('projects.noBankAccounts', 'Sin cuentas bancarias')}
+                  aria-label={t('projects.bankAccount', 'Cuenta bancaria')} />
               </div>
             )}
             {/* Efectivo y cheque entran a una cuenta de caja. Elegir cuál es lo
@@ -541,12 +544,13 @@ function PaymentModal({ project, onDone, onClose, pushToast }) {
               <div className="field" style={{ marginBottom: 12 }}>
                 <label className="field-label">{t('projects.cashAccount', 'Cuenta de caja')}</label>
                 {CASH_ACCOUNTS.length > 0 ? (
-                  <select className="field-input" value={form.cashAccountId}
-                    onChange={(e) => set('cashAccountId', e.target.value)}>
-                    {CASH_ACCOUNTS.map((a) => (
-                      <option key={a.id} value={a.id}>{a.code} · {a.name}</option>
-                    ))}
-                  </select>
+                  <Autocomplete
+                    value={form.cashAccountId}
+                    onChange={(id) => set('cashAccountId', id == null ? '' : String(id))}
+                    options={CASH_ACCOUNTS.map((a) => ({ id: a.id, name: `${a.code} · ${a.name}` }))}
+                    allowClear={false}
+                    emptyText={t('projects.noCashAccounts', 'Sin cuentas de caja')}
+                    aria-label={t('projects.cashAccount', 'Cuenta de caja')} />
                 ) : (
                   <div className="field-hint" style={{ color: 'var(--danger)' }}>
                     {t('projects.noCashAccount', 'No hay cuentas de caja de detalle. Crea una cuenta de activo (débito) en Contabilidad.')}
@@ -560,15 +564,15 @@ function PaymentModal({ project, onDone, onClose, pushToast }) {
             {openDocs.length > 0 && (
               <div className="field" style={{ marginBottom: 12 }}>
                 <label className="field-label">{t('projects.applyTo', 'Aplicar a documento')}</label>
-                <select className="field-input" value={form.saleId}
-                  onChange={(e) => set('saleId', e.target.value)}>
-                  <option value="">{t('projects.onAccount', 'A cuenta (sin documento)')}</option>
-                  {openDocs.map((d) => (
-                    <option key={d.saleId} value={d.saleId}>
-                      {d.docNumber} · pendiente {Q(d.outstanding)}
-                    </option>
-                  ))}
-                </select>
+                <Autocomplete
+                  value={form.saleId}
+                  onChange={(id) => set('saleId', id == null ? '' : String(id))}
+                  options={openDocs.map((d) => ({
+                    id: d.saleId, name: `${d.docNumber} · pendiente ${Q(d.outstanding)}`,
+                  }))}
+                  placeholder={t('projects.onAccount', 'A cuenta (sin documento)')}
+                  emptyText={t('projects.noOpenDocs', 'Sin documentos pendientes')}
+                  aria-label={t('projects.applyTo', 'Documento')} />
               </div>
             )}
             <div className="field-row" style={{ marginBottom: 0 }}>
@@ -579,8 +583,8 @@ function PaymentModal({ project, onDone, onClose, pushToast }) {
               </div>
               <div className="field">
                 <label className="field-label">{t('common.date', 'Fecha')}</label>
-                <input className="field-input" type="date" value={form.paymentDate}
-                  onChange={(e) => set('paymentDate', e.target.value)} />
+                <DatePicker value={form.paymentDate} onChange={(iso) => set('paymentDate', iso)}
+                  aria-label={t('common.date', 'Fecha')} />
               </div>
             </div>
           </div>
@@ -669,7 +673,7 @@ function CreateProjectModal({ clients, onDone, onClose, pushToast }) {
           <div className="modal-body">
             <div className="field" style={{ marginBottom: 12 }}><label>Nombre del proyecto *</label><input autoFocus value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Ej. Cocina Casa Pérez" /></div>
             <div className="field-row" style={{ alignItems: 'flex-end' }}>
-              <div className="field" style={{ flex: 1 }}><label>Cliente *</label><select value={form.clientId} onChange={(event) => setForm((current) => ({ ...current, clientId: event.target.value }))}><option value="">Seleccionar cliente…</option>{availableClients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}</select></div>
+              <div className="field" style={{ flex: 1 }}><label>Cliente *</label><Autocomplete value={form.clientId} onChange={(id) => setForm((current) => ({ ...current, clientId: id == null ? '' : String(id) }))} options={availableClients.map((client) => ({ id: client.id, name: client.name }))} placeholder="Buscar cliente…" emptyText="Sin clientes" aria-label="Cliente" /></div>
               <Button type="button" size="sm" icon="plus" onClick={() => setCreatingClient((current) => !current)}>{creatingClient ? 'Cerrar' : 'Crear cliente'}</Button>
             </div>
             {creatingClient && <CreateClientInline onCreated={handleClientCreated} onCancel={() => setCreatingClient(false)} pushToast={pushToast} />}
@@ -869,7 +873,7 @@ function ProjectDrawer({ project, clients, onClose, onChanged, onDuplicated, pus
     <div className="drawer-overlay" onClick={onClose}>
       {/* Ancho holgado: cuatro tarjetas de KPI a 640px salen a ~140px cada una,
           demasiado estrecho para el contenedor del icono más la cifra. */}
-      <div className="drawer" style={{ width: 'min(960px, 94vw)' }} onClick={(e) => e.stopPropagation()}>
+      <div className="drawer drawer--wide" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
             <div className="drawer-title">{project.code} · {project.name}</div>

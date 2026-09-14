@@ -1,6 +1,7 @@
 // Stackline — FEL · SAT Panel
 // Data-driven: documentos FEL desde /api/fel/documents (hook useFelDocuments).
 import React, { useState, useMemo } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
@@ -267,14 +268,12 @@ export default function FEL({ pushToast }) {
             <Icon name="search" size={18} style={{color:'var(--md-sys-color-on-surface-variant)'}}/>
             <input className="input grow" placeholder={t('billing.searchPlaceholder', 'Buscar por receptor, NIT o correlativo…')}
               value={search} onChange={e => setSearch(e.target.value)}/>
-            <select className="input" value={tipoFiltro} onChange={e => setTipoFiltro(e.target.value)}>
-              <option value="todos">Todos los tipos</option>
-              {Object.entries(TIPOS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
-            <select className="input" value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)}>
-              <option value="todos">Todos los estados</option>
-              {Object.entries(ESTADOS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
+            <Autocomplete value={tipoFiltro} onChange={(id) => setTipoFiltro(id == null || id === '' ? 'todos' : String(id))}
+              options={[{ id: 'todos', name: 'Todos los tipos' }, ...Object.entries(TIPOS).map(([k, v]) => ({ id: k, name: v.label }))]}
+              allowClear={false} emptyText="Sin coincidencias" aria-label="Tipo de documento" />
+            <Autocomplete value={estadoFiltro} onChange={(id) => setEstadoFiltro(id == null || id === '' ? 'todos' : String(id))}
+              options={[{ id: 'todos', name: 'Todos los estados' }, ...Object.entries(ESTADOS).map(([k, v]) => ({ id: k, name: v.label }))]}
+              allowClear={false} emptyText="Sin coincidencias" aria-label="Estado" />
           </div>
 
           <DataTable

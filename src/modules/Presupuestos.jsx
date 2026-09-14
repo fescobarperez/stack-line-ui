@@ -1,5 +1,6 @@
 // Stackline — Presupuestos
 import React, { useState, useMemo } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
@@ -577,9 +578,10 @@ export default function Presupuestos({ pushToast }) {
             <div className="modal-body">
               <div className="field">
                 <label>{t('presupuestos.department', 'Departamento')}</label>
-                <select value={mDept} onChange={e => setMDept(e.target.value)}>
-                  {DEPT_OPTIONS.map(d => <option key={d.nombre} value={d.nombre}>{d.nombre}</option>)}
-                </select>
+                <Autocomplete value={mDept} onChange={(id) => setMDept(id == null ? '' : String(id))}
+                  options={DEPT_OPTIONS.map((d) => ({ id: d.nombre, name: d.nombre }))}
+                  allowClear={false} emptyText="Sin departamentos"
+                  aria-label="Departamento" />
               </div>
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
                 <div className="field">

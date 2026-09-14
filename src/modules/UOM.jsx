@@ -2,6 +2,7 @@
 // Data-driven: catálogo de unidades → /api/uom/units (CRUD real). Las conversiones
 // por producto se editan localmente (el backend solo modela conversiones genéricas).
 import React, { useState, useMemo } from 'react';
+import Autocomplete from '../components/Autocomplete.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
@@ -75,9 +76,9 @@ function NewUomModal({ uoms, onSave, onClose }) {
           </div>
           <div className="field-group">
             <label className="field-label">{t('common.type', 'Tipo')}</label>
-            <select className="field-input" value={form.type} onChange={e => set('type', e.target.value)}>
-              {Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            <Autocomplete value={form.type} onChange={(id) => set('type', id == null ? '' : String(id))}
+              options={Object.entries(TYPE_LABEL).map(([k, v]) => ({ id: k, name: v }))}
+              allowClear={false} emptyText="Sin tipos" aria-label="Tipo de unidad" />
           </div>
         </div>
         <div className="modal-foot">
@@ -130,9 +131,10 @@ function AddConvModal({ product, uoms, onSave, onClose }) {
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="field-group">
             <label className="field-label">{t('uom.unitOfMeasure', 'Unidad de medida')}</label>
-            <select className="field-input" value={form.uom} onChange={e => set('uom', e.target.value)}>
-              {available.map(u => <option key={u.code} value={u.code}>{u.name} ({u.symbol})</option>)}
-            </select>
+            <Autocomplete value={form.uom} onChange={(id) => set('uom', id == null ? '' : String(id))}
+              options={available.map((u) => ({ id: u.code, name: `${u.name} (${u.symbol})` }))}
+              allowClear={false} emptyText={t('uom.noUnits', 'Sin unidades')}
+              aria-label={t('uom.unit', 'Unidad')} />
           </div>
           <div className="field-group">
             <label className="field-label">{t('uom.conversionFactor', 'Factor de conversión')}</label>

@@ -4,6 +4,7 @@
 // pendiente, cargos de cotizaciones no aprobadas y órdenes de compra vivas.
 // Recalcular aquí volvería a abrir la brecha entre esta pantalla y /projects.
 import React, { useCallback, useEffect, useState } from 'react';
+import Autocomplete from './Autocomplete.jsx';
 import Icon from './Icon.jsx';
 import StatCard from './StatCard.jsx';
 import { getProjectProfitability } from '../api/reports.js';
@@ -85,22 +86,24 @@ export default function ProjectProfitabilityPanel({ pushToast }) {
       <div className="toolbar rentab-toolbar">
         <div className="field-group">
           <label className="field-label">Ordenar por</label>
-          <select className="field-input" value={filtros.orderBy} onChange={(e) => set('orderBy', e.target.value)}>
-            <option value="amount">Ganancia en quetzales</option>
-            <option value="percent">Margen porcentual</option>
-          </select>
+          <Autocomplete value={filtros.orderBy}
+            onChange={(id) => set('orderBy', id == null ? '' : String(id))}
+            options={[{ id: 'amount', name: 'Ganancia en quetzales' }, { id: 'percent', name: 'Margen porcentual' }]}
+            allowClear={false}
+            emptyText="Sin coincidencias"
+            aria-label="Ordenar por" />
         </div>
         <div className="field-group">
           <label className="field-label">Proyectos</label>
-          <select className="field-input" value={filtros.status} onChange={(e) => set('status', e.target.value)}>
-            {ESTADOS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          <Autocomplete value={filtros.status} onChange={(id) => set('status', id == null ? '' : String(id))}
+            options={ESTADOS.map((o) => ({ id: o.value, name: o.label }))}
+            allowClear={false} emptyText="Sin opciones" aria-label="Proyectos" />
         </div>
         <div className="field-group">
           <label className="field-label">Cuántos</label>
-          <select className="field-input" value={filtros.limit} onChange={(e) => set('limit', Number(e.target.value))}>
-            {[3, 5, 10, 20].map((n) => <option key={n} value={n}>Top {n}</option>)}
-          </select>
+          <Autocomplete value={String(filtros.limit)} onChange={(id) => set('limit', Number(id) || 5)}
+            options={[3, 5, 10, 20].map((n) => ({ id: String(n), name: `Top ${n}` }))}
+            allowClear={false} emptyText="Sin opciones" aria-label="Cuántos" />
         </div>
       </div>
 
