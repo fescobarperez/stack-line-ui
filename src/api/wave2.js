@@ -92,6 +92,18 @@ export const createAuditLog = (data) => api.post('/api/audit-log', data);
 export const listSettings = () => api.get('/api/settings');
 export const getSetting = (key) => api.get(`/api/settings/${encodeURIComponent(key)}`);
 export const putSetting = (key, data) => api.put(`/api/settings/${encodeURIComponent(key)}`, data);
+
+/**
+ * Servidor de correo saliente. Va aparte de /api/settings porque la
+ * contraseña no puede viajar en el GET que devuelve todos los ajustes.
+ * La respuesta trae `hasPassword`, nunca la credencial.
+ */
+export const getMailSettings = () => api.get('/api/company/mail-settings');
+export const saveMailSettings = (data) => api.put('/api/company/mail-settings', data);
+/** Autentica contra el SMTP guardado sin mandar ningún mensaje. */
+export const testMailSettings = () => api.post('/api/company/mail-settings/test', {});
+/** Reenvía la cotización al cliente. Devuelve { ok, message }. */
+export const resendQuoteEmail = (id) => api.post(`/api/quotes/${id}/send-email`, {});
 export const deleteSetting = (key) => api.del(`/api/settings/${encodeURIComponent(key)}`);
 
 // ── Subida de logo a S3 (URL prefirmada) ──────────────────────────────

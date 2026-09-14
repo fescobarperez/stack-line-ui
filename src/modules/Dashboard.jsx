@@ -41,13 +41,17 @@ function AreaChart({ data, height = 220, accent = "var(--accent)" }) {
       </svg>
     );
   }
-  const vals = data.map(d => d.total);
-  const max = Math.max(...vals) * 1.1;
+  // Number() y el tope mínimo no son defensa de más: sin ventas todos los
+  // totales son 0, max queda en 0 y la división (0-0)/(0-0) da NaN, que React
+  // rechaza como atributo `cy`. Es el estado normal de una empresa recién
+  // instalada, no un caso raro.
+  const vals = data.map(d => Number(d.total) || 0);
+  const max = Math.max(...vals) * 1.1 || 1;
   const min = 0;
   const xStep = innerW / (data.length - 1);
   const pts = data.map((d, i) => {
     const x = pad.l + i * xStep;
-    const y = pad.t + innerH - ((d.total - min) / (max - min)) * innerH;
+    const y = pad.t + innerH - ((Number(d.total) || 0) - min) / (max - min) * innerH;
     return [x, y];
   });
   const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ');
@@ -88,7 +92,18 @@ function AreaChart({ data, height = 220, accent = "var(--accent)" }) {
 }
 
 function DonutChart({ data, size = 160 }) {
-  const total = data.reduce((s, d) => s + d.pct, 0);
+  // Mismo problema que en AreaChart: sin datos la suma es 0 y cada arco sale
+  // con coordenadas NaN. Se dibuja un aro vacío en vez de una figura rota.
+  const total = (data || []).reduce((s, d) => s + (Number(d.pct) || 0), 0);
+  if (!total) {
+    const rr = size / 2 - 12;
+    return (
+      <svg width={size} height={size}>
+        <circle cx={size / 2} cy={size / 2} r={rr} fill="none"
+          stroke="var(--border)" strokeWidth="14" />
+      </svg>
+    );
+  }
   const r = size / 2 - 12;
   const cx = size / 2;
   const cy = size / 2;

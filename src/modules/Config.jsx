@@ -4,7 +4,7 @@ import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import { useTranslation } from 'react-i18next';
-import { listSettings, putSetting, uploadCompanyLogo } from '../api/wave2.js';
+import { listSettings, putSetting, uploadCompanyLogo, getMailSettings, saveMailSettings, testMailSettings } from '../api/wave2.js';
 
 // Clave en company_settings de cada campo. Lo que no esté aquí no se persiste.
 // `tax.iva_rate` es la que consume TaxService en el backend.
@@ -17,7 +17,6 @@ const SETTING_KEYS = {
   taxRegime: 'tax.regime', ivaRate: 'tax.iva_rate',
   ticketPrefix: 'seq.ticket_prefix', ocPrefix: 'seq.oc_prefix', transferPrefix: 'seq.transfer_prefix',
   valuationMethod: 'inventory.valuation_method', lowStockThreshold: 'inventory.low_stock_threshold',
-  smtpFromEmail: 'mail.from',
 };
 const CATEGORY_OF = (key) => key.split('.')[0];
 
@@ -47,8 +46,6 @@ const MOCK_CONFIG = {
   transferPrefix: 'TR',
   valuationMethod: 'average',
   lowStockThreshold: '0.20',
-  smtpFromEmail: 'facturas@stackline.gt',
-  hasSmtp: true,
 };
 
 function Section({ title, icon, children }) {
@@ -59,6 +56,35 @@ function Section({ title, icon, children }) {
         <span className="cfg-section-title">{title}</span>
       </div>
       <div className="form-grid">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Campo de secreto con el ojo para mostrar y ocultar.
+ *
+ * El `type` alterna en vez de usar un input de texto aparte: cambiar de
+ * elemento haría que el navegador perdiera el cursor y el historial de
+ * deshacer a cada clic.
+ */
+function SecretInput({ value, onChange, placeholder, mono = false, autoComplete = 'new-password' }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="secret-field">
+      <input
+        className={`field-input${mono ? ' mono' : ''}`}
+        type={visible ? 'text' : 'password'}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        autoComplete={autoComplete}
+      />
+      <button type="button" className="secret-toggle"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? 'Ocultar' : 'Mostrar'}
+        title={visible ? 'Ocultar' : 'Mostrar'}>
+        <Icon name={visible ? 'eyeOff' : 'eye'} size={16} />
+      </button>
     </div>
   );
 }
@@ -77,7 +103,6 @@ export default function Config({ pushToast }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState('empresa');
   const [config, setConfig] = useState(MOCK_CONFIG);
-  const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
@@ -101,7 +126,7 @@ export default function Config({ pushToast }) {
     return () => { cancelled = true; };
   }, []);
 
-  const set = (k, v) => { setConfig(prev => ({ ...prev, [k]: v })); setSaved(false); };
+  const set = (k, v) => setConfig((prev) => ({ ...prev, [k]: v }));
 
   // Sube el archivo elegido a S3 (URL prefirmada) y guarda la URL pública.
   // No persiste el resto de la config; el usuario aún debe 'Guardar cambios'.
@@ -131,13 +156,89 @@ export default function Config({ pushToast }) {
 
   // Antes esto solo mostraba un toast de éxito sin guardar nada: se podía
   // poner el IVA al 5% y seguía facturando al 12%.
+  // El correo no vive en company_settings: tiene su propia tabla y su propio
+  // endpoint, porque la contraseña no puede salir en el GET que devuelve
+  // todos los ajustes. Por eso también su propio estado y su propio guardado.
+  const [mail, setMail] = useState({
+    host: '', port: 587, username: '', password: '',
+    fromEmail: '', fromName: '', security: 'starttls', enabled: false,
+  });
+  const [hasPassword, setHasPassword] = useState(false);
+  // Copia de lo último que se guardó, para saber si la prueba aplica a lo que
+  // el usuario tiene en pantalla o a otra cosa.
+  const [mailGuardado, setMailGuardado] = useState(null);
+  const [probando, setProbando] = useState(false);
+  const [prueba, setPrueba] = useState(null);   // { ok, message }
+  const setM = (k, v) => setMail((m) => ({ ...m, [k]: v }));
+
+  useEffect(() => {
+    let vigente = true;
+    getMailSettings()
+      .then((d) => {
+        if (!vigente || !d) return;
+        setMail({
+          host: d.host || '', port: d.port ?? 587, username: d.username || '',
+          password: '', fromEmail: d.fromEmail || '', fromName: d.fromName || '',
+          security: d.security || 'starttls', enabled: !!d.enabled,
+        });
+        setHasPassword(!!d.hasPassword);
+        setMailGuardado({
+          host: d.host || '', port: d.port ?? 587, username: d.username || '',
+          fromEmail: d.fromEmail || '', fromName: d.fromName || '',
+          security: d.security || 'starttls', enabled: !!d.enabled,
+        });
+      })
+      .catch(() => { /* sin configurar: se queda el formulario vacío */ });
+    return () => { vigente = false; };
+  }, []);
+
+  /**
+   * Prueba la configuración GUARDADA, sin tocar nada.
+   *
+   * No guarda antes a propósito: probar no debería escribir. Lo que sí hace
+   * es avisar cuando lo que hay en pantalla difiere de lo guardado, para que
+   * el resultado no se lea como si aplicara a lo que el usuario está viendo.
+   */
+  // Solo los campos que el servidor usa para conectar. La contraseña cuenta
+  // aparte: en blanco significa «conserva la guardada», no «cambió».
+  const correoSinGuardar = !mailGuardado
+    || !!mail.password
+    || ['host', 'username', 'fromEmail', 'fromName', 'security'].some(
+        (k) => String(mail[k] ?? '') !== String(mailGuardado[k] ?? ''))
+    || Number(mail.port) !== Number(mailGuardado.port)
+    || !!mail.enabled !== !!mailGuardado.enabled;
+
+  const probarCorreo = async () => {
+    setProbando(true);
+    setPrueba(null);
+    try {
+      setPrueba(await testMailSettings());
+    } catch (err) {
+      setPrueba({ ok: false, message: err.message });
+    } finally { setProbando(false); }
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
       await Promise.all(Object.entries(SETTING_KEYS).map(([field, key]) =>
         putSetting(key, { settingValue: String(config[field] ?? ''), category: CATEGORY_OF(key) })));
-      setSaved(true);
+      // La contraseña en blanco conserva la guardada: el backend solo la
+      // reemplaza si viene con algo.
+      const guardado = await saveMailSettings({
+        host: mail.host, port: Number(mail.port) || 587, username: mail.username,
+        password: mail.password || null, fromEmail: mail.fromEmail,
+        fromName: mail.fromName, security: mail.security, enabled: mail.enabled,
+      });
+      setHasPassword(!!guardado?.hasPassword);
+      setMail((m) => ({ ...m, password: '' }));
+      setMailGuardado({
+        host: guardado?.host || '', port: guardado?.port ?? 587,
+        username: guardado?.username || '', fromEmail: guardado?.fromEmail || '',
+        fromName: guardado?.fromName || '', security: guardado?.security || 'starttls',
+        enabled: !!guardado?.enabled,
+      });
       pushToast?.(t('config.saved', 'Configuración guardada correctamente'), 'success');
     } catch (err) {
       pushToast?.(t('config.saveFailed', 'No se pudo guardar: ') + err.message, 'danger');
@@ -161,17 +262,7 @@ export default function Config({ pushToast }) {
           <h1 className="page-title">{t('config.title', 'Configuración del sistema')}</h1>
           <div className="page-subtitle">{t('config.subtitle', 'Datos de la empresa, credenciales FEL, impuestos y parámetros globales')}</div>
         </div>
-        <div className="page-head-actions">
-          <Button icon="check" variant="accent" onClick={handleSave} disabled={saving}>{saving ? t('config.saving', 'Guardando…') : t('config.saveChanges', 'Guardar cambios')}
-          </Button>
-        </div>
       </div>
-
-      {saved && (
-        <div className="toast success" style={{ position: 'relative', marginBottom: 16, animation: 'none' }}>
-          <Icon name="check" size={14} />{t('config.savedSuccess', 'Configuración actualizada correctamente')}
-        </div>
-      )}
 
       <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
         {/* Nav lateral */}
@@ -314,8 +405,10 @@ export default function Config({ pushToast }) {
                   <input className="field-input" type="email" value={config.felUser} onChange={e => set('felUser', e.target.value)} />
                 </Field>
                 <Field label={t('config.fel.apiKey', 'Clave API / Token')} span={2} hint={config.hasFelKey ? t('config.fel.existingKeyHint', 'Ya hay una clave guardada. Déjalo vacío para no cambiarla.') : t('config.fel.newKeyHint', 'Ingresa la clave proporcionada por tu certificador.')}>
-                  <input className="field-input mono" type="password" placeholder={config.hasFelKey ? '••••••••••••••••' : t('config.fel.pasteKeyPlaceholder', 'Pegar clave API aquí')}
-                    onChange={e => set('felKey', e.target.value)} autoComplete="new-password" />
+                  <SecretInput mono
+                    value={config.felKey ?? ''}
+                    onChange={(e) => set('felKey', e.target.value)}
+                    placeholder={config.hasFelKey ? '••••••••••••••••' : t('config.fel.pasteKeyPlaceholder', 'Pegar clave API aquí')} />
                 </Field>
                 <Field label={t('config.fel.endpoint', 'Endpoint API')} span={2} hint={t('config.fel.endpointHint', 'URL del servicio de certificación del proveedor.')}>
                   <input className="field-input mono" value={config.felEndpoint} onChange={e => set('felEndpoint', e.target.value)} />
@@ -429,27 +522,78 @@ export default function Config({ pushToast }) {
               </div>
               <Section title={t('config.smtp.sectionTitle', 'Servidor de correo saliente (SMTP)')} icon="bell">
                 <Field label={t('config.smtp.host', 'Host SMTP')}>
-                  <input className="field-input mono" placeholder="smtp.ejemplo.com" onChange={e => set('smtpHost', e.target.value)} />
+                  <input className="field-input mono" placeholder="smtp.ejemplo.com"
+                    value={mail.host} onChange={(e) => setM('host', e.target.value)} />
                 </Field>
-                <Field label={t('config.smtp.port', 'Puerto')}>
-                  <input className="field-input mono" placeholder="587" onChange={e => set('smtpPort', e.target.value)} />
+                <Field label={t('config.smtp.port', 'Puerto')} hint="587 con STARTTLS · 465 con SSL">
+                  <input className="field-input mono" type="number" min="1" max="65535" placeholder="587"
+                    value={mail.port} onChange={(e) => setM('port', e.target.value)} />
+                </Field>
+                <Field label={t('config.smtp.security', 'Cifrado')}>
+                  <Autocomplete value={mail.security} onChange={(id) => setM('security', id || 'starttls')}
+                    options={[
+                      { id: 'starttls', name: 'STARTTLS (recomendado)' },
+                      { id: 'ssl', name: 'SSL/TLS' },
+                      { id: 'none', name: 'Sin cifrado' },
+                    ]}
+                    allowClear={false} emptyText="Sin opciones" aria-label="Cifrado" />
+                </Field>
+                <Field label={t('config.smtp.enabled', 'Estado')}>
+                  <Autocomplete value={mail.enabled ? 'on' : 'off'} onChange={(id) => setM('enabled', id === 'on')}
+                    options={[{ id: 'off', name: 'Desactivado' }, { id: 'on', name: 'Activo' }]}
+                    allowClear={false} emptyText="Sin opciones" aria-label="Estado del correo" />
                 </Field>
                 <Field label={t('config.smtp.user', 'Usuario SMTP')} span={2}>
-                  <input className="field-input" type="email" onChange={e => set('smtpUser', e.target.value)} />
+                  <input className="field-input" type="email" autoComplete="username"
+                    value={mail.username} onChange={(e) => setM('username', e.target.value)} />
                 </Field>
-                <Field label={t('config.smtp.password', 'Contraseña SMTP')} span={2} hint={config.hasSmtp ? t('config.smtp.existingCredHint', 'Ya hay credenciales guardadas. Déjalo vacío para no cambiarlas.') : ''}>
-                  <input className="field-input" type="password" placeholder={config.hasSmtp ? '••••••••' : ''} autoComplete="new-password" onChange={e => set('smtpPass', e.target.value)} />
+                <Field label={t('config.smtp.password', 'Contraseña SMTP')} span={2}
+                  hint={hasPassword
+                    ? t('config.smtp.existingCredHint', 'Ya hay credenciales guardadas. Déjalo vacío para no cambiarlas.')
+                    : t('config.smtp.noCredHint', 'Aún no hay contraseña guardada.')}>
+                  <SecretInput
+                    value={mail.password}
+                    onChange={(e) => setM('password', e.target.value)}
+                    placeholder={hasPassword ? '••••••••' : ''} />
                 </Field>
-                <Field label={t('config.smtp.fromEmail', 'Correo remitente (From)')} hint={t('config.smtp.fromEmailHint', 'Ej: facturas@tuempresa.gt')}>
-                  <input className="field-input" type="email" value={config.smtpFromEmail}
-                    onChange={e => set('smtpFromEmail', e.target.value)} />
+                <Field label={t('config.smtp.fromEmail', 'Correo remitente (From)')}
+                  hint={t('config.smtp.fromEmailHint', 'Ej: facturas@tuempresa.gt')}>
+                  <input className="field-input" type="email"
+                    value={mail.fromEmail} onChange={(e) => setM('fromEmail', e.target.value)} />
+                </Field>
+                <Field label={t('config.smtp.fromName', 'Nombre del remitente')}
+                  hint={t('config.smtp.fromNameHint', 'Lo que ve el cliente como emisor')}>
+                  <input className="field-input"
+                    value={mail.fromName} onChange={(e) => setM('fromName', e.target.value)} />
                 </Field>
               </Section>
+
+              {/* Guarda y autentica contra el servidor sin mandar ningún
+                  mensaje. Sin esto, la primera noticia de que la contraseña
+                  está mal sería una factura que no llegó. */}
+              <div className="mail-test">
+                <Button type="button" icon="bolt" onClick={probarCorreo} disabled={probando}>
+                  {probando ? 'Probando…' : 'Probar conexión'}
+                </Button>
+                {correoSinGuardar && (
+                  <span className="mail-test-result is-warn">
+                    <Icon name="info" size={15} />
+                    Se prueba la configuración guardada. Hay cambios sin guardar que no entran en la prueba.
+                  </span>
+                )}
+                {prueba && (
+                  <span className={`mail-test-result ${prueba.ok ? 'is-ok' : 'is-fail'}`}>
+                    <Icon name={prueba.ok ? 'check' : 'alert'} size={15} />
+                    {prueba.message}
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-            <Button icon="check" variant="accent" type="submit">{t('config.saveChanges', 'Guardar cambios')}
+            <Button icon="check" variant="accent" type="submit" disabled={saving}>
+              {saving ? t('config.saving', 'Guardando…') : t('config.saveChanges', 'Guardar cambios')}
             </Button>
           </div>
         </form>

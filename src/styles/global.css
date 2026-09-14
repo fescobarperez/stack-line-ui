@@ -4575,3 +4575,43 @@ table.tbl tfoot td {
   cursor: pointer;
 }
 .datepicker-link:hover { text-decoration: underline; }
+
+/* ===== Campo de secreto con mostrar/ocultar ===== */
+.secret-field { position: relative; display: block; }
+/* El input cede el sitio del botón: sin esto una clave larga pasa por debajo
+   del ojo y no se lee el final. */
+.secret-field .field-input { padding-right: 38px; }
+.secret-toggle {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center;
+  width: 26px; height: 26px; padding: 0;
+  border: none; border-radius: 50%;
+  background: transparent; color: var(--muted);
+  cursor: pointer;
+  transition: background var(--dur-short) var(--ease-standard),
+              color var(--dur-short) var(--ease-standard);
+}
+.secret-toggle:hover { background: var(--surface-3); color: var(--text); }
+.secret-toggle:focus-visible {
+  outline: none;
+  background: var(--surface-3);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 30%, transparent);
+}
+/* El span del icono es inline y arrastra el interlineado: en block el grid lo
+   centra de verdad. */
+.secret-toggle .msi { display: block; }
+
+/* ===== Prueba de conexión del correo ===== */
+.mail-test {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 4px; padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.mail-test-result {
+  display: flex; align-items: flex-start; gap: 6px;
+  font: 400 12px/16px var(--font-sans); letter-spacing: .4px;
+}
+.mail-test-result .msi { flex-shrink: 0; margin-top: 1px; }
+.mail-test-result.is-ok { color: var(--success); }
+.mail-test-result.is-fail { color: var(--danger); }
+.mail-test-result.is-warn { color: var(--warning); }

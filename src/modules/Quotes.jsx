@@ -11,7 +11,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import { useClientQuotes, useSupplierRfqs, mapQuote, mapRfq } from '../hooks/useQuotes.js';
-import { getQuote, getQuoteCharges, createQuote as apiCreateQuote, updateQuoteStatus, listSettings, setQuoteAdjustment } from '../api/wave2.js';
+import { getQuote, getQuoteCharges, createQuote as apiCreateQuote, updateQuoteStatus, listSettings, setQuoteAdjustment, resendQuoteEmail } from '../api/wave2.js';
 import { sessionCompany } from '../api/auth.js';
 import { renderQuotePdfWindow } from '../lib/quotePdf.js';
 import QuoteBuilderModal from '../components/QuoteBuilderModal.jsx';
@@ -196,6 +196,22 @@ export default function Quotes({ pushToast }) {
   const [chargeSummary, setChargeSummary] = useState(null);
   // Borrador del ajuste mientras se teclea. Vacío = mostrar el guardado.
   const [ajusteBorrador, setAjusteBorrador] = useState('');
+  const [reenviando, setReenviando] = useState(false);
+
+  /**
+   * Reenvío manual. El envío automático ocurre al pasar a «enviada», pero ese
+   * no devuelve acuse: aquí el usuario sí ve si salió y por qué no, que es lo
+   * que pide cuando el cliente dice que no le llegó.
+   */
+  const reenviarCorreo = useCallback(async (quoteId) => {
+    setReenviando(true);
+    try {
+      const r = await resendQuoteEmail(quoteId);
+      pushToast(r?.message || 'Correo procesado', r?.ok ? 'success' : 'danger');
+    } catch (err) {
+      pushToast('No se pudo reenviar: ' + err.message, 'danger');
+    } finally { setReenviando(false); }
+  }, [pushToast]);
   const [guardandoAjuste, setGuardandoAjuste] = useState(false);
   const handlePlanBalanceChange = useCallback((balanced) => setSelectedPlanBalanced(balanced), []);
   const handleChargesChange = useCallback(() => setChargesVersion((version) => version + 1), []);
@@ -853,6 +869,10 @@ export default function Quotes({ pushToast }) {
                   <>
                     <Button style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => { updateStatus(selQuote.id, 'rechazada', 'Rechazada', 'Cotización rechazada', 'danger'); }}>
                       {t('quotes.reject', 'Rechazar')}
+                    </Button>
+                    <Button icon="bell" disabled={reenviando}
+                      onClick={() => reenviarCorreo(selQuote.backendId)}>
+                      {reenviando ? t('quotes.resending', 'Reenviando…') : t('quotes.resendEmail', 'Reenviar correo')}
                     </Button>
                     <Button onClick={() => { updateStatus(selQuote.id, 'aprobada', 'Aprobada por el cliente', 'Cotización aprobada'); }}>
                       {t('quotes.markApproved', 'Marcar aprobada')}

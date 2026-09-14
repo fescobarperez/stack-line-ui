@@ -55,6 +55,7 @@ const MAP = {
   dots: 'more_vert',
   lock: 'lock',
   eye: 'visibility',
+  eyeOff: 'visibility_off',
   bolt: 'bolt',
   truck: 'local_shipping',
 };
