@@ -35,6 +35,11 @@ const ES = {
   mixed:      'Mixto',
 };
 
+/** Forma canonica del codigo, para agrupar sin que 'Efectivo' y 'efectivo' se separen. */
+export function normalizaMetodoPago(codigo) {
+  return codigo ? String(codigo).trim().toLowerCase() : '';
+}
+
 function legible(codigo) {
   const s = String(codigo).replace(/_/g, ' ').trim();
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -47,7 +52,7 @@ function legible(codigo) {
  */
 export function etiquetaMetodoPago(codigo, t) {
   if (!codigo) return '—';
-  const clave = CLAVES[String(codigo).trim().toLowerCase()];
+  const clave = CLAVES[normalizaMetodoPago(codigo)];
   if (!clave) return legible(codigo);
   return t ? t(`pos.paymentMethods.${clave}`, ES[clave]) : ES[clave];
 }

@@ -605,7 +605,10 @@ export default function Accounting({ pushToast }) {
 
       {/* Panel detalle comprobante */}
       {selectedEntry && !showNewEntry && (
-        <div className="drawer-overlay">
+        <div className="drawer-overlay"
+          /* Solo cierra si el clic cayo en el fondo: sin esta guarda,
+             un clic dentro del panel burbujea hasta aqui y lo cierra. */
+          onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
           <EntryDetail entry={selectedEntry} onClose={() => setSelected(null)} onReverse={handleReverse} />
         </div>
       )}

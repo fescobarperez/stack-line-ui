@@ -11,10 +11,16 @@ import { useSuppliers } from '../hooks/useMasters.js';
 import ProjectProfitabilityPanel from '../components/ProjectProfitabilityPanel.jsx';
 import React, { useState as useStateRpt } from 'react';
 import { useTranslation } from 'react-i18next';
+import { etiquetaMetodoPago } from '../lib/pagos.js';
+import { descargaXlsx } from '../lib/xlsx.js';
+import { useTaxRate } from '../hooks/useOperations.js';
+import { hoyISO, fechaISO } from '../lib/fechas.js';
 
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const Qs = Q;
 const daysFor = { hoy: 1, '7d': 7, '14d': 14, '30d': 30, '90d': 90, mtd: 30, ytd: 365 };
+// Cuántas ventas se pintan en la tabla de detalle antes de recortar.
+const MAX_DETALLE = 200;
 
 function ReportsModule({ pushToast }) {
   const { t } = useTranslation();
@@ -24,8 +30,113 @@ function ReportsModule({ pushToast }) {
   const { data: rpt, source } = useReports(daysFor[range] || 30);
   const { items: purchaseOrders } = usePurchaseOrders();
   const { items: suppliers } = useSuppliers();
+  const taxRate = useTaxRate();
+  // La rentabilidad de proyectos la carga su propio panel con sus filtros; nos
+  // avisa de lo que trae para poder exportarlo desde aqui.
+  const [rentabProyectos, setRentabProyectos] = useStateRpt(null);
 
   const totalPurchases = purchaseOrders.filter((p) => p.status !== 'cancelled').reduce((s, p) => s + Number(p.total || 0), 0);
+
+  // Se exporta lo que la pestaña activa está mostrando, con los mismos filtros
+  // de rango que hay en pantalla. Cada tarjeta se vuelca en su propia pestaña
+  // del libro, y `moneda` marca qué columnas llevan formato de importe: el
+  // valor de la celda sigue siendo el número crudo, para que las fórmulas que
+  // alguien escriba encima sigan funcionando.
+  const n = (v) => Number(v || 0);
+
+  const bloquesExport = () => {
+    if (section === 'ventas') return [
+      { titulo: 'Resumen', cabeceras: ['Indicador', 'Valor'], filas: [
+        ['Ventas totales (Q)', n(rpt.totalSales)],
+        ['Tickets emitidos', rpt.totalTickets],
+        ['Ticket promedio (Q)', n(rpt.avgTicket)],
+        ['Sucursales con ventas', rpt.byBranch.length],
+      ] },
+      { titulo: 'Tendencia de ventas', cabeceras: ['Fecha', 'Ventas (Q)', 'Tickets'], moneda: [1],
+        filas: rpt.trend.map((p) => [p.d, n(p.total), p.tickets]) },
+      { titulo: 'Ventas por sucursal', cabeceras: ['Sucursal', 'Tickets', 'Total (Q)', 'Ticket promedio (Q)', '%'], moneda: [2, 3],
+        filas: rpt.byBranch.map((b) => [b.name, b.tickets, n(b.total), n(b.tickets ? b.total / b.tickets : 0), b.pct]) },
+      { titulo: 'Ventas por método de pago', cabeceras: ['Método', 'Total (Q)', '%'], moneda: [1],
+        filas: rpt.byPayment.map((r) => [etiquetaMetodoPago(r.method, t), n(r.total), r.pct]) },
+      { titulo: 'Top productos vendidos', cabeceras: ['#', 'SKU', 'Producto', 'Unidades', 'Ventas (Q)'], moneda: [4],
+        filas: rpt.topProducts.map((p, i) => [i + 1, p.sku, p.name, p.qty, n(p.total)]) },
+      { titulo: 'Detalle de ventas',
+        cabeceras: ['Documento', 'Tipo', 'Fecha', 'NIT', 'Cliente', 'Método de pago', 'Estado', 'Subtotal (Q)', 'IVA (Q)', 'Total (Q)'],
+        moneda: [7, 8, 9],
+        filas: rpt.salesDetail.map((v) => [v.doc, v.docType, fechaISO(v.date), v.nit || 'C/F',
+          v.client || 'Consumidor final', etiquetaMetodoPago(v.method, t), v.status,
+          n(v.subtotal), n(v.iva), n(v.total)]) },
+    ];
+
+    if (section === 'compras') return [
+      { titulo: 'Resumen', cabeceras: ['Indicador', 'Valor'], filas: [
+        ['Compras en órdenes (Q)', n(totalPurchases)],
+        ['Órdenes', purchaseOrders.length],
+        ['Órdenes pendientes', purchaseOrders.filter((p) => p.status === 'pending').length],
+        ['Proveedores', suppliers.length],
+        ['Cuentas por pagar (Q)', n(suppliers.reduce((acc, sp) => acc + Number(sp.balance || 0), 0))],
+      ] },
+      { titulo: 'Órdenes de compra', cabeceras: ['No. OC', 'Fecha', 'Proveedor', 'Total (Q)', 'Estado'], moneda: [3],
+        filas: purchaseOrders.map((po) => [String(po.docNumber || po.id), (po.orderDate || po.date || '').toString().slice(0, 10),
+          po.supplierName || po.supplier || '', n(po.total), po.status]) },
+      { titulo: 'Proveedores y saldos', cabeceras: ['#', 'Proveedor', 'NIT', 'Saldo (Q)'], moneda: [3],
+        filas: suppliers.map((sp, i) => [i + 1, sp.name, sp.nit || '', n(sp.balance)]) },
+    ];
+
+    if (section === 'rentabilidad') return [
+      { titulo: 'Resumen', cabeceras: ['Indicador', 'Valor'], filas: [
+        ['Ingresos brutos (Q)', n(rpt.totalSales)],
+        ['Costo de ventas (Q)', n(rpt.byCategory.reduce((acc, c) => acc + c.cost, 0))],
+        ['Utilidad bruta (Q)', n(rpt.byCategory.reduce((acc, c) => acc + c.profit, 0))],
+        ['Categorías', rpt.byCategory.length],
+      ] },
+      { titulo: 'Margen por categoría', cabeceras: ['Categoría', 'Ventas (Q)', 'Costo (Q)', 'Utilidad (Q)', 'Margen %'], moneda: [1, 2, 3],
+        filas: rpt.byCategory.map((c) => [c.cat, n(c.sales), n(c.cost), n(c.profit), n(c.marginPct)]) },
+    ];
+
+    if (section === 'fiscal') return [
+      { titulo: 'Libro de Ventas (SAT)',
+        cabeceras: ['Día', 'Facturas', 'Gravable (Q)', `IVA ${taxRate}% (Q)`, 'Total (Q)'],
+        moneda: [2, 3, 4],
+        filas: [
+          ...rpt.salesBook.map((d) => [d.d, d.tickets, n(d.taxable), n(d.iva), n(d.total)]),
+          ['TOTAL',
+            rpt.salesBook.reduce((acc, d) => acc + d.tickets, 0),
+            rpt.salesBook.reduce((acc, d) => acc + n(d.taxable), 0),
+            rpt.salesBook.reduce((acc, d) => acc + n(d.iva), 0),
+            rpt.salesBook.reduce((acc, d) => acc + n(d.total), 0)],
+        ] },
+    ];
+
+    if (section === 'proyectos') {
+      const d = rentabProyectos;
+      if (!d) return [];
+      const filas = (lista) => (lista || []).map((f) => [f.code, f.name, f.clientName || '',
+        n(f.contracted), n(f.executed), n(f.margin), n(f.marginPct)]);
+      const cab = ['Código', 'Proyecto', 'Cliente', 'Contratado (Q)', 'Ejecutado (Q)', 'Margen (Q)', 'Margen %'];
+      const mon = [3, 4, 5];
+      return [
+        { titulo: 'Resumen', cabeceras: ['Indicador', 'Valor'], filas: [
+          ['Proyectos evaluados', d.evaluated],
+          ['Margen acumulado (Q)', n(d.totalMargin)],
+          ['Margen promedio %', n(d.avgMarginPct)],
+        ] },
+        { titulo: 'Donde más gané', cabeceras: cab, moneda: mon, filas: filas(d.best) },
+        { titulo: 'Donde menos gané', cabeceras: cab, moneda: mon, filas: filas(d.worst) },
+      ];
+    }
+
+    return [];
+  };
+
+  const exportar = () => {
+    const filas = descargaXlsx(`reporte-${section}-${range}-${hoyISO()}`, bloquesExport());
+    if (!filas) {
+      pushToast?.('No hay datos que exportar en esta pestaña');
+      return;
+    }
+    pushToast?.(`Reporte exportado · ${filas} filas`, 'success');
+  };
 
   return (
     <div className="page">
@@ -43,7 +154,7 @@ function ReportsModule({ pushToast }) {
               <button key={r} className={`chip ${range === r.toLowerCase() ? 'active' : ''}`} onClick={() => setRange(r.toLowerCase())}>{r}</button>
             ))}
           </div>
-          <Button icon="download">{t('reports.export', 'Excel')}</Button>
+          <Button icon="download" onClick={exportar}>{t('reports.export', 'Excel')}</Button>
         </div>
       </div>
 
@@ -113,7 +224,7 @@ function ReportsModule({ pushToast }) {
                 {rpt.byPayment.map((r) => (
                   <div key={r.method} style={{ marginBottom: 14 }}>
                     <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4, fontSize: 12 }}>
-                      <span style={{ fontWeight: 500 }}>{r.method}</span>
+                      <span style={{ fontWeight: 500 }}>{etiquetaMetodoPago(r.method, t)}</span>
                       <span><span className="mono" style={{ fontWeight: 500 }}>{Qs(r.total)}</span> <span className="muted mono">({r.pct}%)</span></span>
                     </div>
                     <div className="bar"><div style={{ width: r.pct + '%' }} /></div>
@@ -143,6 +254,66 @@ function ReportsModule({ pushToast }) {
             </div>
           </div>
         </>
+      )}
+
+      {section === 'ventas' && (
+        <div className="card mt-12">
+          <div className="card-head">
+            <h3>Detalle de ventas</h3>
+            <span className="body-small muted">
+              {rpt.salesDetail.length} {rpt.salesDetail.length === 1 ? 'venta' : 'ventas'} en el período
+            </span>
+          </div>
+          <div className="card-body flush">
+            <div style={{ maxHeight: 460, overflow: 'auto' }}>
+              <table className="mtable">
+                <thead><tr>
+                  <th>Documento</th>
+                  <th>{t('common.date', 'Fecha')}</th>
+                  <th>NIT</th>
+                  <th>{t('common.client', 'Cliente')}</th>
+                  <th>{t('projects.method', 'Método')}</th>
+                  <th className="num">Subtotal</th>
+                  <th className="num">IVA</th>
+                  <th className="num">{t('common.total', 'Total')}</th>
+                </tr></thead>
+                <tbody>
+                  {rpt.salesDetail.length === 0 && (
+                    <tr><td colSpan={8}><div className="empty" style={{ padding: 20 }}>Sin ventas en el período</div></td></tr>
+                  )}
+                  {rpt.salesDetail.slice(0, MAX_DETALLE).map((v) => (
+                    <tr key={v.id}>
+                      <td className="code" style={{ color: 'var(--accent)', fontWeight: 500 }}>{v.doc}</td>
+                      <td className="code">{fechaISO(v.date)}</td>
+                      <td className="code">{v.nit || 'C/F'}</td>
+                      <td>{v.client || <span className="muted">Consumidor final</span>}</td>
+                      <td><span className="badge-m3">{etiquetaMetodoPago(v.method, t)}</span></td>
+                      <td className="num muted">{Qs(v.subtotal)}</td>
+                      <td className="num muted">{Qs(v.iva)}</td>
+                      <td className="num" style={{ fontWeight: 500 }}>{Qs(v.total)}</td>
+                    </tr>
+                  ))}
+                  {rpt.salesDetail.length > 0 && (
+                    <tr style={{ background: 'var(--surface-2)' }}>
+                      <td colSpan={5} style={{ fontWeight: 500 }}>{t('common.total', 'TOTAL')}</td>
+                      <td className="num" style={{ fontWeight: 500 }}>{Qs(rpt.salesDetail.reduce((a, v) => a + v.subtotal, 0))}</td>
+                      <td className="num" style={{ fontWeight: 500 }}>{Qs(rpt.salesDetail.reduce((a, v) => a + v.iva, 0))}</td>
+                      <td className="num" style={{ fontWeight: 500 }}>{Qs(rpt.salesDetail.reduce((a, v) => a + v.total, 0))}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {/* La tabla se recorta para que el navegador no tenga que pintar un año
+              entero de ventas; el archivo exportado sí las trae todas. */}
+          {rpt.salesDetail.length > MAX_DETALLE && (
+            <div className="cfg-hint" style={{ margin: '0 16px 16px' }}>
+              Mostrando las {MAX_DETALLE} más recientes de {rpt.salesDetail.length}. El archivo exportado
+              incluye todas, y los totales de arriba ya suman el período completo.
+            </div>
+          )}
+        </div>
       )}
 
       {section === 'compras' && (
@@ -215,7 +386,7 @@ function ReportsModule({ pushToast }) {
         </>
       )}
 
-      {section === 'proyectos' && <ProjectProfitabilityPanel pushToast={pushToast} />}
+      {section === 'proyectos' && <ProjectProfitabilityPanel pushToast={pushToast} onDatos={setRentabProyectos} />}
 
       {section === 'rentabilidad' && (
         <>
@@ -268,10 +439,10 @@ function ReportsModule({ pushToast }) {
 
       {section === 'fiscal' && (
         <div className="card">
-          <div className="card-head"><h3>Libro de Ventas (SAT)</h3><Button icon="download" size="sm">Excel SAT</Button></div>
+          <div className="card-head"><h3>Libro de Ventas (SAT)</h3><Button icon="download" size="sm" onClick={exportar}>Excel SAT</Button></div>
           <div className="card-body flush">
             <table className="mtable">
-              <thead><tr><th>Día</th><th className="num">Facturas</th><th className="num">Gravable</th><th className="num">IVA 12%</th><th className="num">{t('common.total', 'Total')}</th></tr></thead>
+              <thead><tr><th>Día</th><th className="num">Facturas</th><th className="num">Gravable</th><th className="num">IVA {taxRate}%</th><th className="num">{t('common.total', 'Total')}</th></tr></thead>
               <tbody>
                 {rpt.salesBook.length === 0 && <tr><td colSpan={5}><div className="empty" style={{ padding: 20 }}>Sin ventas en el período</div></td></tr>}
                 {rpt.salesBook.map((d) => (

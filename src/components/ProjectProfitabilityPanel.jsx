@@ -20,7 +20,7 @@ const ESTADOS = [
   { value: 'all', label: 'Todos' },
 ];
 
-export default function ProjectProfitabilityPanel({ pushToast }) {
+export default function ProjectProfitabilityPanel({ pushToast, onDatos }) {
   const navigate = useNavigate();
   const [filtros, setFiltros] = useState({ limit: 5, orderBy: 'amount', status: 'closed' });
   const [datos, setDatos] = useState(null);
@@ -29,10 +29,17 @@ export default function ProjectProfitabilityPanel({ pushToast }) {
 
   const cargar = useCallback(async () => {
     setCargando(true);
-    try { setDatos(await getProjectProfitability(filtros)); }
+    try {
+      const d = await getProjectProfitability(filtros);
+      setDatos(d);
+      // El boton de exportar vive en la cabecera de /reports, fuera de este
+      // panel; se le pasa lo cargado para que pueda volcarlo sin repetir la
+      // llamada ni duplicar los filtros.
+      onDatos?.(d);
+    }
     catch (error) { pushToast?.(`No se pudo cargar la rentabilidad: ${error.message}`, 'danger'); }
     finally { setCargando(false); }
-  }, [filtros, pushToast]);
+  }, [filtros, pushToast, onDatos]);
 
   useEffect(() => { cargar(); }, [cargar]);
 

@@ -64,7 +64,7 @@ function ReceiveModal({ po, onSave, onClose }) {
         <div className="modal-head">
           <div>
             <h3>{t('purchases.receiveTitle', 'Recibir mercancía')}</h3>
-            <div className="muted" style={{ fontSize: 12 }}>{po.id} · {po.supplier}</div>
+            <div className="muted body-small">{po.id} · {po.supplier}</div>
           </div>
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
@@ -83,15 +83,15 @@ function ReceiveModal({ po, onSave, onClose }) {
                 {pending.map(item => (
                   <tr key={item.id}>
                     <td>
-                      <div style={{ fontWeight: 500, fontSize: 14 }}>{item.name}</div>
-                      <div className="mono muted" style={{ fontSize: 11 }}>{item.sku}</div>
+                      <div className="nm">{item.name}</div>
+                      <div className="sku">{item.sku}</div>
                     </td>
                     <td className="right mono">{item.qtyOrdered}</td>
                     <td className="right mono muted">{item.qtyReceived}</td>
                     <td className="right">
                       <input
                         type="number" min="0" max={item.qtyOrdered - item.qtyReceived}
-                        className="field-input mono" style={{ width: 90, textAlign: 'right', padding: '4px 8px' }}
+                        className="field-input mono" style={{ width: 90, textAlign: 'right' }}
                         value={qtys[item.id] ?? ''} onChange={e => setQty(item.id, e.target.value)}
                       />
                     </td>
@@ -290,7 +290,7 @@ function PODetail({ po, onClose, onReceive, onCancel }) {
   const canReceive = po.status === 'pending' || po.status === 'partial';
 
   return (
-    <div className="drawer">
+    <div className="drawer drawer--md">
       <div className="drawer-head">
         <div>
           <div className="drawer-title">{po.id}</div>
@@ -643,7 +643,10 @@ export default function Purchases({ pushToast }) {
 
       {/* Panel detalle OC */}
       {selectedOrder && !showReceive && (
-        <div className="drawer-overlay">
+        <div className="drawer-overlay"
+          /* Solo cierra si el clic cayo en el fondo: sin esta guarda,
+             un clic dentro del panel burbujea hasta aqui y lo cierra. */
+          onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
           <PODetail
             po={selectedOrder}
             onClose={() => setSelected(null)}

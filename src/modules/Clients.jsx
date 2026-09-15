@@ -583,7 +583,10 @@ export default function Clients({ pushToast }) {
 
       {/* Panel lateral — detalle o edición */}
       {selectedClient && !editing && (
-        <div className="drawer-overlay">
+        <div className="drawer-overlay"
+          /* Solo cierra si el clic cayo en el fondo: sin esta guarda,
+             un clic dentro del panel burbujea hasta aqui y lo cierra. */
+          onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
           <ClientDetail
             client={selectedClient}
             payments={CLIENT_PAYMENTS}

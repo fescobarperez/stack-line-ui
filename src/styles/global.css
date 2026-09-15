@@ -1802,10 +1802,14 @@ select.input option {
 }
 /* El detalle de una cotización lleva líneas, cargos, plan de cobro y cobros:
    a 480px cada tabla se estruja. Es la única variante de ancho por ahora. */
-/* Un solo ancho para los drawers de detalle. Los de cotización y proyecto
-   llevan tablas, gráficas y cascadas de cálculo: a 480px se estrujan, y
-   tenerlos en dos tamaños casi iguales solo daba a elegir sin criterio. */
+/* Dos anchos, y el criterio es el contenido, no el gusto:
+   --wide  para lo que lleva varias tablas, gráficas o una cascada de cálculo
+           (cotización, proyecto, turno de caja);
+   --md    para un detalle de una sola tabla, como una orden de compra: a 480px
+           se estruja, pero a 1180px queda medio vacío.
+   El salto entre 480 y 1180 era demasiado grande para un solo escalón. */
 .drawer--wide { width: min(1180px, 96vw); }
+.drawer--md { width: min(820px, 96vw); }
 .drawer-head {
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);
@@ -1927,11 +1931,15 @@ table.data-table tbody tr:hover td { background: var(--surface-2); }
 table.data-table tbody tr.clickable { cursor: pointer; }
 table.tbl tbody tr.clickable { cursor: pointer; }
 table.data-table tbody tr:last-child td { border-bottom: none; }
+/* Las celdas monoespaciadas iban a 13px contra los 14px del cuerpo de la
+   tabla. Una mono renderiza ópticamente más pequeña que una sans al mismo
+   tamaño, así que ese punto de diferencia se leía como dos y hacía que las
+   cifras —justo lo que uno viene a leer— parecieran letra chica. */
 table.data-table .num,
-table.data-table .right { text-align: right; font: 400 13px/20px var(--font-mono); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+table.data-table .right { text-align: right; font: 400 14px/20px var(--font-mono); letter-spacing: 0; font-variant-numeric: tabular-nums; }
 table.data-table .mono,
-table.tbl .mono { font: 400 13px/20px var(--font-mono); letter-spacing: 0; }
-table.tbl .right { text-align: right; font: 400 13px/20px var(--font-mono); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+table.tbl .mono { font: 400 14px/20px var(--font-mono); letter-spacing: 0; }
+table.tbl .right { text-align: right; font: 400 14px/20px var(--font-mono); letter-spacing: 0; font-variant-numeric: tabular-nums; }
 table.data-table .muted { color: var(--muted); }
 table.data-table .empty { text-align: center; padding: 28px; color: var(--muted); }
 table.tbl .empty { text-align: center; padding: 28px; color: var(--muted); }
