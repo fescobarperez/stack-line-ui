@@ -5,6 +5,7 @@ import Icon from '../components/Icon.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { listAuditLog } from '../api/wave2.js';
 import { useTranslation } from 'react-i18next';
+import { hoyISO } from '../lib/fechas.js';
 
 const Q = v => `Q ${v.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -36,7 +37,7 @@ const ACTION_LABEL = {
 const SEVERITY_CLASS = { info: 'info', success: 'success', warning: 'warning', danger: 'danger' };
 const SEVERITY_LABEL = { info: 'Info', success: 'OK', warning: 'Aviso', danger: 'Crítico' };
 
-const TODAY_DATE = new Date().toISOString().slice(0, 10);
+const TODAY_DATE = hoyISO();
 
 // Backend AuditLog → forma que usa el componente.
 function mapEntry(r) {

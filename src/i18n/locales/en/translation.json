@@ -268,7 +268,13 @@
     "paymentMethods": {
       "cash": "Cash",
       "card": "Card",
-      "transfer": "Transfer"
+      "creditCard": "Credit card",
+      "debitCard": "Debit card",
+      "transfer": "Transfer",
+      "deposit": "Deposit",
+      "check": "Check",
+      "credit": "Credit",
+      "mixed": "Mixed"
     },
     "amountReceived": "Amount received",
     "change": "Change",

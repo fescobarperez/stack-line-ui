@@ -14,11 +14,12 @@ import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
 import { useBankAccounts } from '../hooks/useOperations.js';
 import { createBankAccount, bankMovements, addBankMovement } from '../api/wave3.js';
+import { hoyISO } from '../lib/fechas.js';
 
 const Qf = (n) => 'Q ' + Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const USDf = (n) => '$ ' + Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmt = (a) => (a?.moneda === 'USD' ? USDf(a?.saldo) : Qf(a?.saldo));
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = hoyISO();
 
 // Backend AccountResponse → shape del componente.
 function mapAccount(a) {

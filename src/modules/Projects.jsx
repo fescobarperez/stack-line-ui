@@ -36,6 +36,7 @@ import useAuthorization from '../hooks/useAuthorization.js';
 import AuthorizationDialog from '../components/AuthorizationDialog.jsx';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { hoyISO } from '../lib/fechas.js';
 
 const Q = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 // El margen lo calcula el backend y aquí solo se lee. Antes se recalculaba
@@ -478,7 +479,7 @@ function PaymentModal({ project, onDone, onClose, pushToast }) {
         projectId: project.id,
         saleId: form.saleId ? Number(form.saleId) : null,
         amount,
-        paymentDate: form.paymentDate || new Date().toISOString().slice(0, 10),
+        paymentDate: form.paymentDate || hoyISO(),
         method: form.method,
         reference: form.reference || null,
         bankAccountId: form.bankAccountId ? Number(form.bankAccountId) : null,
@@ -651,7 +652,7 @@ function CreateProjectModal({ clients, onDone, onClose, pushToast }) {
     }
     setBusy(true);
     try {
-      await createProject({ name: form.name.trim(), clientId: Number(form.clientId), startDate: new Date().toISOString().slice(0, 10) });
+      await createProject({ name: form.name.trim(), clientId: Number(form.clientId), startDate: hoyISO() });
       pushToast?.('Proyecto creado', 'success');
       onDone();
     } catch (error) { pushToast?.(error.message, 'danger'); }

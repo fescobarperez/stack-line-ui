@@ -12,6 +12,7 @@ import { createPurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder } from '
 import { useSuppliers } from '../hooks/useMasters.js';
 import { useBranches } from '../hooks/useMasters.js';
 import { useProducts } from '../hooks/useCatalog.js';
+import { hoyISO } from '../lib/fechas.js';
 
 const STATUS_LABEL = { pending: 'Pendiente', partial: 'Parcial', received: 'Recibida', cancelled: 'Cancelada', draft: 'Borrador' };
 const STATUS_CLASS  = { pending: 'warning', partial: 'info', received: 'success', cancelled: 'neutral', draft: 'neutral' };
@@ -470,7 +471,7 @@ export default function Purchases({ pushToast }) {
         supplierId: supplierId ? Number(supplierId) : null,
         branchId: Number(branchId),
         projectId: projectId ? Number(projectId) : null,
-        orderDate: new Date().toISOString().slice(0, 10),
+        orderDate: hoyISO(),
         notes,
         items: items.map((item) => ({
           productId: Number(item.productId),

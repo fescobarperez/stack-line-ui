@@ -3026,6 +3026,10 @@ textarea.field-input { height: auto; min-height: var(--control-h); }
 .badge-m3 {
   display: inline-flex; align-items: center; gap: 4px;
   height: 24px; padding: 0 8px;
+  /* Alto fijo: si el texto envuelve, se sale de la píldora. Una insignia no
+     se parte en dos líneas, se queda en una o no cabe. */
+  white-space: nowrap;
+  flex-shrink: 0;
   border-radius: var(--shape-sm);
   font: 500 12px/16px var(--font-sans); letter-spacing: .5px;
   background: var(--md-sys-color-surface-container-highest);
@@ -4615,3 +4619,76 @@ table.tbl tfoot td {
 .mail-test-result.is-ok { color: var(--success); }
 .mail-test-result.is-fail { color: var(--danger); }
 .mail-test-result.is-warn { color: var(--warning); }
+
+/* ===== Tarjeta de caja abierta ===== */
+.caja-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+/* min-width:0 para que el título pueda recortarse: sin él, un nombre largo
+   empuja la insignia fuera de la tarjeta en vez de ceder. */
+.caja-card-title { min-width: 0; }
+.caja-card-title .nombre {
+  font: 500 16px/24px var(--font-sans); letter-spacing: .15px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.caja-card-title .detalle {
+  font: 400 12px/16px var(--font-sans); letter-spacing: .4px;
+  color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* La insignia mide 24px y el título 24px de interlineado: alineados arriba
+   quedan a la misma altura sin retoques. */
+.caja-card-cifras { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.caja-card-pie { display: flex; align-items: center; gap: 8px; }
+.caja-card-barra {
+  flex: 1; height: 4px; min-width: 60px;
+  background: var(--border); border-radius: 2px; overflow: hidden;
+}
+.caja-card-barra > span { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+
+/* ── Detalle del turno de caja ───────────────────────────────────────────────
+   La tarjeta de caja abierta es clicable: abre el drawer con el detalle. */
+.caja-card--click { cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+.caja-card--click:hover { border-color: var(--accent); box-shadow: 0 2px 10px rgba(0, 0, 0, .07); }
+.caja-card--click:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.turno-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.turno-cifra {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+}
+.turno-cifra > span {
+  display: block;
+  font-size: 11px;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.turno-cifra > strong { font-size: 18px; font-weight: 400; }
+
+.turno-esperado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent-soft, rgba(0, 0, 0, .03));
+}
+.turno-esperado span { display: block; font-weight: 500; }
+.turno-esperado small { display: block; color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+.turno-esperado strong { font-size: 22px; font-weight: 400; white-space: nowrap; }

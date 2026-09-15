@@ -16,6 +16,7 @@ import { createBranch, updateBranch } from '../api/org.js';
 import { createSupplier, updateSupplier } from '../api/partners.js';
 import { listCategories, createCategory, updateCategory } from '../api/catalog.js';
 import { listChargeCategories, createChargeCategory, updateChargeCategory } from '../api/wave2.js';
+import { listCashPoints, createCashPoint, updateCashPoint } from '../api/pos.js';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PERM_SECTIONS } from '../lib/permissions.js';
@@ -39,6 +40,7 @@ const CATALOGOS = [
   { id: 'proveedores', modulo: 'purchases', form: 'proveedor', label: 'Proveedores',     addLabel: 'Agregar proveedor' },
   { id: 'sucursales',  modulo: 'config',    form: 'sucursal',  label: 'Sucursales',      addLabel: 'Agregar sucursal' },
   { id: 'gastos',      modulo: 'quotes',    form: 'gasto',    label: 'Conceptos de gasto', addLabel: 'Agregar concepto' },
+  { id: 'cajas',       modulo: 'cash',      form: 'caja',     label: 'Cajas',              addLabel: 'Agregar caja' },
   { id: 'impuestos',   modulo: 'fel',                          label: 'Impuestos & SAT' },
 ];
 
@@ -84,6 +86,20 @@ const FORMS = {
     empty: { name: '', nit: '', contact: '', phone: '', paymentTerms: '', status: 'active' },
     toForm: (s) => ({ name: s.name || '', nit: s.nit || '', contact: s.contact || '', phone: s.phone || '', paymentTerms: s.paymentTerms || '', status: s.status || 'active' }),
     toPayload: (f) => ({ name: f.name.trim(), nit: f.nit || null, contact: f.contact || null, phone: f.phone || null, paymentTerms: f.paymentTerms || null, balance: 0, status: f.status }),
+  },
+  caja: {
+    title: 'Caja',
+    fields: [
+      { key: 'code', label: 'Código', required: true, placeholder: 'CAJA-01' },
+      { key: 'name', label: 'Nombre', required: true, placeholder: 'Caja principal' },
+      { key: 'branchId', label: 'Sucursal', type: 'branch', required: true },
+      { key: 'status', label: 'Estado', type: 'select', options: [['active', 'Activa'], ['inactive', 'Inactiva']] },
+    ],
+    empty: { code: '', name: '', branchId: '', status: 'active' },
+    toForm: (c) => ({ code: c.code || '', name: c.name || '',
+                      branchId: c.branchId != null ? String(c.branchId) : '', status: c.status || 'active' }),
+    toPayload: (f) => ({ code: f.code.trim(), name: f.name.trim(),
+                         branchId: Number(f.branchId), status: f.status }),
   },
   gasto: {
     title: 'Concepto de gasto',
@@ -148,6 +164,15 @@ function MaintenanceModule({ pushToast }) {
   }, []);
   useEffect(() => { reloadGastos(); }, [reloadGastos]);
 
+  const [cajas, setCajas] = useState([]);
+  const reloadCajas = useCallback(async () => {
+    try {
+      const rows = await listCashPoints();
+      setCajas(Array.isArray(rows) ? rows : []);
+    } catch { setCajas([]); }
+  }, []);
+  useEffect(() => { reloadCajas(); }, [reloadCajas]);
+
   // modal = { type, mode:'new'|'edit', id }
   const [modal, setModal] = useState(null);
 
@@ -157,6 +182,7 @@ function MaintenanceModule({ pushToast }) {
       proveedor: { create: createSupplier, update: updateSupplier, reload: reloadSuppliers },
       categoria: { create: createCategory, update: updateCategory, reload: reloadCategories },
       gasto: { create: createChargeCategory, update: updateChargeCategory, reload: reloadGastos },
+      caja: { create: createCashPoint, update: updateCashPoint, reload: reloadCajas },
     }[type];
     try {
       if (id != null) await api.update(id, payload);
@@ -184,6 +210,19 @@ function MaintenanceModule({ pushToast }) {
     { key: 'icon', header: '', width: 44, render: (c) => <span className="maint-cat-icon">{c.icon || '📦'}</span> },
     { key: 'name', header: t('common.name', 'Nombre'), sortable: true, render: (c) => <span className="nm">{c.name}</span> },
     { key: 'id', header: t('common.code', 'Código'), render: (c) => <span className="sku">{String(c.id).toUpperCase()}</span> },
+  ];
+  const cajaColumns = [
+    { key: 'code', header: t('common.code', 'Código'), sortable: true, render: (c) => <span className="sku">{c.code}</span> },
+    { key: 'name', header: t('common.name', 'Nombre'), sortable: true, render: (c) => <span className="nm">{c.name}</span> },
+    { key: 'branchName', header: t('common.branch', 'Sucursal'), sortable: true, render: (c) => c.branchName || '—' },
+    // Quién la tiene tomada ahora: es la razón por la que no aparece libre
+    // al abrir un turno, y sin esto habría que adivinarlo.
+    { key: 'openSessionId', header: t('cash.inUse', 'En uso'), render: (c) => c.openSessionId
+      ? <span className="badge-m3 warning">{c.openUserName || 'Turno abierto'}</span>
+      : <span className="muted">—</span> },
+    { key: 'status', header: t('common.status', 'Estado'), sortable: true, render: (c) => c.status === 'inactive'
+      ? <span className="badge-m3">Inactiva</span>
+      : <span className="badge-m3 success">Activa</span> },
   ];
   const gastoColumns = [
     { key: 'name', header: t('common.name', 'Nombre'), sortable: true, render: (g) => <span className="nm">{g.name}</span> },
@@ -213,6 +252,7 @@ function MaintenanceModule({ pushToast }) {
     proveedores: suppliers.length,
     categorias: catalogCategories.length,
     gastos: gastos.length,
+    cajas: cajas.length,
   };
 
   // El cuerpo de cada catálogo; la cabecera y el botón de agregar son genéricos.
@@ -249,6 +289,24 @@ function MaintenanceModule({ pushToast }) {
         onEdit={(c) => setModal({ type: 'categoria', mode: 'edit', id: c.id, data: c })}
         empty={t('maintenance.noCategories', 'Sin categorías')}
       />
+    );
+    if (id === 'cajas') return (
+      <>
+        <DataTable
+          rowKey={(c) => c.id}
+          columns={cajaColumns}
+          rows={cajas}
+          density="compact"
+          pageSize={12}
+          onEdit={(c) => setModal({ type: 'caja', mode: 'edit', id: c.id, data: c })}
+          empty={t('cash.noCashPoints', 'Sin cajas registradas')}
+        />
+        <div className="cfg-hint" style={{ marginTop: 12 }}>
+          Una caja con un turno abierto no se puede eliminar hasta cerrarlo, y una con turnos
+          registrados tampoco: su historial la ancla. Para sacarla de circulación, márcala como
+          inactiva y dejará de ofrecerse al abrir turno.
+        </div>
+      </>
     );
     if (id === 'gastos') return (
       <>
@@ -350,6 +408,7 @@ function MaintenanceModule({ pushToast }) {
       {modal && (
         <CatalogModal
           spec={FORMS[modal.type]}
+          branches={branches}
           initial={modal.mode === 'edit' ? FORMS[modal.type].toForm(modal.data) : FORMS[modal.type].empty}
           isEdit={modal.mode === 'edit'}
           onClose={() => setModal(null)}
@@ -361,7 +420,7 @@ function MaintenanceModule({ pushToast }) {
 }
 
 // ── Modal genérico de catálogo ────────────────────────────────────────────────
-function CatalogModal({ spec, initial, isEdit, onClose, onSave }) {
+function CatalogModal({ spec, initial, isEdit, branches, onClose, onSave }) {
   const { t } = useTranslation();
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
@@ -382,7 +441,11 @@ function CatalogModal({ spec, initial, isEdit, onClose, onSave }) {
             {spec.fields.map((f) => (
               <div className="field span-2" key={f.key}>
                 <label className="field-label">{f.label}{f.required ? ' *' : ''}</label>
-                {f.type === 'select' ? (
+                {f.type === 'branch' ? (
+                  <Autocomplete value={form[f.key]} onChange={(id) => set(f.key, id == null ? '' : String(id))}
+                    options={(branches || []).map((b) => ({ id: b.id, name: b.name }))}
+                    placeholder="Seleccionar sucursal…" emptyText="Sin sucursales" aria-label={f.label} />
+                ) : f.type === 'select' ? (
                   <Autocomplete value={form[f.key]} onChange={(id) => set(f.key, id == null ? '' : String(id))}
                     options={f.options.map(([v, l]) => ({ id: v, name: l }))}
                     allowClear={false} emptyText="Sin opciones" aria-label={f.label} />

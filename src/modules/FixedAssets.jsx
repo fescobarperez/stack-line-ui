@@ -20,6 +20,7 @@ const DISPOSAL_KEYS = {
   loss:  'asset_disposal.loss_account',
 };
 import { useTranslation } from 'react-i18next';
+import { hoyISO } from '../lib/fechas.js';
 
 const Q  = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const pct = (n) => `${((n || 0) * 100).toFixed(2)}%`;
@@ -189,7 +190,7 @@ export default function FixedAssets({ pushToast }) {
     setBajaBusy(true);
     try {
       const res = await disposeAsset(showBaja.apiId, {
-        disposalDate: new Date().toISOString().slice(0, 10),
+        disposalDate: hoyISO(),
         notes: `Baja: ${bajaReason}`,
       });
       await reload();

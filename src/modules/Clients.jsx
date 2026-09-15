@@ -11,6 +11,7 @@ import { useClients } from '../hooks/useMasters.js';
 import { createClient, updateClient } from '../api/partners.js';
 import { createPayment } from '../api/receivables.js';
 import { usePayments } from '../hooks/useOperations.js';
+import { hoyISO } from '../lib/fechas.js';
 
 const TYPE_LABEL = { CF: 'CF', minorista: 'Minorista', mayorista: 'Mayorista', exento: 'Exento' };
 const STATUS_LABEL = { active: 'Activo', inactive: 'Inactivo', blocked: 'Bloqueado' };
@@ -377,7 +378,7 @@ export default function Clients({ pushToast }) {
       await createPayment({
         clientId: selected.id,
         amount,
-        paymentDate: form.paymentDate || new Date().toISOString().slice(0, 10),
+        paymentDate: form.paymentDate || hoyISO(),
         method: form.paymentMethod,
         reference: form.reference || null,
         notes: form.notes || null,

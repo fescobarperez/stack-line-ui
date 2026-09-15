@@ -10,6 +10,7 @@ import { useAccounts } from '../hooks/useAccounting.js';
 import { createPayment } from '../api/receivables.js';
 import { printReceipt } from '../lib/receipt.js';
 import { useTranslation } from 'react-i18next';
+import { hoyISO } from '../lib/fechas.js';
 
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const BUCKET_ORDER = ['current', '1-30', '31-60', '61-90', '90+'];
@@ -68,7 +69,7 @@ export default function CxC({ pushToast }) {
         method: payForm.method, reference: payForm.reference || null,
         bankAccountId: payForm.bankAccountId ? Number(payForm.bankAccountId) : null,
         cashAccountId: payForm.cashAccountId ? Number(payForm.cashAccountId) : null,
-        paymentDate: new Date().toISOString().slice(0, 10),
+        paymentDate: hoyISO(),
       });
       await Promise.all([reloadAging(), reloadPayments()]);
       pushToast(`Abono de ${Q(amt)} registrado`, 'success');

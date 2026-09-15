@@ -12,6 +12,7 @@ import { useProducts, useCategories } from '../hooks/useCatalog.js';
 import SupplierPriceModal from '../components/SupplierPriceModal.jsx';
 import { useSuppliers, useBranches } from '../hooks/useMasters.js';
 import { useStockMovements } from '../hooks/useOperations.js';
+import { fechaISO } from '../lib/fechas.js';
 
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const Qs = Q;
@@ -38,7 +39,7 @@ function InventoryModule({ pushToast }) {
   const { items: movementsRaw } = useStockMovements();
   // Kardex: mapea los movimientos del backend a la forma de la vista.
   const STOCK_MOVEMENTS = useMemoInv(() => movementsRaw.map((m) => ({
-    date: m.createdAt ? new Date(m.createdAt).toISOString().slice(0, 10) : '',
+    date: m.createdAt ? fechaISO(m.createdAt) : '',
     type: m.movementType,
     sku: String(m.productId ?? ''),
     name: m.productName,

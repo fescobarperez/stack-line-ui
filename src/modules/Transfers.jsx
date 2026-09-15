@@ -9,6 +9,7 @@ import { useBranches } from '../hooks/useMasters.js';
 import { useProducts } from '../hooks/useCatalog.js';
 import { createTransfer, dispatchTransfer, receiveTransfer } from '../api/transfers.js';
 import { useTranslation } from 'react-i18next';
+import { hoyISO } from '../lib/fechas.js';
 
 // Backend Transfer.Response → forma de la UI. Si ya es shape de UI (fallback mock), lo deja igual.
 function mapTransfer(r) {
@@ -306,7 +307,7 @@ export default function Transfers({ pushToast }) {
     try {
       await createTransfer({
         fromBranchId, toBranchId, transporter: transporter || null,
-        transferDate: new Date().toISOString().slice(0, 10), items: lines,
+        transferDate: hoyISO(), items: lines,
       });
       await reload();
       setShowNew(false);

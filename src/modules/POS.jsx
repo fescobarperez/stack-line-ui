@@ -13,6 +13,7 @@ import AuthorizationDialog from '../components/AuthorizationDialog.jsx';
 import { createSale } from '../api/pos.js';
 import React, { useState as useStatePOS, useMemo as useMemoPOS, useEffect as useEffectPOS } from 'react';
 import { useTranslation } from 'react-i18next';
+import { hoyISO } from '../lib/fechas.js';
 
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const EMPTY_PROMOS = { promotions: [], lines: [], totalDiscount: 0 };
@@ -30,7 +31,7 @@ function POSModule({ pushToast }) {
   // a secas: cogía cualquier turno abierto, incluido el que quedó de ayer, y las
   // ventas de hoy se acumulaban en el arqueo de ese día.
   const user  = useMemoPOS(() => sessionUser(), []);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyISO();
   const openRegister = useMemoPOS(
     () => registers.find((r) => r.status === 'open' && r.userId === user?.id && r.businessDate === today),
     [registers, user, today],

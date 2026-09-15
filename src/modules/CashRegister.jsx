@@ -1,16 +1,18 @@
 // Stackline — Módulo de Cierre de Caja
 // Data-driven: /api/cash-registers (open/close). El backend calcula ventas/efectivo/
 // tarjeta/diferencia a partir de las ventas de la caja.
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useCashRegisters, useCashPoints, usePendingRegisters } from '../hooks/useOperations.js';
 import { useBranches } from '../hooks/useMasters.js';
-import { openCashRegister, closeCashRegister } from '../api/pos.js';
+import { openCashRegister, closeCashRegister, getCashRegisterDetail } from '../api/pos.js';
 import { sessionUser } from '../api/auth.js';
 import { useTranslation } from 'react-i18next';
+import { hoyISO } from '../lib/fechas.js';
+import { etiquetaMetodoPago } from '../lib/pagos.js';
 
 function fmt(n) { return `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
 
@@ -33,6 +35,9 @@ function mapRegister(r, user) {
     businessDate: r.businessDate || null,
     cashier,
     openedAt: fmtDateTime(r.openedAt) || '',
+    // El instante crudo: recalcular desde el texto formateado pierde el día
+    // y rompe cualquier turno que cruce la medianoche.
+    openedAtISO: r.openedAt || null,
     closedAt: fmtDateTime(r.closedAt),
     openingAmount: Number(r.openingAmount || 0),
     closingAmount: r.closingAmount != null ? Number(r.closingAmount) : null,
@@ -197,26 +202,190 @@ function CloseModal({ register, onSave, onClose }) {
   );
 }
 
-// ── Tarjeta de caja abierta ──────────────────────────────────────────────────
-function CajaCard({ register, onClose }) {
+/**
+ * Detalle de un turno abierto.
+ *
+ * Lo que un supervisor quiere saber sin ir al POS: cuánto lleva vendido, por
+ * qué medio entró, cuánto debería haber en la gaveta si cerrara ahora y qué
+ * ventas lo componen.
+ */
+function TurnoDrawer({ register, onClose, onCerrar }) {
   const { t } = useTranslation();
-  const elapsed = (() => {
-    const [h, m] = register.openedAt.split(' ')[1].split(':').map(Number);
-    const now = new Date();
-    const diffMin = (now.getHours() * 60 + now.getMinutes()) - (h * 60 + m);
-    return diffMin < 60 ? `${diffMin} min` : `${Math.floor(diffMin / 60)}h ${diffMin % 60}min`;
-  })();
+  const [datos, setDatos] = useState(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    let vigente = true;
+    setCargando(true);
+    getCashRegisterDetail(register.id)
+      .then((d) => { if (vigente) setDatos(d); })
+      .catch(() => { if (vigente) setDatos(null); })
+      .finally(() => { if (vigente) setCargando(false); });
+    return () => { vigente = false; };
+  }, [register.id]);
+
+  const r = datos?.register;
+  const cifra = (etiqueta, valor, tono) => (
+    <div className="turno-cifra">
+      <span>{etiqueta}</span>
+      <strong className="mono" style={tono ? { color: tono } : undefined}>{valor}</strong>
+    </div>
+  );
 
   return (
-    <div className="stat-card" style={{ position: 'relative' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-        <div>
-          <div style={{ fontWeight: 500, fontSize: 16 }}>{register.branch} · {register.cashPoint}</div>
-          <div className="muted" style={{ fontSize: 12 }}>{register.cashier} · {t('cash.since', 'desde')} {register.openedAt.split(' ')[1]}</div>
+    <>
+      <div className="drawer-overlay" onClick={onClose} />
+      <div className="drawer drawer--wide">
+        <div className="drawer-head">
+          <div>
+            <div className="drawer-title">{register.branch} · {register.cashPoint}</div>
+            <div className="muted body-small">
+              {register.cashier} · {t('cash.since', 'desde')} {register.openedAt}
+            </div>
+          </div>
+          <button className="icon-btn" onClick={onClose} aria-label={t('common.close', 'Cerrar')}>
+            <Icon name="close" />
+          </button>
         </div>
-        <span className="badge-m3 success">{t('cash.open', 'Abierta')} · {elapsed}</span>
+
+        <div className="drawer-body">
+          {cargando && <div className="muted body-small">{t('common.loading', 'Cargando…')}</div>}
+
+          {!cargando && !datos && (
+            <div className="empty" style={{ padding: 20 }}>
+              {t('cash.detailFailed', 'No se pudo cargar el detalle del turno.')}
+            </div>
+          )}
+
+          {!cargando && datos && (<>
+            <div className="turno-grid">
+              {cifra(t('cash.opening', 'Fondo de apertura'), fmt(r.openingAmount))}
+              {cifra(t('cash.shiftSales', 'Ventas del turno'), fmt(r.salesTotal))}
+              {cifra(t('cash.tickets', 'Tickets'), datos.ticketCount)}
+              {cifra(t('cash.avgTicket', 'Ticket promedio'), fmt(datos.averageTicket))}
+            </div>
+
+            <div className="quote-subsection-title" style={{ marginTop: 18 }}>
+              {t('cash.byMethod', 'Por medio de pago')}
+            </div>
+            <div className="turno-grid">
+              {cifra(t('cash.cash', 'Efectivo'), fmt(r.salesCash))}
+              {cifra(t('cash.card', 'Tarjeta'), fmt(r.salesCard))}
+              {cifra(t('cash.otherMethods', 'Otros medios'), fmt(datos.otherTotal))}
+              {cifra(t('cash.refunds', 'Devoluciones'), fmt(r.refunds))}
+            </div>
+
+            {/* La cifra que de verdad importa al cerrar: contra esto se compara
+                el dinero contado en la gaveta. */}
+            <div className="turno-esperado">
+              <div>
+                <span>{t('cash.expectedCash', 'Efectivo esperado en caja')}</span>
+                <small>
+                  {t('cash.expectedHint', 'Fondo de apertura + efectivo vendido − devoluciones')}
+                </small>
+              </div>
+              <strong className="mono">{fmt(datos.expectedCash)}</strong>
+            </div>
+
+            <div className="cfg-hint" style={{ marginTop: 12 }}>
+              {t('cash.creditHint', 'Las ventas al crédito no entran: de esas no ingresó dinero a la gaveta. Se contarán cuando se cobren, con su propio recibo.')}
+            </div>
+
+            <div className="quote-subsection-title" style={{ marginTop: 18 }}>
+              {t('cash.lastSales', 'Últimas ventas')}
+            </div>
+            <table className="mtable">
+              <thead><tr>
+                <th>{t('cash.doc', 'Documento')}</th>
+                <th>{t('common.date', 'Fecha')}</th>
+                <th>{t('projects.method', 'Método')}</th>
+                <th className="r">{t('projects.amount', 'Monto')}</th>
+              </tr></thead>
+              <tbody>
+                {(datos.lastSales || []).length === 0 && (
+                  <tr><td colSpan={4}><div className="empty" style={{ padding: 16 }}>
+                    {t('cash.noSales', 'Sin ventas en este turno')}
+                  </div></td></tr>
+                )}
+                {(datos.lastSales || []).map((v) => (
+                  <tr key={v.id}>
+                    <td><span className="sku">{v.docNumber}</span></td>
+                    <td className="muted">{fmtDateTime(v.createdAt)}</td>
+                    <td><span className="badge-m3">{etiquetaMetodoPago(v.paymentMethod, t)}</span></td>
+                    <td className="r num">{fmt(v.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {datos.ticketCount > (datos.lastSales || []).length && (
+              <div className="muted body-small" style={{ marginTop: 8 }}>
+                {t('cash.showingLast', 'Mostrando las últimas')} {(datos.lastSales || []).length} {t('common.of', 'de')} {datos.ticketCount}.
+              </div>
+            )}
+          </>)}
+        </div>
+
+        <div className="drawer-foot">
+          <Button onClick={onClose}>{t('common.close', 'Cerrar')}</Button>
+          <Button icon="x" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+            onClick={() => { onClose(); onCerrar(register); }}>
+            {t('cash.close', 'Cerrar caja')}
+          </Button>
+        </div>
       </div>
-      <div style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
+    </>
+  );
+}
+
+// ── Tarjeta de caja abierta ──────────────────────────────────────────────────
+function CajaCard({ register, onClose, onOpenDetail }) {
+  const { t } = useTranslation();
+  // El transcurrido se recalcula solo. Antes se computaba una vez al renderizar
+  // y se quedaba congelado en «0 min» hasta que algo más provocara otro render.
+  const [ahora, setAhora] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setAhora(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  /**
+   * Antes salía de la hora del TEXTO ya formateado y solo con hora y minuto:
+   * un turno abierto a las 22:00 y visto a las 08:00 daba −840 min. Ahora se
+   * calcula sobre el instante real que manda el backend.
+   */
+  const elapsed = (() => {
+    if (!register.openedAtISO) return null;
+    const inicio = new Date(register.openedAtISO).getTime();
+    if (Number.isNaN(inicio)) return null;
+    const min = Math.max(0, Math.floor((ahora - inicio) / 60000));
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60);
+    return h < 24 ? `${h} h ${min % 60} min` : `${Math.floor(h / 24)} d ${h % 24} h`;
+  })();
+
+  // La tarjeta entera abre el detalle; el botón de cerrar caja detiene la
+  // propagación para que un solo clic no haga las dos cosas.
+  return (
+    <div
+      className="stat-card caja-card--click"
+      style={{ position: 'relative' }}
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpenDetail(register)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDetail(register); } }}
+    >
+      <div className="caja-card-head">
+        <div className="caja-card-title">
+          <div className="nombre" title={`${register.branch} · ${register.cashPoint}`}>
+            {register.branch} · {register.cashPoint}
+          </div>
+          <div className="detalle">
+            {register.cashier} · {t('cash.since', 'desde')} {register.openedAt.split(' ')[1] || register.openedAt}
+          </div>
+        </div>
+        <span className="badge-m3 success">{t('cash.open', 'Abierta')}{elapsed ? ` · ${elapsed}` : ''}</span>
+      </div>
+      <div className="caja-card-cifras">
         <div>
           <div className="label" style={{ fontSize: 11 }}>{t('cash.shiftSales', 'Ventas turno')}</div>
           <div className="mono" style={{ fontWeight: 400, fontSize: 22 }}>{fmt(register.salesTotal)}</div>
@@ -230,11 +399,11 @@ function CajaCard({ register, onClose }) {
           <div className="mono" style={{ fontSize: 16 }}>{fmt(register.salesCard)}</div>
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${Math.min(100, (register.salesTotal / 20000) * 100)}%`, background: 'var(--accent)', borderRadius: 2 }} />
+      <div className="caja-card-pie">
+        <div className="caja-card-barra">
+          <span style={{ width: `${Math.min(100, (register.salesTotal / 20000) * 100)}%` }} />
         </div>
-        <Button icon="x" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => onClose(register)}>{t('cash.close', 'Cerrar caja')}
+        <Button icon="x" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={(e) => { e.stopPropagation(); onClose(register); }}>{t('cash.close', 'Cerrar caja')}
         </Button>
       </div>
     </div>
@@ -253,6 +422,7 @@ export default function CashRegister({ pushToast }) {
   const [tab, setTab]             = useState('turno');
   const [showOpen, setShowOpen]   = useState(false);
   const [closing, setClosing]     = useState(null);
+  const [detalle, setDetalle]     = useState(null);
   const [histSearch, setSearch]   = useState('');
 
   const openRegisters  = useMemo(() => registers.filter(r => r.status === 'open'), [registers]);
@@ -348,7 +518,7 @@ export default function CashRegister({ pushToast }) {
         <StatCard
           icon="receipt" tone="sec"
           label={t('cash.closuresToday', 'Cortes hoy')}
-          value={closedRegisters.filter(r => r.closedAt?.startsWith(new Date().toISOString().slice(0, 10))).length}
+          value={closedRegisters.filter(r => r.closedAt?.startsWith(hoyISO())).length}
           foot={t('cash.dayClosures', 'Cierres del día')}
         />
         <StatCard
@@ -383,7 +553,7 @@ export default function CashRegister({ pushToast }) {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
               {openRegisters.map(r => (
-                <CajaCard key={r.id} register={r} onClose={setClosing} />
+                <CajaCard key={r.id} register={r} onClose={setClosing} onOpenDetail={setDetalle} />
               ))}
             </div>
           )}
@@ -445,6 +615,10 @@ export default function CashRegister({ pushToast }) {
 
       {showOpen && (
         <OpenModal cashPoints={cashPoints} onSave={handleOpen} onClose={() => setShowOpen(false)} />
+      )}
+
+      {detalle && (
+        <TurnoDrawer register={detalle} onClose={() => setDetalle(null)} onCerrar={setClosing} />
       )}
 
       {closing && (

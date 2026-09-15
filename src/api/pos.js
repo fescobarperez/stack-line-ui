@@ -14,6 +14,8 @@ export const listPendingRegisters = () => api.get('/api/cash-registers/pending')
 // un cajero a la vez, y `openSessionId` dice si está tomada ahora mismo.
 export const listCashPoints = (branchId) =>
   api.get(`/api/cash-points${branchId ? `?branchId=${encodeURIComponent(branchId)}` : ''}`);
+/** Detalle de un turno: cifras derivadas y sus ultimas ventas. */
+export const getCashRegisterDetail = (id) => api.get(`/api/cash-registers/${id}/detail`);
 export const createCashPoint = (data) => api.post('/api/cash-points', data);
 export const updateCashPoint = (id, data) => api.put(`/api/cash-points/${id}`, data);
 export const deleteCashPoint = (id) => api.del(`/api/cash-points/${id}`);

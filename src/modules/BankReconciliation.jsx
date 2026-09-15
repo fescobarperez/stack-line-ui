@@ -10,6 +10,7 @@ import Button from '../components/Button.jsx';
 import { useBankAccounts } from '../hooks/useOperations.js';
 import { bankMovements, bankReconciliations, reconcileBank } from '../api/wave3.js';
 import { useTranslation } from 'react-i18next';
+import { hoyISO } from '../lib/fechas.js';
 
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -20,7 +21,7 @@ export default function BankReconciliation({ pushToast }) {
   const [movements, setMovements] = useState([]);
   const [recs, setRecs] = useState([]);
   const [showRec, setShowRec] = useState(false);
-  const [recForm, setRecForm] = useState({ statementDate: new Date().toISOString().slice(0, 10), bankBalance: '', notes: '' });
+  const [recForm, setRecForm] = useState({ statementDate: hoyISO(), bankBalance: '', notes: '' });
 
   useEffect(() => { if (accountId == null && accounts.length) setAccountId(accounts[0].id); }, [accounts, accountId]);
 
@@ -48,7 +49,7 @@ export default function BankReconciliation({ pushToast }) {
       await reconcileBank(accountId, { statementDate: recForm.statementDate, bankBalance: bal, notes: recForm.notes || null });
       await loadDetail();
       setShowRec(false);
-      setRecForm({ statementDate: new Date().toISOString().slice(0, 10), bankBalance: '', notes: '' });
+      setRecForm({ statementDate: hoyISO(), bankBalance: '', notes: '' });
       pushToast?.('Conciliación registrada', 'success');
     } catch (err) {
       pushToast?.('No se pudo conciliar: ' + err.message, 'danger');

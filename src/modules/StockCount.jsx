@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useStockCounts, mapSession } from '../hooks/useStockCount.js';
 import { useBranches } from '../hooks/useMasters.js';
 import { createStockCount, saveStockCountCounts, closeStockCount, getStockCount } from '../api/wave2.js';
+import { hoyISO } from '../lib/fechas.js';
 
 const Q = v => `Q ${v.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -445,7 +446,7 @@ export default function StockCount({ pushToast }) {
 // ── Modal: nueva sesión de conteo ─────────────────────────────────────────────
 function NewSessionModal({ branches = [], onClose, onSave }) {
   const { t } = useTranslation();
-  const [date,        setDate]        = useState(new Date().toISOString().slice(0, 10));
+  const [date,        setDate]        = useState(hoyISO());
   const [branchId,    setBranchId]    = useState('');
   const [category,    setCategory]    = useState('all');
   const [responsible, setResponsible] = useState('');

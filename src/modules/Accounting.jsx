@@ -9,6 +9,7 @@ import DataTable from '../components/DataTable.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useAccounts, useJournalEntries, usePeriods } from '../hooks/useAccounting.js';
 import { createAccount, createJournalEntry } from '../api/accounting.js';
+import { hoyISO } from '../lib/fechas.js';
 
 const LEVEL_INDENT = { 1: 0, 2: 16, 3: 32, 4: 48, 5: 64 };
 // Jerarquía del árbol de cuentas sobre la escala M3: con solo dos pesos (400/500)
@@ -107,7 +108,7 @@ function NewEntryModal({ accounts, periods, onSave, onClose }) {
   const { t } = useTranslation();
   const leafAccounts = accounts.filter(a => a.allowsEntries);
   const openPeriod   = periods.find(p => p.status === 'open');
-  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), periodId: openPeriod?.id || '', description: '', reference: '' });
+  const [form, setForm] = useState({ date: hoyISO(), periodId: openPeriod?.id || '', description: '', reference: '' });
   const [lines, setLines] = useState([
     { accountCode: '', debit: '', credit: '', description: '' },
     { accountCode: '', debit: '', credit: '', description: '' },

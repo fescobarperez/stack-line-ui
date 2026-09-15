@@ -16,6 +16,7 @@ import { getQuotePlan, getQuoteCharges, addQuotePaymentTerm, deleteQuotePaymentT
 import { createPayment } from '../api/receivables.js';
 import { useTranslation } from 'react-i18next';
 import { useTaxRate } from '../hooks/useOperations.js';
+import { hoyISO } from '../lib/fechas.js';
 
 const Q = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -32,7 +33,7 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
     installments: '3',
     frequency: 'mensual',
     everyDays: '30',
-    startDate: new Date().toISOString().slice(0, 10),
+    startDate: hoyISO(),
     advanceCalcType: 'percent',
     advanceValue: '',
   });
@@ -156,7 +157,7 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
         projectId: quote.projectId || null,
         quoteId,
         amount,
-        paymentDate: new Date().toISOString().slice(0, 10),
+        paymentDate: hoyISO(),
         method: pay.method,
         reference: pay.reference || null,
       });

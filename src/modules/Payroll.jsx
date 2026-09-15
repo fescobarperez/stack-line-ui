@@ -8,6 +8,7 @@ import StatCard from '../components/StatCard.jsx';
 import { useTranslation } from 'react-i18next';
 import { useEmployees, usePayrollPeriods } from '../hooks/usePayroll.js';
 import { generatePayroll, closePayroll, payrollIgssReport, payrollIsrReport, createEmployee } from '../api/wave3.js';
+import { hoyISO } from '../lib/fechas.js';
 
 const Q = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -827,7 +828,7 @@ function NewEmployeeModal({ onClose, onSave }) {
   const [dept, setDept]     = useState(DEPARTAMENTOS[0]);
   const [pos, setPos]       = useState(PUESTOS_BY_DEPT[DEPARTAMENTOS[0]][0]);
   const [salary, setSalary] = useState('');
-  const [hired, setHired]   = useState(new Date().toISOString().slice(0, 10));
+  const [hired, setHired]   = useState(hoyISO());
   const [dpi, setDpi]       = useState('');
   const [nit, setNit]       = useState('');
   const [banco, setBanco]   = useState('');

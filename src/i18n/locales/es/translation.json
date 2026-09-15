@@ -268,7 +268,13 @@
     "paymentMethods": {
       "cash": "Efectivo",
       "card": "Tarjeta",
-      "transfer": "Transferencia"
+      "creditCard": "Tarjeta de crédito",
+      "debitCard": "Tarjeta de débito",
+      "transfer": "Transferencia",
+      "deposit": "Depósito",
+      "check": "Cheque",
+      "credit": "Crédito",
+      "mixed": "Mixto"
     },
     "amountReceived": "Monto recibido",
     "change": "Cambio",

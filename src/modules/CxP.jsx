@@ -9,6 +9,7 @@ import { usePurchaseInvoices, useSupplierPayments } from '../hooks/useOperations
 import { useSuppliers } from '../hooks/useMasters.js';
 import { createSupplierPayment } from '../api/wave2.js';
 import { useTranslation } from 'react-i18next';
+import { hoyISO } from '../lib/fechas.js';
 
 const Q = v => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const TODAY = new Date();
@@ -135,7 +136,7 @@ export default function CxP({ pushToast }) {
         supplierId: payModal.supplierId,
         purchaseInvoiceId: payModal.apiId,
         amount: amt,
-        paymentDate: new Date().toISOString().slice(0, 10),
+        paymentDate: hoyISO(),
         method,
         reference: reference || null,
         notes: `Pago a ${payModal.id}`,

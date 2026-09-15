@@ -9,6 +9,7 @@ import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { usePromotions } from '../hooks/useMarketing.js';
 import { createPromotion, updatePromotion } from '../api/marketing.js';
+import { fechaISO } from '../lib/fechas.js';
 
 const Q   = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const Qs  = (n) => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 0,  maximumFractionDigits: 0  })}`;
@@ -34,7 +35,7 @@ const CATEGORIES   = ['Abarrotes', 'Bebidas', 'Lácteos', 'Limpieza', 'Higiene',
 
 // Datos reales del backend vía usePromotions. Helpers de fecha para el wizard.
 const TODAY = new Date();
-const fmtDate = (d) => d.toISOString().slice(0,10);
+const fmtDate = (d) => fechaISO(d);
 const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate()+n); return r; };
 
 const STATUS_CFG = {
