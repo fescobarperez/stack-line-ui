@@ -282,10 +282,20 @@ function ProjectMaterialTree({ project, plan, groups, onCreateGroup, onAddMateri
     return Number.isFinite(groupId) ? groupId : undefined;
   };
   const moveMaterialsToGroup = async (materialIds, groupId) => {
+    const targetId = groupId ? Number(groupId) : null;
+    const currentGroupByMaterial = new Map();
+    ungrouped.forEach((material) => currentGroupByMaterial.set(String(material.id), null));
+    groups.forEach((group) => (group.materials || []).forEach((material) => {
+      currentGroupByMaterial.set(String(material.id), Number(group.id));
+    }));
+    const changedIds = materialIds.filter((materialId) =>
+      currentGroupByMaterial.get(String(materialId)) !== targetId,
+    );
+    if (!changedIds.length) return;
     setBusy(true);
     try {
-      for (const materialId of materialIds) await moveProjectMaterial(project.id, materialId, groupId ? Number(groupId) : null);
-      pushToast?.(`${materialIds.length} material(es) movido(s)${groupId ? ' al folder' : ' a Raíz'}`, 'success');
+      for (const materialId of changedIds) await moveProjectMaterial(project.id, materialId, targetId);
+      pushToast?.(`${changedIds.length} material(es) movido(s)${targetId ? ' al folder' : ' a Raíz'}`, 'success');
       await onRefresh();
       setSelectedKeys([]);
     } catch (error) {
@@ -295,6 +305,9 @@ function ProjectMaterialTree({ project, plan, groups, onCreateGroup, onAddMateri
   const moveGroupToParent = async (groupId, parentGroupId) => {
     const sourceId = Number(groupId);
     const targetId = parentGroupId == null ? null : Number(parentGroupId);
+    const sourceGroup = groups.find((group) => Number(group.id) === sourceId);
+    const currentParentId = sourceGroup?.parentGroupId == null ? null : Number(sourceGroup.parentGroupId);
+    if (currentParentId === targetId) return;
     if (!Number.isFinite(sourceId) || (targetId != null && !Number.isFinite(targetId))) {
       pushToast?.('No se pudo identificar el folder de origen o destino', 'danger');
       return;

@@ -378,19 +378,27 @@ export default function CatalogModule({ pushToast }) {
     } catch (error) { pushToast?.(`No se pudo guardar la carpeta: ${error.message}`, 'danger'); }
   };
   const moveProducts = async (items, categoryId) => {
-    if (!items.length) return;
+    const targetId = categoryId == null ? null : Number(categoryId);
+    const changedItems = items.filter((item) => {
+      const currentId = item.cat == null ? null : Number(item.cat);
+      return currentId !== targetId;
+    });
+    if (!changedItems.length) return;
     setBusy(true);
     try {
-      for (const item of items) await moveCatalogProduct(item, categoryId);
+      for (const item of changedItems) await moveCatalogProduct(item, targetId);
       await reloadProducts();
-      setSelectedProduct((current) => current ? { ...current, cat: categoryId == null ? null : Number(categoryId) } : current);
-      pushToast?.(`${items.length} producto${items.length === 1 ? '' : 's'} movido${items.length === 1 ? '' : 's'} de carpeta`, 'success');
+      setSelectedProduct((current) => current ? { ...current, cat: targetId } : current);
+      pushToast?.(`${changedItems.length} producto${changedItems.length === 1 ? '' : 's'} movido${changedItems.length === 1 ? '' : 's'} de carpeta`, 'success');
     } catch (error) { pushToast?.(`No se pudieron mover los productos: ${error.message}`, 'danger'); }
     finally { setBusy(false); }
   };
   const moveCategory = async (category, parentId) => {
+    const targetId = parentId == null ? null : Number(parentId);
+    const currentId = category.parentId == null ? null : Number(category.parentId);
+    if (currentId === targetId) return;
     setBusy(true);
-    try { await updateCategory(category.id, { name: category.name, icon: category.icon || null, parentId }); await reloadCategories(); setSelectedCategoryId(category.id); pushToast?.('Carpeta movida', 'success'); }
+    try { await updateCategory(category.id, { name: category.name, icon: category.icon || null, parentId: targetId }); await reloadCategories(); setSelectedCategoryId(category.id); pushToast?.('Carpeta movida', 'success'); }
     catch (error) { pushToast?.(`No se pudo mover la carpeta: ${error.message}`, 'danger'); }
     finally { setBusy(false); }
   };
