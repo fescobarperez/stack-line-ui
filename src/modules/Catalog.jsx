@@ -6,7 +6,7 @@ import InlineCreate from '../components/InlineCreate.jsx';
 import TreeView from '../components/TreeView.jsx';
 import treeStyles from '../components/TreeView.module.css';
 import catalogStyles from './CatalogTree.module.css';
-import useTreeSelection from '../hooks/useTreeSelection.js';
+import useTreeSelection, { treeNodesInDisplayOrder } from '../hooks/useTreeSelection.js';
 import { addProductSupplier, copyCategory, createCategory, moveProduct, removeProductSupplier, updateCategory, updateProduct, updateProductSupplier } from '../api/catalog.js';
 import { createSupplier } from '../api/partners.js';
 import { useCategoryTree, useProducts } from '../hooks/useCatalog.js';
@@ -256,7 +256,7 @@ function CategoryModal({ category, initialParentId, categories, onClose, onSave 
 function UnifiedCatalogTree({ categories, products, search, selectedProductIds, selectedCategoryId, onSelectProducts, onSelectCategory, onCopyCategory, onEditCategory, onCreateSubcategory, onCreateProduct, onDrop, canDrop, canEdit, busy }) {
   const tree = useMemo(() => buildCatalogTree(categories, products, search), [categories, products, search]);
   const productCount = (categoryId) => products.filter((product) => String(product.cat) === String(categoryId)).length;
-  const productNodes = useMemo(() => tree.filter((node) => node.data?.kind === 'product'), [tree]);
+  const productNodes = useMemo(() => treeNodesInDisplayOrder(tree).filter((node) => node.data?.kind === 'product'), [tree]);
   const { select: selectProductRange, extend: extendProductSelection } = useTreeSelection(productNodes, {
     selectedKeys: [...selectedProductIds],
     getKey: (node) => String(node.data.productId),
@@ -310,7 +310,7 @@ export default function CatalogModule({ pushToast }) {
 
   const selectedCategory = categories.find((category) => String(category.id) === String(selectedCategoryId));
   const handleSelectProducts = (ids, primaryProduct) => {
-    setSelectedProductIds(new Set(ids));
+    setSelectedProductIds(new Set(ids.map(String)));
     setSelectedProduct(primaryProduct || null);
     setSelectedCategoryId(primaryProduct?.cat ?? null);
   };
@@ -389,6 +389,7 @@ export default function CatalogModule({ pushToast }) {
       for (const item of changedItems) await moveCatalogProduct(item, targetId);
       await reloadProducts();
       setSelectedProduct((current) => current ? { ...current, cat: targetId } : current);
+      setSelectedProductIds(new Set());
       pushToast?.(`${changedItems.length} producto${changedItems.length === 1 ? '' : 's'} movido${changedItems.length === 1 ? '' : 's'} de carpeta`, 'success');
     } catch (error) { pushToast?.(`No se pudieron mover los productos: ${error.message}`, 'danger'); }
     finally { setBusy(false); }
@@ -396,9 +397,15 @@ export default function CatalogModule({ pushToast }) {
   const moveCategory = async (category, parentId) => {
     const targetId = parentId == null ? null : Number(parentId);
     const currentId = category.parentId == null ? null : Number(category.parentId);
-    if (currentId === targetId) return;
+    if (currentId === targetId) return false;
     setBusy(true);
-    try { await updateCategory(category.id, { name: category.name, icon: category.icon || null, parentId: targetId }); await reloadCategories(); setSelectedCategoryId(category.id); pushToast?.('Carpeta movida', 'success'); }
+    try {
+      await updateCategory(category.id, { name: category.name, icon: category.icon || null, parentId: targetId });
+      await reloadCategories();
+      setSelectedCategoryId(category.id);
+      pushToast?.('Carpeta movida', 'success');
+      return true;
+    }
     catch (error) { pushToast?.(`No se pudo mover la carpeta: ${error.message}`, 'danger'); }
     finally { setBusy(false); }
   };
@@ -424,10 +431,15 @@ export default function CatalogModule({ pushToast }) {
     if (!source || !target) return;
     const targetCategoryId = target.data?.kind === 'category' ? target.data.categoryId : null;
     if (source.data?.kind === 'product') {
-      const selectedIds = selectedProductIds.has(String(source.data.productId)) ? selectedProductIds : new Set([String(source.data.productId)]);
-      await moveProducts(products.filter((product) => selectedIds.has(String(product.id))), targetCategoryId);
+      const selectedIds = new Set([...selectedProductIds].map(String));
+      const sourceKey = String(source.data.productId);
+      const movingIds = selectedIds.has(sourceKey) ? selectedIds : new Set([sourceKey]);
+      await moveProducts(products.filter((product) => movingIds.has(String(product.id))), targetCategoryId);
     }
-    if (source.data?.kind === 'category') await moveCategory(source.data.category, targetCategoryId);
+    if (source.data?.kind === 'category') {
+      const moved = await moveCategory(source.data.category, targetCategoryId);
+      if (moved) setSelectedProductIds(new Set());
+    }
   };
   const openNewProduct = () => setProductModal({ product: null });
   const openNewCategory = (parentId = null) => setCategoryModal({ category: null, parentId });

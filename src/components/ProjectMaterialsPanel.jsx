@@ -6,7 +6,7 @@ import Icon from './Icon.jsx';
 import TreeView from './TreeView.jsx';
 import treeStyles from './TreeView.module.css';
 import projectTreeStyles from './ProjectMaterialsTree.module.css';
-import useTreeSelection from '../hooks/useTreeSelection.js';
+import useTreeSelection, { treeNodesInDisplayOrder } from '../hooks/useTreeSelection.js';
 import StatCard from './StatCard.jsx';
 import { createSupplier } from '../api/partners.js';
 import { copyProjectMaterial, copyProjectMaterialGroup, createProjectMaterial, createProjectMaterialGroup, getProjectMaterials, moveProjectMaterial, moveProjectMaterialGroup, renameProjectMaterialGroup, updateProjectMaterialQuantity } from '../api/projectMaterials.js';
@@ -253,7 +253,10 @@ function ProjectMaterialTree({ project, plan, groups, onCreateGroup, onAddMateri
     });
     return rows;
   }, [groups, materialsByGroup, ungrouped]);
-  const materialNodes = tree.filter((node) => node.data?.kind === 'material');
+  const materialNodes = useMemo(
+    () => treeNodesInDisplayOrder(tree).filter((node) => node.data?.kind === 'material'),
+    [tree],
+  );
   const { select: selectMaterial, extend: extendMaterialSelection } = useTreeSelection(materialNodes, {
     selectedKeys,
     getKey: (node) => String(node.id),

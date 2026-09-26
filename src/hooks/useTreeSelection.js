@@ -2,6 +2,25 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 
 const defaultGetKey = (node) => String(node.id);
 
+export function treeNodesInDisplayOrder(tree, rootId = 0) {
+  const childrenByParent = new Map();
+  tree.forEach((node) => {
+    const parentKey = String(node.parent);
+    const children = childrenByParent.get(parentKey) || [];
+    children.push(node);
+    childrenByParent.set(parentKey, children);
+  });
+  const ordered = [];
+  const visit = (parentId) => {
+    (childrenByParent.get(String(parentId)) || []).forEach((node) => {
+      ordered.push(node);
+      visit(node.id);
+    });
+  };
+  visit(rootId);
+  return ordered;
+}
+
 export default function useTreeSelection(nodes, {
   selectedKeys = [],
   onChange,
