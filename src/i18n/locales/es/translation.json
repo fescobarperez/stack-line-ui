@@ -666,5 +666,31 @@
       "notifications": "Notificaciones",
       "integrations": "Integraciones"
     }
+  },
+  "assistant": {
+    "fab": "Asistente",
+    "open": "Abrir asistente comercial",
+    "title": "Asistente comercial",
+    "subtitle": "Conectado a Productos · Clientes · Cotizaciones",
+    "internal": "Interno",
+    "chatLabel": "Chat del asistente",
+    "newConversation": "Nueva conversación",
+    "collapse": "Colapsar asistente",
+    "greeting": "Buen día. Puedo consultar productos, stock y precios, registrar clientes y generar cotizaciones. ¿En qué lo apoyo?",
+    "suggestStock": "Consultar stock y precio de un producto",
+    "suggestCustomer": "Buscar un cliente",
+    "suggestQuote": "Preparar una cotización",
+    "placeholder": "Escriba una consulta o instrucción…",
+    "messageLabel": "Mensaje para el asistente",
+    "send": "Enviar",
+    "typing": "El asistente está escribiendo",
+    "error": "No pude completar la consulta. Intente de nuevo.",
+    "retry": "Reintentar",
+    "forbidden": "No tiene permiso para esta acción.",
+    "sentNotice": "Cotización {{number}} enviada por {{channels}}. Estado",
+    "sentNoticeModule": "en el módulo Cotizaciones.",
+    "discardTitle": "¿Empezar una nueva conversación?",
+    "discardMessage": "Hay una cotización en prospecto sin enviar. Si continúa, se descarta de esta conversación.",
+    "discardConfirm": "Descartar y empezar"
   }
 }

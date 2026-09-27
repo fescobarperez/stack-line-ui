@@ -666,5 +666,31 @@
       "notifications": "Notifications",
       "integrations": "Integrations"
     }
+  },
+  "assistant": {
+    "fab": "Assistant",
+    "open": "Open sales assistant",
+    "title": "Sales assistant",
+    "subtitle": "Connected to Products · Customers · Quotes",
+    "internal": "Internal",
+    "chatLabel": "Assistant chat",
+    "newConversation": "New conversation",
+    "collapse": "Collapse assistant",
+    "greeting": "Good day. I can look up products, stock and prices, register customers and create quotes. How can I help?",
+    "suggestStock": "Check stock and price of a product",
+    "suggestCustomer": "Find a customer",
+    "suggestQuote": "Prepare a quote",
+    "placeholder": "Type a question or instruction…",
+    "messageLabel": "Message for the assistant",
+    "send": "Send",
+    "typing": "The assistant is typing",
+    "error": "I couldn't complete the request. Please try again.",
+    "retry": "Retry",
+    "forbidden": "You don't have permission for this action.",
+    "sentNotice": "Quote {{number}} sent via {{channels}}. Status",
+    "sentNoticeModule": "in the Quotes module.",
+    "discardTitle": "Start a new conversation?",
+    "discardMessage": "There is an unsent prospect quote. If you continue, it is discarded from this conversation.",
+    "discardConfirm": "Discard and start"
   }
 }
