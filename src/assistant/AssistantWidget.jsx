@@ -87,7 +87,7 @@ export default function AssistantWidget({ cliente }) {
           <path d="M7 7l10 10M17 7L7 17" fill="none" stroke="var(--agent-paper)" strokeWidth="2" strokeLinecap="round" />
         </svg>
       ) : (
-        <TinoMark state="idle" size={36} />
+        <TinoMark state="idle" size={36} tone="on-accent" />
       )}
     </button>
   );

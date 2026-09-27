@@ -68,13 +68,14 @@
   --md-sys-color-inverse-primary: #E7BCC3;
 
   /* ===== Identidad del agente Tino (design_handoff_agente_tino) =====
-     No son roles M3: es la marca del agente, y vale igual en claro y en
-     oscuro. Solo la usan su símbolo y su lanzador; el resto del chat va con
-     los roles M3 de arriba. */
+     El acento de Tino es el vino de la marca (primary), no el naranja del
+     handoff: dentro del contenedor el cuerpo va en on-primary y el ojo en
+     primary, así se lee en claro y en oscuro sin hex propios. Fuera del
+     contenedor el cuerpo es tinta (o papel sobre fondo oscuro). */
   --agent-ink: #17151C;
   --agent-paper: #F6F2EA;
-  --agent-accent: #FF6A3D;
-  --agent-accent-strong: #D9481F;
+  --agent-accent: var(--md-sys-color-primary);
+  --agent-on-accent: var(--md-sys-color-on-primary);
   --agent-shadow-launcher: 0 8px 20px rgba(23, 21, 28, .2);
 
   /* ===== Shape scale (M3) ===== */

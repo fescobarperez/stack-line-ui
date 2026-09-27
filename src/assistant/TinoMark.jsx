@@ -71,12 +71,15 @@ function Ojo({ state, size, animado }) {
  * @param {boolean} props.animated   anima el gesto del estado
  * @param {boolean} props.container  lo pinta dentro del círculo de acento (el
  *   símbolo ocupa ~60 % del diámetro, que es `size`)
- * @param {'ink'|'paper'} props.tone  color del cuerpo: tinta, o papel sobre fondo oscuro
+ * @param {'ink'|'paper'|'on-accent'} props.tone  color del cuerpo: tinta, papel
+ *   sobre fondo oscuro, u on-accent sobre el acento (dentro del contenedor lo
+ *   toma solo)
  */
 export default function TinoMark({ state = 'idle', size = 24, animated = true, container = false, tone = 'ink', className = '' }) {
   const estado = TINO_STATES.includes(state) ? state : 'idle';
   const lado = container ? Math.round(size * 0.6) : size;
-  const cuerpo = tone === 'paper' ? 'var(--agent-paper)' : 'var(--agent-ink)';
+  const tono = container ? 'on-accent' : tone;
+  const cuerpo = { paper: 'var(--agent-paper)', 'on-accent': 'var(--agent-on-accent)' }[tono] ?? 'var(--agent-ink)';
   // El grupo respira en reposo (lento) y al estar contento (rápido).
   const respira = animated && (estado === 'idle' ? 'tino-fb tino-breathe' : estado === 'happy' ? 'tino-fb tino-breathe-fast' : undefined);
 
