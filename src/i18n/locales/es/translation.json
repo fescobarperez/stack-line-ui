@@ -716,6 +716,7 @@
     "viewPdf": "Ver PDF",
     "sentPanel": "Enviada el {{date}} · {{channels}} · estado",
     "name": "Tino",
-    "close": "Cerrar asistente"
+    "close": "Cerrar asistente",
+    "dragHint": "Arrastre para moverlo"
   }
 }

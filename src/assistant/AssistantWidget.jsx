@@ -13,6 +13,7 @@ import ChatColumn from './ChatColumn.jsx';
 import WorkPanel from './WorkPanel.jsx';
 import { vistaPanel } from './agentReducer.js';
 import { useAgentConversation } from './useAgentConversation.js';
+import { useDraggableLauncher } from './useDraggableLauncher.js';
 
 const CLAVE_ABIERTO = 'maya_assistant_open';
 const CLAVE_PANEL = 'maya_assistant_panel';
@@ -34,6 +35,7 @@ export default function AssistantWidget({ cliente }) {
   const lanzador = useRef(null);
   const widget = useRef(null);
   const recienAbierto = useRef(false);
+  const arrastre = useDraggableLauncher();
 
   useEffect(() => guardarBandera(CLAVE_ABIERTO, abierto), [abierto]);
   useEffect(() => guardarBandera(CLAVE_PANEL, panelVisible), [panelVisible]);
@@ -93,8 +95,15 @@ export default function AssistantWidget({ cliente }) {
     <button
       ref={lanzador}
       type="button"
-      className={`assistant-launcher${abierto ? ' open' : ''}`}
-      onClick={abierto ? colapsar : abrir}
+      className={`assistant-launcher${abierto ? ' open' : ''}${arrastre.arrastrando ? ' dragging' : ''}`}
+      style={arrastre.estiloLanzador}
+      {...arrastre.handlers}
+      onClick={() => {
+        // Soltar después de arrastrar no es un clic: solo reubica.
+        if (arrastre.consumirArrastre()) return;
+        if (abierto) colapsar(); else abrir();
+      }}
+      title={t('assistant.dragHint', 'Arrastre para moverlo')}
       aria-expanded={abierto}
       aria-label={abierto ? t('assistant.close', 'Cerrar asistente') : t('assistant.open', 'Abrir asistente comercial')}
     >
@@ -114,20 +123,21 @@ export default function AssistantWidget({ cliente }) {
     <>
       <div
         ref={widget}
-      className="assistant"
-      role="complementary"
-      aria-label={t('assistant.title', 'Asistente comercial')}
-      onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); colapsar(); } }}
-    >
-      <ChatColumn
-        conversacion={conversacion}
-        onNueva={nueva}
-        panelVisible={panelVisible}
-        onMostrarPanel={vista !== 'vacio' ? () => setPanelVisible(true) : null}
-      />
-      {panelVisible && <WorkPanel conversacion={conversacion} onColapsar={() => setPanelVisible(false)} />}
-    </div>
-    {lanzadorBoton}
+        className="assistant"
+        style={arrastre.compacto ? undefined : arrastre.estiloWidget}
+        role="complementary"
+        aria-label={t('assistant.title', 'Asistente comercial')}
+        onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); colapsar(); } }}
+      >
+        <ChatColumn
+          conversacion={conversacion}
+          onNueva={nueva}
+          panelVisible={panelVisible}
+          onMostrarPanel={vista !== 'vacio' ? () => setPanelVisible(true) : null}
+        />
+        {panelVisible && <WorkPanel conversacion={conversacion} onColapsar={() => setPanelVisible(false)} />}
+      </div>
+      {lanzadorBoton}
     </>
   );
 }

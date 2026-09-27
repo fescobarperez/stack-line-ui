@@ -716,6 +716,7 @@
     "viewPdf": "View PDF",
     "sentPanel": "Sent on {{date}} · {{channels}} · status",
     "name": "Tino",
-    "close": "Close assistant"
+    "close": "Close assistant",
+    "dragHint": "Drag to move it"
   }
 }

@@ -4731,8 +4731,13 @@ table.tbl tfoot td {
   background: var(--agent-accent);
   box-shadow: var(--agent-shadow-launcher);
   cursor: pointer;
-  transition: transform .2s var(--ease-standard), background-color .2s var(--ease-standard);
+  transition: transform .2s var(--ease-standard), background-color .2s var(--ease-standard),
+              left .25s var(--ease-standard), top .25s var(--ease-standard);
+  touch-action: none; /* el arrastre en pantallas táctiles no desplaza la página */
 }
+/* Mientras se arrastra, sigue al puntero sin retraso; al soltar, la
+   transición de left/top lo lleva al borde. */
+.assistant-launcher.dragging { transition: none; transform: scale(1.06); cursor: grabbing; }
 .assistant-launcher:hover { transform: scale(1.06); }
 .assistant-launcher:active { transform: scale(.96); }
 .assistant-launcher.open { background: var(--agent-ink); }
@@ -4916,7 +4921,7 @@ table.tbl tfoot td {
 @media (prefers-reduced-motion: reduce) {
   .assistant-msg { animation: none; }
   .assistant-typing span { animation: none; opacity: .6; }
-  .assistant-launcher { transition: none; }
+  .assistant-launcher, .assistant-launcher.dragging { transition: none; }
   .assistant-launcher:hover, .assistant-launcher:active { transform: none; }
   [class*="tino-"] { animation: none !important; }
 }

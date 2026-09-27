@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '../i18n/index.js';
 import i18n from 'i18next';
@@ -21,6 +21,7 @@ function montar() {
 describe('AssistantWidget · chat', () => {
   beforeEach(async () => {
     sessionStorage.clear();
+    localStorage.clear();
     await i18n.changeLanguage('es');
   });
 
@@ -100,6 +101,24 @@ describe('AssistantWidget · chat', () => {
     await user.click(screen.getByRole('button', { name: 'Abrir asistente comercial' }));
     await user.click(screen.getByRole('button', { name: 'Cerrar asistente' }));
     expect(screen.queryByRole('log')).not.toBeInTheDocument();
+  });
+
+  it('arrastrar el lanzador lo mueve y al soltarlo se pega al borde, sin abrirse', () => {
+    montar();
+    const lanzador = screen.getByRole('button', { name: 'Abrir asistente comercial' });
+    fireEvent.pointerDown(lanzador, { clientX: 1000, clientY: 700, button: 0, pointerId: 1 });
+    fireEvent.pointerMove(lanzador, { clientX: 30, clientY: 300, pointerId: 1 });
+    fireEvent.pointerUp(lanzador, { clientX: 30, clientY: 300, pointerId: 1 });
+    fireEvent.click(lanzador);
+
+    // Soltar no es un clic: sigue cerrado, y quedó pegado al borde izquierdo.
+    expect(screen.queryByRole('log')).not.toBeInTheDocument();
+    expect(lanzador.style.left).toBe('20px');
+    expect(JSON.parse(localStorage.getItem('maya_assistant_anchor')).borde).toBe('left');
+
+    // El siguiente clic, sin arrastre, sí abre.
+    fireEvent.click(lanzador);
+    expect(screen.getByRole('log')).toBeInTheDocument();
   });
 
   it('la conversación sobrevive a desmontar y volver a montar', async () => {
