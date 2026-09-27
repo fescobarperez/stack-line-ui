@@ -8,7 +8,7 @@ import Button from '../components/Button.jsx';
 import MessageBubble, { ErrorBubble, TypingBubble } from './MessageBubble.jsx';
 import SuggestionChips from './SuggestionChips.jsx';
 
-export default function ChatColumn({ conversacion, onNueva, onColapsar }) {
+export default function ChatColumn({ conversacion, onNueva, onColapsar, panelVisible, onMostrarPanel }) {
   const { t } = useTranslation();
   const { state, enviarTexto, reintentar } = conversacion;
   const [texto, setTexto] = useState('');
@@ -55,6 +55,9 @@ export default function ChatColumn({ conversacion, onNueva, onColapsar }) {
           </div>
         </div>
         <span className="badge-m3">{t('assistant.internal', 'Interno')}</span>
+        {!panelVisible && onMostrarPanel && (
+          <Button variant="icon" icon="right_panel_open" title={t('assistant.showPanel', 'Mostrar panel de trabajo')} onClick={onMostrarPanel} />
+        )}
         <Button variant="icon" icon="add_comment" title={t('assistant.newConversation', 'Nueva conversación')} onClick={onNueva} disabled={state.pending} />
         <Button variant="icon" icon="close_fullscreen" title={t('assistant.collapse', 'Colapsar asistente')} onClick={onColapsar} />
       </header>

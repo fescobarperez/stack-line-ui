@@ -4877,3 +4877,102 @@ table.tbl tfoot td {
   .assistant { right: 8px; left: 8px; bottom: 8px; max-width: none; height: calc(100vh - 16px); }
   .assistant-chat { flex: 1 1 auto; }
 }
+
+/* ── Panel de trabajo ── */
+.assistant-panel {
+  flex: 0 0 392px;
+  min-width: 0;
+  display: flex; flex-direction: column;
+  border-left: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-low);
+}
+.assistant-panel-head {
+  display: flex; align-items: center; gap: 8px;
+  min-height: 57px;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+.assistant-panel-body {
+  flex: 1; min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.assistant-empty {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  text-align: center;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.assistant-empty p { max-width: 240px; margin: 0; }
+
+.assistant-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.assistant-card {
+  background: var(--md-sys-color-surface-container-lowest);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--shape-md);
+}
+.assistant-product, .assistant-customer { padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
+.assistant-customer { gap: 4px; }
+.assistant-row { display: flex; justify-content: space-between; gap: 12px; }
+.assistant-row.center { align-items: center; }
+.assistant-grow { flex: 1; min-width: 0; }
+
+/* Códigos, números de documento, cantidades y montos: siempre monoespaciada. */
+.assistant-code {
+  font: 400 12px/16px var(--font-mono);
+  color: var(--md-sys-color-on-surface-variant);
+  margin-top: 2px;
+}
+.assistant-amount {
+  font: 400 14px/20px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.assistant-amount.strong, .assistant-amount.grand { font-weight: 600; }
+.assistant-overline {
+  text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-bottom: 4px;
+}
+.assistant-meta { color: var(--md-sys-color-on-surface-variant); margin-top: 4px; }
+
+.assistant-quote { overflow: hidden; }
+.assistant-quote-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+.assistant-lines { list-style: none; margin: 0; padding: 0; }
+.assistant-line {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 8px 10px 16px;
+  border-bottom: 1px solid var(--md-sys-color-surface-container-high);
+}
+.assistant-totals {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  row-gap: 4px; column-gap: 16px;
+  margin: 0;
+  padding: 12px 16px;
+  background: var(--md-sys-color-surface-container-low);
+}
+.assistant-totals dt { color: var(--md-sys-color-on-surface-variant); font: 400 14px/20px var(--font-sans); }
+.assistant-totals dd { margin: 0; text-align: right; }
+.assistant-totals .grand { color: var(--md-sys-color-on-surface); font-weight: 600; }
+.assistant-estimate {
+  margin: 0;
+  padding: 8px 16px 12px;
+  background: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.assistant-actions { display: flex; gap: 8px; }
+.assistant-actions .btn.full { flex: 1; }
+.assistant-notice.flush { margin-left: 0; }
+
+/* Por debajo de 900px el panel pasa a pestaña (paso 6); mientras tanto se
+   oculta para que el widget no se salga de la pantalla. */
+@media (max-width: 900px) {
+  .assistant-panel { display: none; }
+}

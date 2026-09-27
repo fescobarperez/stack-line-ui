@@ -10,26 +10,44 @@ import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import ChatColumn from './ChatColumn.jsx';
+import WorkPanel from './WorkPanel.jsx';
+import { vistaPanel } from './agentReducer.js';
 import { useAgentConversation } from './useAgentConversation.js';
 
 const CLAVE_ABIERTO = 'maya_assistant_open';
+const CLAVE_PANEL = 'maya_assistant_panel';
 
-function leerAbierto() {
-  try { return sessionStorage.getItem(CLAVE_ABIERTO) === '1'; } catch { return false; }
+function leerBandera(clave) {
+  try { return sessionStorage.getItem(clave) === '1'; } catch { return false; }
+}
+
+function guardarBandera(clave, valor) {
+  try { sessionStorage.setItem(clave, valor ? '1' : '0'); } catch { /* sin almacenamiento */ }
 }
 
 export default function AssistantWidget({ cliente }) {
   const { t } = useTranslation();
   const confirm = useConfirm();
   const conversacion = useAgentConversation(cliente ? { cliente } : undefined);
-  const [abierto, setAbierto] = useState(leerAbierto);
+  const [abierto, setAbierto] = useState(() => leerBandera(CLAVE_ABIERTO));
+  const [panelVisible, setPanelVisible] = useState(() => leerBandera(CLAVE_PANEL));
   const lanzador = useRef(null);
   const widget = useRef(null);
   const recienAbierto = useRef(false);
 
+  useEffect(() => guardarBandera(CLAVE_ABIERTO, abierto), [abierto]);
+  useEffect(() => guardarBandera(CLAVE_PANEL, panelVisible), [panelVisible]);
+
+  // El panel se abre solo cuando llega la primera tarjeta que lo alimenta, o
+  // cuando cambia de contenido (de productos a cotización). Después el
+  // usuario lo puede ocultar.
+  const vista = vistaPanel(conversacion.state.panel);
+  const vistaAnterior = useRef(vista);
   useEffect(() => {
-    try { sessionStorage.setItem(CLAVE_ABIERTO, abierto ? '1' : '0'); } catch { /* sin almacenamiento */ }
-  }, [abierto]);
+    if (vista !== vistaAnterior.current && vista !== 'vacio') setPanelVisible(true);
+    if (vista === 'vacio') setPanelVisible(false);
+    vistaAnterior.current = vista;
+  }, [vista]);
 
   // Al abrir, el foco va al campo de texto; al colapsar, vuelve al lanzador.
   useEffect(() => {
@@ -77,7 +95,14 @@ export default function AssistantWidget({ cliente }) {
       aria-label={t('assistant.title', 'Asistente comercial')}
       onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); colapsar(); } }}
     >
-      <ChatColumn conversacion={conversacion} onNueva={nueva} onColapsar={colapsar} />
+      <ChatColumn
+        conversacion={conversacion}
+        onNueva={nueva}
+        onColapsar={colapsar}
+        panelVisible={panelVisible}
+        onMostrarPanel={vista !== 'vacio' ? () => setPanelVisible(true) : null}
+      />
+      {panelVisible && <WorkPanel conversacion={conversacion} onColapsar={() => setPanelVisible(false)} />}
     </div>
   );
 }
