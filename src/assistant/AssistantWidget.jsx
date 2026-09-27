@@ -7,7 +7,7 @@
 // No es modal: no atrapa el foco del resto del ERP. Esc lo colapsa.
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Icon from '../components/Icon.jsx';
+import TinoMark from './TinoMark.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import ChatColumn from './ChatColumn.jsx';
 import WorkPanel from './WorkPanel.jsx';
@@ -72,24 +72,32 @@ export default function AssistantWidget({ cliente }) {
     conversacion.nueva();
   };
 
-  if (!abierto) {
-    return (
-      <button
-        ref={lanzador}
-        type="button"
-        className="fab assistant-fab"
-        onClick={abrir}
-        aria-label={t('assistant.open', 'Abrir asistente comercial')}
-      >
-        <Icon name="smart_toy" size={24} />
-        <span>{t('assistant.fab', 'Asistente')}</span>
-      </button>
-    );
-  }
+  // El lanzador siempre está: abre con Tino y, abierto, se vuelve una X.
+  const lanzadorBoton = (
+    <button
+      ref={lanzador}
+      type="button"
+      className={`assistant-launcher${abierto ? ' open' : ''}`}
+      onClick={abierto ? colapsar : abrir}
+      aria-expanded={abierto}
+      aria-label={abierto ? t('assistant.close', 'Cerrar asistente') : t('assistant.open', 'Abrir asistente comercial')}
+    >
+      {abierto ? (
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
+          <path d="M7 7l10 10M17 7L7 17" fill="none" stroke="var(--agent-paper)" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      ) : (
+        <TinoMark state="idle" size={36} />
+      )}
+    </button>
+  );
+
+  if (!abierto) return lanzadorBoton;
 
   return (
-    <div
-      ref={widget}
+    <>
+      <div
+        ref={widget}
       className="assistant"
       role="complementary"
       aria-label={t('assistant.title', 'Asistente comercial')}
@@ -98,11 +106,12 @@ export default function AssistantWidget({ cliente }) {
       <ChatColumn
         conversacion={conversacion}
         onNueva={nueva}
-        onColapsar={colapsar}
         panelVisible={panelVisible}
         onMostrarPanel={vista !== 'vacio' ? () => setPanelVisible(true) : null}
       />
       {panelVisible && <WorkPanel conversacion={conversacion} onColapsar={() => setPanelVisible(false)} />}
     </div>
+    {lanzadorBoton}
+    </>
   );
 }

@@ -676,7 +676,7 @@
     "chatLabel": "Assistant chat",
     "newConversation": "New conversation",
     "collapse": "Collapse assistant",
-    "greeting": "Good day. I can look up products, stock and prices, register customers and create quotes. How can I help?",
+    "greeting": "Good day, I'm Tino. I can look up products, stock and prices, register customers and create quotes. What would you like to quote today?",
     "suggestStock": "Check stock and price of a product",
     "suggestCustomer": "Find a customer",
     "suggestQuote": "Prepare a quote",
@@ -714,6 +714,8 @@
     "sendQuote": "Send to customer",
     "confirmSend": "Confirm send",
     "viewPdf": "View PDF",
-    "sentPanel": "Sent on {{date}} · {{channels}} · status"
+    "sentPanel": "Sent on {{date}} · {{channels}} · status",
+    "name": "Tino",
+    "close": "Close assistant"
   }
 }

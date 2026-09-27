@@ -27,7 +27,7 @@ export function useAgentConversation({ cliente = agentClient } = {}) {
   const { t } = useTranslation();
 
   const crearInicial = useCallback(() => estadoInicial({
-    saludo: t('assistant.greeting', 'Buen día. Puedo consultar productos, stock y precios, registrar clientes y generar cotizaciones. ¿En qué lo apoyo?'),
+    saludo: t('assistant.greeting', 'Buen día, soy Tino. Puedo consultar productos, stock y precios, registrar clientes y generar cotizaciones. ¿Qué le gustaría cotizar hoy?'),
     sugerencias: [
       { id: 'sug-stock', label: t('assistant.suggestStock', 'Consultar stock y precio de un producto') },
       { id: 'sug-cliente', label: t('assistant.suggestCustomer', 'Buscar un cliente') },

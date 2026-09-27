@@ -2,13 +2,18 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import Button from '../components/Button.jsx';
+import TinoMark from './TinoMark.jsx';
 
-function Avatar() {
-  return <div className="assistant-mini-avatar label-small" aria-hidden="true">IA</div>;
+/**
+ * Avatar de 24 px. Muestra la expresión que le toca pero NO se anima: el gesto
+ * vive en la cabecera, y nunca hay más de un gesto a la vez.
+ */
+function Avatar({ estado = 'idle' }) {
+  return <TinoMark state={estado} size={24} container animated={false} className="assistant-mini-avatar" />;
 }
 
 /** Mensaje del usuario, del asistente o confirmación de una acción. */
-export default function MessageBubble({ mensaje }) {
+export default function MessageBubble({ mensaje, estadoAvatar }) {
   const { t } = useTranslation();
 
   if (mensaje.role === 'user') {
@@ -32,7 +37,7 @@ export default function MessageBubble({ mensaje }) {
 
   return (
     <div className="assistant-msg bot">
-      <Avatar />
+      <Avatar estado={estadoAvatar} />
       <div className="assistant-bubble body-medium">{mensaje.text}</div>
     </div>
   );
@@ -42,7 +47,7 @@ export function TypingBubble() {
   const { t } = useTranslation();
   return (
     <div className="assistant-msg bot">
-      <Avatar />
+      <Avatar estado="thinking" />
       <div className="assistant-typing" role="status" aria-label={t('assistant.typing', 'El asistente está escribiendo')}>
         <span /><span /><span />
       </div>

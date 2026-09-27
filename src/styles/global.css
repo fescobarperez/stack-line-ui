@@ -67,6 +67,16 @@
   --md-sys-color-inverse-on-surface: #F1F1F1;
   --md-sys-color-inverse-primary: #E7BCC3;
 
+  /* ===== Identidad del agente Tino (design_handoff_agente_tino) =====
+     No son roles M3: es la marca del agente, y vale igual en claro y en
+     oscuro. Solo la usan su símbolo y su lanzador; el resto del chat va con
+     los roles M3 de arriba. */
+  --agent-ink: #17151C;
+  --agent-paper: #F6F2EA;
+  --agent-accent: #FF6A3D;
+  --agent-accent-strong: #D9481F;
+  --agent-shadow-launcher: 0 8px 20px rgba(23, 21, 28, .2);
+
   /* ===== Shape scale (M3) ===== */
   --shape-xs: 4px;
   --shape-sm: 8px;
@@ -4703,22 +4713,37 @@ table.tbl tfoot td {
 
 /* ============================================================
    Asistente comercial de IA (diseño B · chat + panel)
-   Solo tokens M3. Flota sobre cualquier pantalla, por debajo de
-   modales (100), toasts (200) y confirmaciones (400).
+   Tokens M3, salvo el símbolo y el lanzador de Tino (--agent-*).
+   Flota sobre cualquier pantalla, por debajo de modales (100),
+   toasts (200) y confirmaciones (400).
    ============================================================ */
-.assistant-fab {
+
+/* Lanzador: 60 px, circular. Abierto se vuelve una X sobre tinta. */
+.assistant-launcher {
   position: fixed;
-  right: 28px; bottom: 28px;
+  right: 20px; bottom: 20px;
   z-index: 90;
+  width: 60px; height: 60px;
+  border: 0;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--agent-accent);
+  box-shadow: var(--agent-shadow-launcher);
+  cursor: pointer;
+  transition: transform .2s var(--ease-standard), background-color .2s var(--ease-standard);
 }
+.assistant-launcher:hover { transform: scale(1.06); }
+.assistant-launcher:active { transform: scale(.96); }
+.assistant-launcher.open { background: var(--agent-ink); }
+.assistant-launcher:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 3px; }
 
 .assistant {
   position: fixed;
-  right: 28px; bottom: 28px;
+  right: 20px; bottom: 96px;
   z-index: 90;
   display: flex;
   height: min(660px, calc(100vh - 120px));
-  max-width: calc(100vw - 56px);
+  max-width: calc(100vw - 40px);
   background: var(--md-sys-color-surface-container-lowest);
   color: var(--md-sys-color-on-surface);
   border: 1px solid var(--md-sys-color-outline-variant);
@@ -4740,14 +4765,6 @@ table.tbl tfoot td {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 8px 12px 16px;
   border-bottom: 1px solid var(--md-sys-color-outline-variant);
-}
-.assistant-avatar {
-  flex: 0 0 auto;
-  width: 32px; height: 32px;
-  border-radius: var(--shape-sm);
-  background: var(--md-sys-color-primary);
-  color: var(--md-sys-color-on-primary);
-  display: grid; place-items: center;
 }
 .assistant-head-text { flex: 1; min-width: 0; }
 .assistant-sub {
@@ -4782,15 +4799,7 @@ table.tbl tfoot td {
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--shape-lg) var(--shape-lg) var(--shape-lg) var(--shape-xs);
 }
-.assistant-mini-avatar {
-  flex: 0 0 24px;
-  width: 24px; height: 24px;
-  margin-top: 2px;
-  border-radius: var(--shape-sm);
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  display: grid; place-items: center;
-}
+.assistant-mini-avatar { flex: 0 0 24px; margin-top: 2px; }
 
 .assistant-typing {
   display: flex; gap: 4px;
@@ -4869,13 +4878,46 @@ table.tbl tfoot td {
   0%, 60%, 100% { opacity: .25; }
   30% { opacity: 1; }
 }
+@media (max-width: 480px) {
+  .assistant { right: 8px; left: 8px; bottom: 88px; max-width: none; height: calc(100vh - 104px); }
+  .assistant-chat { flex: 1 1 auto; }
+}
+
+/* ── Tino: símbolo y expresiones ──
+   Las animaciones escaladas usan fill-box + center. Un solo gesto a la vez. */
+.tino-mark { display: inline-grid; place-items: center; flex: 0 0 auto; line-height: 0; }
+.tino-container { border-radius: 50%; background: var(--agent-accent); }
+.tino-svg { overflow: visible; }
+.tino-fb { transform-box: fill-box; transform-origin: center; }
+
+.tino-breathe      { animation: tino-breathe 3.2s ease-in-out infinite; }
+.tino-breathe-fast { animation: tino-breathe 1.8s ease-in-out infinite; }
+.tino-blink        { animation: tino-blink 4s ease-in-out infinite; }
+.tino-listen       { animation: tino-listen 1.6s ease-out infinite; }
+.tino-look         { animation: tino-look 2.4s ease-in-out infinite; }
+.tino-fade         { animation: tino-fade 1.2s ease-in-out infinite; }
+.tino-fade.tino-d2 { animation-delay: .3s; }
+.tino-talk         { animation: tino-talk .45s ease-in-out infinite alternate; }
+.tino-hop          { animation: tino-hop .9s ease-in-out infinite; }
+.tino-tilt         { animation: tino-tilt 2.2s ease-in-out infinite; }
+.tino-peek         { animation: tino-peek 2.2s ease-in-out infinite; }
+
+@keyframes tino-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+@keyframes tino-blink   { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+@keyframes tino-listen  { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes tino-look    { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-1.2px, .8px); } }
+@keyframes tino-fade    { 0%, 100% { opacity: .15; } 50% { opacity: 1; } }
+@keyframes tino-talk    { from { transform: scaleY(1); } to { transform: scaleY(2.4); } }
+@keyframes tino-hop     { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
+@keyframes tino-tilt    { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-14deg); } }
+@keyframes tino-peek    { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(1px); } }
+
 @media (prefers-reduced-motion: reduce) {
   .assistant-msg { animation: none; }
   .assistant-typing span { animation: none; opacity: .6; }
-}
-@media (max-width: 480px) {
-  .assistant { right: 8px; left: 8px; bottom: 8px; max-width: none; height: calc(100vh - 16px); }
-  .assistant-chat { flex: 1 1 auto; }
+  .assistant-launcher { transition: none; }
+  .assistant-launcher:hover, .assistant-launcher:active { transform: none; }
+  [class*="tino-"] { animation: none !important; }
 }
 
 /* ── Panel de trabajo ── */

@@ -676,7 +676,7 @@
     "chatLabel": "Chat del asistente",
     "newConversation": "Nueva conversación",
     "collapse": "Colapsar asistente",
-    "greeting": "Buen día. Puedo consultar productos, stock y precios, registrar clientes y generar cotizaciones. ¿En qué lo apoyo?",
+    "greeting": "Buen día, soy Tino. Puedo consultar productos, stock y precios, registrar clientes y generar cotizaciones. ¿Qué le gustaría cotizar hoy?",
     "suggestStock": "Consultar stock y precio de un producto",
     "suggestCustomer": "Buscar un cliente",
     "suggestQuote": "Preparar una cotización",
@@ -714,6 +714,8 @@
     "sendQuote": "Enviar al cliente",
     "confirmSend": "Confirmar envío",
     "viewPdf": "Ver PDF",
-    "sentPanel": "Enviada el {{date}} · {{channels}} · estado"
+    "sentPanel": "Enviada el {{date}} · {{channels}} · estado",
+    "name": "Tino",
+    "close": "Cerrar asistente"
   }
 }

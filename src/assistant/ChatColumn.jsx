@@ -7,13 +7,18 @@ import { useTranslation } from 'react-i18next';
 import Button from '../components/Button.jsx';
 import MessageBubble, { ErrorBubble, TypingBubble } from './MessageBubble.jsx';
 import SuggestionChips from './SuggestionChips.jsx';
+import TinoMark from './TinoMark.jsx';
+import { useTinoState } from './useTinoState.js';
 
-export default function ChatColumn({ conversacion, onNueva, onColapsar, panelVisible, onMostrarPanel }) {
+export default function ChatColumn({ conversacion, onNueva, panelVisible, onMostrarPanel }) {
   const { t } = useTranslation();
   const { state, enviarTexto, reintentar } = conversacion;
   const [texto, setTexto] = useState('');
   const lista = useRef(null);
   const campo = useRef(null);
+  const tino = useTinoState(state, texto.trim().length > 0);
+  // El último mensaje del asistente lleva la expresión del momento.
+  const ultimoBot = [...state.messages].reverse().find((m) => m.role === 'bot')?.id;
 
   // Se pega al final cuando llega algo nuevo o cambia el indicador.
   useEffect(() => {
@@ -47,9 +52,9 @@ export default function ChatColumn({ conversacion, onNueva, onColapsar, panelVis
   return (
     <section className="assistant-chat" aria-label={t('assistant.chatLabel', 'Chat del asistente')}>
       <header className="assistant-head">
-        <div className="assistant-avatar label-large" aria-hidden="true">IA</div>
+        <TinoMark state={tino} size={36} container className="assistant-avatar" />
         <div className="assistant-head-text">
-          <div className="title-small">{t('assistant.title', 'Asistente comercial')}</div>
+          <div className="title-small">{t('assistant.name', 'Tino')}</div>
           <div className="assistant-sub body-small">
             {t('assistant.subtitle', 'Conectado a Productos · Clientes · Cotizaciones')}
           </div>
@@ -59,11 +64,12 @@ export default function ChatColumn({ conversacion, onNueva, onColapsar, panelVis
           <Button variant="icon" icon="right_panel_open" title={t('assistant.showPanel', 'Mostrar panel de trabajo')} onClick={onMostrarPanel} />
         )}
         <Button variant="icon" icon="add_comment" title={t('assistant.newConversation', 'Nueva conversación')} onClick={onNueva} disabled={state.pending} />
-        <Button variant="icon" icon="close_fullscreen" title={t('assistant.collapse', 'Colapsar asistente')} onClick={onColapsar} />
       </header>
 
       <div className="assistant-messages" ref={lista} role="log" aria-live="polite">
-        {state.messages.map((m) => <MessageBubble key={m.id} mensaje={m} />)}
+        {state.messages.map((m) => (
+          <MessageBubble key={m.id} mensaje={m} estadoAvatar={m.id === ultimoBot && !state.pending ? tino : 'idle'} />
+        ))}
         {state.pending && <TypingBubble />}
         {state.error && <ErrorBubble tipo={state.error} onReintentar={reintentar} />}
       </div>
