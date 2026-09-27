@@ -91,6 +91,21 @@ describe('AssistantWidget · panel de trabajo', () => {
     expect(within(panel()).getByRole('button', { name: /Enviar al cliente/ })).toBeInTheDocument();
   });
 
+  it('confirmar una conversación nueva no cierra el widget', async () => {
+    const user = userEvent.setup();
+    montar();
+    await abrirYPreguntar(user);
+    await user.click(screen.getByRole('button', { name: /Cotice 4 unidades/ }));
+    await user.click(await screen.findByRole('button', { name: /Los datos son correctos/ }));
+    await within(panel()).findByText('Cotización en construcción');
+
+    await user.click(screen.getByRole('button', { name: 'Nueva conversación' }));
+    await user.click(await screen.findByRole('button', { name: 'Descartar y empezar' }));
+
+    expect(screen.getByRole('log')).toBeInTheDocument();
+    expect(screen.queryByText(/Encontré 2 coincidencias/)).not.toBeInTheDocument();
+  });
+
   it('el panel se oculta y se vuelve a mostrar desde el chat', async () => {
     const user = userEvent.setup();
     montar();

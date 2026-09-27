@@ -70,6 +70,38 @@ describe('AssistantWidget · chat', () => {
     expect(screen.getByRole('button', { name: 'Abrir asistente comercial' })).toHaveFocus();
   });
 
+  it('un clic fuera del widget lo cierra, sin robar el foco', async () => {
+    const user = userEvent.setup();
+    const { container } = montar();
+    const fuera = document.createElement('button');
+    fuera.textContent = 'Otro módulo';
+    document.body.appendChild(fuera);
+
+    await user.click(screen.getByRole('button', { name: 'Abrir asistente comercial' }));
+    await user.click(fuera);
+
+    expect(screen.queryByRole('log')).not.toBeInTheDocument();
+    expect(fuera).toHaveFocus();
+    fuera.remove();
+    expect(container).toBeTruthy();
+  });
+
+  it('un clic dentro del widget no lo cierra', async () => {
+    const user = userEvent.setup();
+    montar();
+    await user.click(screen.getByRole('button', { name: 'Abrir asistente comercial' }));
+    await user.click(screen.getByRole('log'));
+    expect(screen.getByRole('log')).toBeInTheDocument();
+  });
+
+  it('el lanzador abierto cierra con un solo clic', async () => {
+    const user = userEvent.setup();
+    montar();
+    await user.click(screen.getByRole('button', { name: 'Abrir asistente comercial' }));
+    await user.click(screen.getByRole('button', { name: 'Cerrar asistente' }));
+    expect(screen.queryByRole('log')).not.toBeInTheDocument();
+  });
+
   it('la conversación sobrevive a desmontar y volver a montar', async () => {
     const user = userEvent.setup();
     const { unmount } = montar();

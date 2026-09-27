@@ -57,6 +57,22 @@ export default function AssistantWidget({ cliente }) {
     else lanzador.current?.focus();
   }, [abierto]);
 
+  // Clic fuera del widget: se cierra. Sin mover el foco, porque el usuario
+  // acaba de ponerlo en otra parte del ERP. No cuentan el lanzador (tiene su
+  // propio toggle) ni un diálogo modal abierto encima, como la confirmación
+  // de "nueva conversación".
+  useEffect(() => {
+    if (!abierto) return undefined;
+    const alPresionar = (e) => {
+      const destino = e.target;
+      if (widget.current?.contains(destino) || lanzador.current?.contains(destino)) return;
+      if (destino instanceof Element && destino.closest('.confirm-overlay, [aria-modal="true"]')) return;
+      setAbierto(false);
+    };
+    document.addEventListener('pointerdown', alPresionar);
+    return () => document.removeEventListener('pointerdown', alPresionar);
+  }, [abierto]);
+
   const abrir = () => { recienAbierto.current = true; setAbierto(true); };
   const colapsar = () => { recienAbierto.current = true; setAbierto(false); };
 
