@@ -1,15 +1,15 @@
-// Stackline — Simulador del agente comercial.
+// Stackline — Guion del agente para PRUEBAS (no se usa en la app).
 //
 // Reproduce el guion del prototipo en 4 turnos (productos → cliente →
 // cotización → envío) con la MISMA forma de respuesta que POST /v1/agent/turn.
-// Se activa con VITE_AGENT_MOCK=true; el resto del código no sabe si habla con
-// el simulador o con el agente real.
+// Solo lo usan los tests del widget como cliente falso; la app siempre habla
+// con el agente real por /api/agent/turn.
 //
 // Los datos de aquí son del guion de demostración, no del ERP: por eso viven
 // en el simulador y no en ninguna pantalla.
 
 const productos = [
-  { sku: 'MUE-TV-180', name: 'Mueble de TV flotante 180 cm, pino natural', warehouse: 'Bodega Zona 10', stock_label: '6 en stock', price: 'Q 2,450.00' },
+  { id: 101, sku: 'MUE-TV-180', name: 'Mueble de TV flotante 180 cm, pino natural', warehouse: 'Bodega Zona 10', stock_label: '6 en stock', price: 'Q 2,450.00' },
   { sku: 'MUE-TV-150', name: 'Mueble de TV flotante 150 cm, pino natural', warehouse: 'Bodega Mixco', stock_label: '2 en stock', price: 'Q 1,980.00' },
 ];
 

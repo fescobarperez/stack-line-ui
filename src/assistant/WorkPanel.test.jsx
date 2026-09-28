@@ -6,11 +6,10 @@ import '../i18n/index.js';
 import i18n from 'i18next';
 import { ConfirmProvider } from '../components/ConfirmDialog.jsx';
 import AssistantWidget from './AssistantWidget.jsx';
-import { crearAgentClient } from '../api/agent.js';
-import { crearSimulador } from './simulator.js';
+import { crearSimulador } from '../test/guionAgente.js';
 
 function montar() {
-  const base = crearAgentClient({ simulado: true, simulador: crearSimulador({ demoraMs: 0 }) });
+  const base = crearSimulador({ demoraMs: 0 });
   const cliente = { ...base, turn: vi.fn((body) => base.turn(body)) };
   render(
     <ConfirmProvider>
@@ -54,7 +53,7 @@ describe('AssistantWidget · panel de trabajo', () => {
 
     // Añadir a cotización viaja como acción, no como texto.
     await user.click(within(panel()).getAllByRole('button', { name: /Añadir a cotización/ })[0]);
-    expect(ultimoInput(cliente)).toEqual({ type: 'action', action_id: 'add_line', payload: { sku: 'MUE-TV-180' } });
+    expect(ultimoInput(cliente)).toEqual({ type: 'action', action_id: 'add_line', payload: { product_id: 101, sku: 'MUE-TV-180' } });
     expect(await within(panel()).findByText('Datos del cliente')).toBeInTheDocument();
     expect(within(panel()).getByText('NIT 1234567-8')).toBeInTheDocument();
 

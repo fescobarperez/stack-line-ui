@@ -10,6 +10,8 @@ import { agentReducer, estadoInicial, hayBorradorSinEnviar } from './agentReduce
 
 export const CLAVE_CONVERSACION = 'maya_assistant_conversation';
 
+const nuevaClave = () => crypto.randomUUID();
+
 function leerGuardado() {
   try {
     const crudo = sessionStorage.getItem(CLAVE_CONVERSACION);
@@ -27,6 +29,7 @@ export function useAgentConversation({ cliente = agentClient } = {}) {
   const { t } = useTranslation();
 
   const crearInicial = useCallback(() => estadoInicial({
+    conversationKey: nuevaClave(),
     saludo: t('assistant.greeting', 'Buen día, soy Tino. Puedo consultar productos, stock y precios, registrar clientes y generar cotizaciones. ¿Qué le gustaría cotizar hoy?'),
     sugerencias: [
       { id: 'sug-stock', label: t('assistant.suggestStock', 'Consultar stock y precio de un producto') },
@@ -37,7 +40,10 @@ export function useAgentConversation({ cliente = agentClient } = {}) {
 
   const [state, dispatch] = useReducer(agentReducer, undefined, () => {
     const guardado = leerGuardado();
-    return guardado ? agentReducer(guardado, { type: 'restaurar', estado: guardado }) : crearInicial();
+    if (!guardado) return crearInicial();
+    // Conversaciones guardadas antes de existir la clave: se les asigna una.
+    const estado = guardado.conversationKey ? guardado : { ...guardado, conversationKey: nuevaClave() };
+    return agentReducer(estado, { type: 'restaurar', estado });
   });
 
   useEffect(() => {
@@ -51,8 +57,8 @@ export function useAgentConversation({ cliente = agentClient } = {}) {
   // El reductor ya rechaza un segundo envío, pero entre el clic y el render
   // hay una ventana: esta bandera la cierra.
   const enVuelo = useRef(false);
-  const conversacion = useRef(state.conversationId);
-  conversacion.current = state.conversationId;
+  const conversacion = useRef(state.conversationKey);
+  conversacion.current = state.conversationKey;
 
   const ejecutar = useCallback(async (request, textoUsuario) => {
     if (enVuelo.current) return;
@@ -71,13 +77,13 @@ export function useAgentConversation({ cliente = agentClient } = {}) {
   const enviarTexto = useCallback((texto) => {
     const limpio = (texto ?? '').trim();
     if (!limpio) return;
-    ejecutar(armarTurno({ conversationId: conversacion.current, input: { type: 'text', text: limpio } }), limpio);
+    ejecutar(armarTurno({ conversationKey: conversacion.current, input: { type: 'text', text: limpio } }), limpio);
   }, [ejecutar]);
 
   /** Acción del panel: viaja como acción, nunca como texto inventado. */
   const enviarAccion = useCallback((actionId, payload = {}) => {
     ejecutar(armarTurno({
-      conversationId: conversacion.current,
+      conversationKey: conversacion.current,
       input: { type: 'action', action_id: actionId, payload },
     }));
   }, [ejecutar]);

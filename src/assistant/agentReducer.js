@@ -23,8 +23,9 @@ const panelVacio = () => ({ products: null, customer: null, quote: null, sent: n
  * @param {string} opts.saludo       primer mensaje del asistente (ya traducido)
  * @param {Array}  opts.sugerencias  pastillas iniciales [{ id, label }]
  */
-export function estadoInicial({ saludo = '', sugerencias = [] } = {}) {
+export function estadoInicial({ saludo = '', sugerencias = [], conversationKey = null } = {}) {
   return {
+    conversationKey,
     conversationId: null,
     seq: saludo ? 1 : 0,
     messages: saludo ? [{ id: 1, role: 'bot', text: saludo }] : [],

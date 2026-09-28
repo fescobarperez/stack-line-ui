@@ -1,15 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
 import { crearAgentClient, armarTurno, RUTA_TURNO } from './agent.js';
-import { crearSimulador } from '../assistant/simulator.js';
+import { crearSimulador } from '../test/guionAgente.js';
 
 const llave = () => 'llave-fija';
 
 describe('armarTurno', () => {
   it('arma el cuerpo sin empresa, usuario ni alcance', () => {
-    const body = armarTurno({ conversationId: null, input: { type: 'text', text: 'hola' }, nuevaLlave: llave });
+    const body = armarTurno({ conversationKey: 'k-1', input: { type: 'text', text: 'hola' }, nuevaLlave: llave });
     expect(body).toMatchObject({
       channel: 'erp',
-      conversation_ref: { external_id: null },
+      conversation_ref: { external_id: 'k-1' },
       input: { type: 'text', text: 'hola' },
       idempotency_key: 'llave-fija',
     });
@@ -19,10 +19,10 @@ describe('armarTurno', () => {
   });
 });
 
-describe('agentClient real', () => {
+describe('agentClient', () => {
   it('llama a la ruta del ERP en silencio y con señal de corte', async () => {
     const http = { post: vi.fn().mockResolvedValue({ conversation_id: 'cnv_1', events: [] }) };
-    const cliente = crearAgentClient({ simulado: false, http });
+    const cliente = crearAgentClient({ http });
     const body = armarTurno({ input: { type: 'text', text: 'x' }, nuevaLlave: llave });
 
     await cliente.turn(body);
@@ -39,14 +39,14 @@ describe('agentClient real', () => {
         return new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('abort'))));
       }),
     };
-    const cliente = crearAgentClient({ simulado: false, http, tiempoLimiteMs: 10 });
+    const cliente = crearAgentClient({ http, tiempoLimiteMs: 10 });
     await expect(cliente.turn({})).rejects.toThrow('abort');
     expect(senal.aborted).toBe(true);
   });
 });
 
-describe('simulador', () => {
-  const cliente = () => crearAgentClient({ simulado: true, simulador: crearSimulador({ demoraMs: 0 }) });
+describe('guion de pruebas', () => {
+  const cliente = () => crearSimulador({ demoraMs: 0 });
   const turno = (c, k) => c.turn({ idempotency_key: k });
   const tarjetas = (r) => r.events.filter((e) => e.type === 'card').map((e) => e.card);
 

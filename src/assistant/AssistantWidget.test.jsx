@@ -6,11 +6,10 @@ import '../i18n/index.js';
 import i18n from 'i18next';
 import { ConfirmProvider } from '../components/ConfirmDialog.jsx';
 import AssistantWidget from './AssistantWidget.jsx';
-import { crearAgentClient } from '../api/agent.js';
-import { crearSimulador } from './simulator.js';
+import { crearSimulador } from '../test/guionAgente.js';
 
 function montar() {
-  const cliente = crearAgentClient({ simulado: true, simulador: crearSimulador({ demoraMs: 0 }) });
+  const cliente = crearSimulador({ demoraMs: 0 });
   return render(
     <ConfirmProvider>
       <AssistantWidget cliente={cliente} />

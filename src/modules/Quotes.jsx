@@ -30,8 +30,8 @@ const today   = (() => {
 const quoteHasCurrentExpiration = quote => Boolean(quote?.validUntil) && quote.validUntil >= today;
 
 // — Cotizaciones a clientes —
-const STATUS_LABEL = { borrador: 'Borrador', enviada: 'Enviada', aprobada: 'Aprobada', rechazada: 'Rechazada', vencida: 'Vencida', convertida: 'Convertida' };
-const STATUS_CLASS  = { borrador: 'neutral', enviada: 'info',    aprobada: 'success',  rechazada: 'danger',    vencida: 'warning',  convertida: 'success'    };
+const STATUS_LABEL = { prospecto: 'Prospecto', borrador: 'Borrador', enviada: 'Enviada', aprobada: 'Aprobada', rechazada: 'Rechazada', vencida: 'Vencida', convertida: 'Convertida' };
+const STATUS_CLASS  = { prospecto: 'warning', borrador: 'neutral', enviada: 'info',    aprobada: 'success',  rechazada: 'danger',    vencida: 'warning',  convertida: 'success'    };
 
 // — RFQ a proveedores —
 const RFQ_LABEL = { solicitada: 'Solicitada', recibida: 'Recibida', aprobada: 'Aprobada', rechazada: 'Rechazada', convertida: 'Conv. a OC' };

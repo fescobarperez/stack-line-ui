@@ -52,7 +52,8 @@ export default function WorkPanel({ conversacion, onColapsar }) {
           <ProductResults
             productos={panel.products}
             deshabilitado={pending}
-            onAgregar={(p) => enviarAccion('add_line', { sku: p.sku })}
+            // El id es lo que identifica al producto en el ERP; el SKU va de respaldo.
+            onAgregar={(p) => enviarAccion('add_line', p.id != null ? { product_id: p.id, sku: p.sku } : { sku: p.sku })}
           />
         )}
 
