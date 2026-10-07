@@ -74,6 +74,15 @@
      contenedor el cuerpo es tinta (o papel sobre fondo oscuro). */
   --agent-ink: #17151C;
   --agent-paper: #F6F2EA;
+  /* Tino de cuerpo completo (TinoCharacter). Fijos: el personaje es la marca. */
+  --tino-outline: #63092A;
+  --tino-body: #FFFFFF;
+  --tino-visor: #17151C;
+  --tino-visor-shine: #3A3540;
+  --tino-eye: #E7BCC3;
+  --tino-badge: #893149;
+  --tino-shadow: rgba(99, 9, 42, .22);
+  --tino-halo: #F6F2EA;
   --agent-accent: var(--md-sys-color-primary);
   --agent-on-accent: var(--md-sys-color-on-primary);
   --agent-shadow-launcher: 0 8px 20px rgba(23, 21, 28, .2);
@@ -4741,6 +4750,20 @@ table.tbl tfoot td {
 .assistant-launcher:hover { transform: scale(1.06); }
 .assistant-launcher:active { transform: scale(.96); }
 .assistant-launcher.open { background: var(--agent-ink); }
+
+/* Tino asomado por la ventanilla del lanzador. La región de recorte deja
+   pasar todo lo que está arriba de y=40 (la cabeza sale del círculo) y, de
+   ahí para abajo, solo lo que cae dentro del círculo de 60 px. */
+.assistant-launcher-tino {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  clip-path: path('M-30 -40H90V40H58.28A30 30 0 0 1 1.72 40H-30Z');
+}
+.assistant-launcher-tino-fig {
+  position: absolute; left: 50%; bottom: -26px;
+  transform: translateX(-50%);
+  line-height: 0;
+}
 .assistant-launcher:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 3px; }
 
 .assistant {
@@ -4917,6 +4940,29 @@ table.tbl tfoot td {
 @keyframes tino-hop     { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
 @keyframes tino-tilt    { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-14deg); } }
 @keyframes tino-peek    { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(1px); } }
+
+/* ── Tino de cuerpo completo ── */
+.tino-character { display: block; overflow: visible; flex: 0 0 auto; }
+.tino-blink-fast { animation: tino-blink 3s ease-in-out infinite; }
+.tino-d3 { animation-delay: .6s !important; }
+.tino-c-bob-slow { animation: tino-c-bob 3.2s ease-in-out infinite; }
+.tino-c-bob      { animation: tino-c-bob 2.4s ease-in-out infinite; }
+.tino-c-bob-fast { animation: tino-c-bob 1.6s ease-in-out infinite; }
+.tino-c-jump     { animation: tino-c-jump .8s ease-in-out infinite; }
+.tino-c-shadow   { animation: tino-c-shadow .8s ease-in-out infinite; }
+.tino-c-wave     { animation: tino-c-wave .7s ease-in-out infinite alternate; }
+.tino-c-spark    { animation: tino-c-spark 1.4s ease-in-out infinite; }
+
+@keyframes tino-c-bob    { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.2px); } }
+@keyframes tino-c-jump   { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes tino-c-shadow { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(.75); opacity: .6; } }
+@keyframes tino-c-wave   { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+@keyframes tino-c-spark  { 0%, 100% { transform: scale(.4); opacity: 0; } 50% { transform: scale(1); opacity: 1; } }
+
+.assistant-empty .tino-character { margin: 0 auto 12px; }
+.assistant-empty-inner { display: flex; flex-direction: column; align-items: center; }
+.assistant-notice.error.con-tino { flex-direction: row; align-items: center; gap: 12px; }
+.assistant-notice.error.con-tino .assistant-notice-body { display: flex; flex-direction: column; gap: 8px; }
 
 @media (prefers-reduced-motion: reduce) {
   .assistant-msg { animation: none; }

@@ -3,6 +3,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import Button from '../components/Button.jsx';
 import TinoMark from './TinoMark.jsx';
+import TinoCharacter from './TinoCharacter.jsx';
 
 /**
  * Avatar de 24 px. Muestra la expresión que le toca pero NO se anima: el gesto
@@ -66,10 +67,13 @@ export function ErrorBubble({ tipo, onReintentar }) {
     );
   }
   return (
-    <div className="assistant-msg assistant-notice error body-medium" role="alert">
-      <span>{t('assistant.error', 'No pude completar la consulta. Intente de nuevo.')}</span>
-      <div>
-        <Button size="sm" icon="refresh" onClick={onReintentar}>{t('assistant.retry', 'Reintentar')}</Button>
+    <div className="assistant-msg assistant-notice error con-tino body-medium" role="alert">
+      <TinoCharacter pose="confused" size={52} />
+      <div className="assistant-notice-body">
+        <span>{t('assistant.error', 'No pude completar la consulta. Intente de nuevo.')}</span>
+        <div>
+          <Button size="sm" icon="refresh" onClick={onReintentar}>{t('assistant.retry', 'Reintentar')}</Button>
+        </div>
       </div>
     </div>
   );

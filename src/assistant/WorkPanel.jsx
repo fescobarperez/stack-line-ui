@@ -6,6 +6,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import Button from '../components/Button.jsx';
 import { vistaPanel } from './agentReducer.js';
+import TinoCharacter from './TinoCharacter.jsx';
 import ProductResults from './ProductResults.jsx';
 import CustomerCard from './CustomerCard.jsx';
 import QuotePreview from './QuotePreview.jsx';
@@ -44,7 +45,11 @@ export default function WorkPanel({ conversacion, onColapsar }) {
       <div className="assistant-panel-body">
         {vista === 'vacio' && (
           <div className="assistant-empty body-medium">
-            <p>{t('assistant.panelEmpty', 'Los resultados del catálogo y la cotización en construcción aparecerán aquí, editables, mientras conversa.')}</p>
+            <div className="assistant-empty-inner">
+              {/* Saluda mientras no hay nada; busca con la lupa mientras espera al agente. */}
+              <TinoCharacter pose={pending ? 'thinking' : 'hello'} size={112} />
+              <p>{t('assistant.panelEmpty', 'Los resultados del catálogo y la cotización en construcción aparecerán aquí, editables, mientras conversa.')}</p>
+            </div>
           </div>
         )}
 
