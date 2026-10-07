@@ -41,6 +41,7 @@ export default defineConfig(({ mode }) => {
     '/api/loyalty': 'ventas',
     '/api/credit-notes': 'ventas',
     '/api/clients': 'ventas',
+    '/api/agent': 'ventas',
     // compras · compras + proveedores
     '/api/purchase-orders': 'compras',
     '/api/purchase-invoices': 'compras',
@@ -90,6 +91,11 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./src/test/setup.js'],
+      css: false,
+    },
     server: {
       port: 5173,
       strictPort: false,

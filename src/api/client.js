@@ -41,8 +41,10 @@ export class ApiError extends Error {
  * @param {boolean} opts.silent  Exime ESTA llamada del velo de carga. Para el
  *   caso puntual; si el endpoint siempre debe eximirse, va en RUTAS_EXENTAS
  *   de loading.js, que es donde se busca.
+ * @param {AbortSignal} opts.signal  Para cortar la petición (p. ej. por tiempo
+ *   límite). Una petición abortada se reporta como ApiError de estado 0.
  */
-async function request(path, { method = 'GET', body, headers, silent = false } = {}) {
+async function request(path, { method = 'GET', body, headers, silent = false, signal } = {}) {
   const token = getToken();
   const conVelo = !silent && !estaExenta(path);
   if (conVelo) inicioPeticion();
@@ -55,6 +57,7 @@ async function request(path, { method = 'GET', body, headers, silent = false } =
         ...headers,
       },
       body: body != null ? JSON.stringify(body) : undefined,
+      signal,
     });
 
     if (!res.ok) {

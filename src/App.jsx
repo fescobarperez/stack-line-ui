@@ -22,6 +22,7 @@ import POS from './modules/POS.jsx';
 import Billing from './modules/Billing.jsx';
 import Inventory from './modules/Inventory.jsx';
 import Catalog from './modules/Catalog.jsx';
+import AssistantWidget from './assistant/AssistantWidget.jsx';
 import Reports from './modules/Reports.jsx';
 import Maintenance from './modules/Maintenance.jsx';
 import Clients from './modules/Clients.jsx';
@@ -415,6 +416,9 @@ export default function App({ session, onLogout }) {
           onNavigate={(route) => navigate('/' + route)}
         />
       )}
+
+      {/* Asistente comercial: flota sobre cualquier módulo */}
+      <AssistantWidget />
 
       {/* Toasts */}
       <div className="toast-stack">
