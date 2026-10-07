@@ -17,6 +17,25 @@ function montar() {
   );
 }
 
+describe('AssistantWidget · lanzador', () => {
+  beforeEach(async () => {
+    sessionStorage.clear();
+    localStorage.clear();
+    await i18n.changeLanguage('es');
+  });
+
+  it('Tino se asoma en reposo y saluda al pasar el puntero', async () => {
+    const user = userEvent.setup();
+    montar();
+    const lanzador = screen.getByRole('button', { name: 'Abrir asistente comercial' });
+    expect(lanzador.querySelector('svg[data-pose]').dataset.pose).toBe('idle');
+    await user.hover(lanzador);
+    expect(lanzador.querySelector('svg[data-pose]').dataset.pose).toBe('hello');
+    await user.unhover(lanzador);
+    expect(lanzador.querySelector('svg[data-pose]').dataset.pose).toBe('idle');
+  });
+});
+
 describe('AssistantWidget · chat', () => {
   beforeEach(async () => {
     sessionStorage.clear();

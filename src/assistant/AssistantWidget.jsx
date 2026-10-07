@@ -7,7 +7,7 @@
 // No es modal: no atrapa el foco del resto del ERP. Esc lo colapsa.
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import TinoMark from './TinoMark.jsx';
+import TinoCharacter from './TinoCharacter.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import ChatColumn from './ChatColumn.jsx';
 import WorkPanel from './WorkPanel.jsx';
@@ -32,6 +32,8 @@ export default function AssistantWidget({ cliente }) {
   const conversacion = useAgentConversation(cliente ? { cliente } : undefined);
   const [abierto, setAbierto] = useState(() => leerBandera(CLAVE_ABIERTO));
   const [panelVisible, setPanelVisible] = useState(() => leerBandera(CLAVE_PANEL));
+  // Tino saluda cuando el puntero o el foco llegan al lanzador.
+  const [saluda, setSaluda] = useState(false);
   const lanzador = useRef(null);
   const widget = useRef(null);
   const recienAbierto = useRef(false);
@@ -103,6 +105,10 @@ export default function AssistantWidget({ cliente }) {
         if (arrastre.consumirArrastre()) return;
         if (abierto) colapsar(); else abrir();
       }}
+      onMouseEnter={() => setSaluda(true)}
+      onMouseLeave={() => setSaluda(false)}
+      onFocus={() => setSaluda(true)}
+      onBlur={() => setSaluda(false)}
       title={t('assistant.dragHint', 'Arrastre para moverlo')}
       aria-expanded={abierto}
       aria-label={abierto ? t('assistant.close', 'Cerrar asistente') : t('assistant.open', 'Abrir asistente comercial')}
@@ -112,7 +118,18 @@ export default function AssistantWidget({ cliente }) {
           <path d="M7 7l10 10M17 7L7 17" fill="none" stroke="var(--agent-paper)" strokeWidth="2" strokeLinecap="round" />
         </svg>
       ) : (
-        <TinoMark state="idle" size={36} tone="on-accent" />
+        // Tino asomado por la ventanilla: la cabeza sale del círculo y el
+        // cuerpo se corta en la mitad inferior (clip-path en el CSS).
+        <span className="assistant-launcher-tino" aria-hidden="true">
+          <span className="assistant-launcher-tino-fig">
+            <TinoCharacter
+              pose={arrastre.arrastrando ? 'done' : saluda ? 'hello' : conversacion.state.pending ? 'thinking' : 'idle'}
+              size={82}
+              halo
+              shadow={false}
+            />
+          </span>
+        </span>
       )}
     </button>
   );
