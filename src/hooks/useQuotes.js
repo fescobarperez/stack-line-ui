@@ -34,6 +34,16 @@ export function mapQuote(q) {
     client: { name: q.clientName || '', nit: q.clientNit || '', email: q.clientEmail || '', contact: q.clientContact || '' },
     createdBy: q.createdBy || '',
     status: q.status,
+    // Del asistente: «agente» habilita la pestaña de solicitudes del cliente.
+    origin: q.origin || null,
+    takenBy: q.takenBy || null,
+    // Canal de la conversación que la originó: «whatsapp» habilita el reenvío por ahí.
+    channel: q.channel || null,
+    conversationRef: q.conversationRef || null,
+    // Versión enviada al cliente y su decisión (motivo opcional al rechazar).
+    sentVersion: Number(q.sentVersion || 0),
+    clientReasonCode: q.clientReasonCode || null,
+    clientReasonNote: q.clientReasonNote || null,
     taxRate: q.taxRate == null ? null : Number(q.taxRate),
     profitCalcType: q.profitCalcType || 'fixed',
     profitValue: Number(q.profitValue || 0),

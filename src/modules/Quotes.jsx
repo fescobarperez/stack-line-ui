@@ -11,7 +11,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import { useClientQuotes, useSupplierRfqs, mapQuote, mapRfq } from '../hooks/useQuotes.js';
-import { getQuote, getQuoteCharges, createQuote as apiCreateQuote, updateQuoteStatus, listSettings, setQuoteAdjustment, resendQuoteEmail } from '../api/wave2.js';
+import { getQuote, getQuoteCharges, createQuote as apiCreateQuote, updateQuoteStatus, listSettings, setQuoteAdjustment, resendQuoteEmail, resendQuoteWhatsapp, takeQuote } from '../api/wave2.js';
+import QuoteChangeRequestsPanel from '../components/QuoteChangeRequestsPanel.jsx';
 import { sessionCompany } from '../api/auth.js';
 import { renderQuotePdfWindow } from '../lib/quotePdf.js';
 import QuoteBuilderModal from '../components/QuoteBuilderModal.jsx';
@@ -27,11 +28,21 @@ const today   = (() => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 })();
+// Motivos con los que el cliente rechaza (catálogo del ERP: MOTIVOS_CLIENTE).
+const CLIENT_REASONS = {
+  precio: 'Precio',
+  plazo_entrega: 'Plazo de entrega',
+  compro_en_otro_lugar: 'Compró en otro lugar',
+  ya_no_lo_necesita: 'Ya no lo necesita',
+  otro: 'Otro',
+};
+// Solo las que nacieron en una conversación de WhatsApp se reenvían por ahí.
+const isFromWhatsapp = quote => quote?.channel === 'whatsapp' && Boolean(quote?.conversationRef);
 const quoteHasCurrentExpiration = quote => Boolean(quote?.validUntil) && quote.validUntil >= today;
 
 // — Cotizaciones a clientes —
-const STATUS_LABEL = { prospecto: 'Prospecto', borrador: 'Borrador', enviada: 'Enviada', aprobada: 'Aprobada', rechazada: 'Rechazada', vencida: 'Vencida', convertida: 'Convertida' };
-const STATUS_CLASS  = { prospecto: 'warning', borrador: 'neutral', enviada: 'info',    aprobada: 'success',  rechazada: 'danger',    vencida: 'warning',  convertida: 'success'    };
+const STATUS_LABEL = { abierta: 'En armado', abandonada: 'Abandonada', prospecto: 'Prospecto', borrador: 'Borrador', enviada: 'Enviada', aprobada: 'Aprobada', rechazada: 'Rechazada', vencida: 'Vencida', convertida: 'Convertida' };
+const STATUS_CLASS  = { abierta: 'neutral', abandonada: 'neutral', prospecto: 'warning', borrador: 'neutral', enviada: 'info',    aprobada: 'success',  rechazada: 'danger',    vencida: 'warning',  convertida: 'success'    };
 
 // — RFQ a proveedores —
 const RFQ_LABEL = { solicitada: 'Solicitada', recibida: 'Recibida', aprobada: 'Aprobada', rechazada: 'Rechazada', convertida: 'Conv. a OC' };
@@ -212,6 +223,16 @@ export default function Quotes({ pushToast }) {
       pushToast('No se pudo reenviar: ' + err.message, 'danger');
     } finally { setReenviando(false); }
   }, [pushToast]);
+  const [reenviandoWa, setReenviandoWa] = useState(false);
+  const reenviarWhatsapp = useCallback(async (quoteId) => {
+    setReenviandoWa(true);
+    try {
+      await resendQuoteWhatsapp(quoteId);
+      pushToast(t('quotes.whatsappQueued', 'Cotización en cola para WhatsApp'), 'success');
+    } catch (err) {
+      pushToast(t('quotes.whatsappResendFailed', 'No se pudo reenviar por WhatsApp: ') + err.message, 'danger');
+    } finally { setReenviandoWa(false); }
+  }, [pushToast, t]);
   const [guardandoAjuste, setGuardandoAjuste] = useState(false);
   const handlePlanBalanceChange = useCallback((balanced) => setSelectedPlanBalanced(balanced), []);
   const handleChargesChange = useCallback(() => setChargesVersion((version) => version + 1), []);
@@ -371,6 +392,21 @@ export default function Quotes({ pushToast }) {
     setChargeSummary(null);
     setAjusteBorrador('');
     setSelected(q); setDrawerTab('detail');
+    // Abrir un prospecto del asistente lo toma: pasa a borrador a tu nombre y
+    // el cliente ya no puede reabrirlo (sus cambios llegan como solicitudes).
+    if (q.status === 'prospecto') {
+      try {
+        const tomada = mapQuote(await takeQuote(q.backendId));
+        setSelected(tomada);
+        reloadQuotes();
+        if (tomada.status === 'borrador') {
+          pushToast(t('quotes.taken', 'La cotización quedó asignada a ti; el cliente ya no puede modificarla.'), 'info');
+        }
+        return;
+      } catch (err) {
+        pushToast(t('quotes.takeFailed', 'No se pudo tomar la cotización: ') + err.message, 'danger');
+      }
+    }
     try { setSelected(mapQuote(await getQuote(q.backendId))); } catch { /* deja el de la lista */ }
   };
 
@@ -659,6 +695,9 @@ export default function Quotes({ pushToast }) {
             <div className="tabs" style={{ padding: '0 16px', borderBottom: '1px solid var(--border)' }}>
               <button className={`tab ${drawerTab === 'detail'  ? 'active' : ''}`} onClick={() => setDrawerTab('detail')}>{t('quotes.detail', 'Detalle')}</button>
               <button className={`tab ${drawerTab === 'history' ? 'active' : ''}`} onClick={() => setDrawerTab('history')}>{t('quotes.history', 'Historial')}</button>
+              {selQuote.origin === 'agente' && (
+                <button className={`tab ${drawerTab === 'requests' ? 'active' : ''}`} onClick={() => setDrawerTab('requests')}>{t('quotes.changeRequests', 'Solicitudes del cliente')}</button>
+              )}
             </div>
 
             <div className="drawer-body">
@@ -690,6 +729,12 @@ export default function Quotes({ pushToast }) {
                         [t('quotes.email', 'Correo'),       selQuote.client.email || '—'],
                         [t('quotes.validUntil', 'Válida hasta'), fmtDate(selQuote.validUntil)],
                         [t('quotes.createdBy', 'Creado por'),   selQuote.createdBy],
+                        ...(selQuote.sentVersion > 0 ? [[t('quotes.sentVersion', 'Versión enviada'), `v${selQuote.sentVersion}`]] : []),
+                        ...(selQuote.clientReasonCode || selQuote.clientReasonNote ? [[
+                          t('quotes.clientReason', 'Motivo del cliente'),
+                          [CLIENT_REASONS[selQuote.clientReasonCode] || selQuote.clientReasonCode, selQuote.clientReasonNote]
+                            .filter(Boolean).join(' — '),
+                        ]] : []),
                       ].map(([l, v]) => (
                         <div className="detail-row" key={l}>
                           <span className="detail-label">{l}</span>
@@ -818,6 +863,14 @@ export default function Quotes({ pushToast }) {
                 );
               })()}
 
+              {drawerTab === 'requests' && (
+                <QuoteChangeRequestsPanel
+                  quote={selQuote}
+                  pushToast={pushToast}
+                  onApplied={(full) => { if (full) setSelected(mapQuote(full)); reloadQuotes(); setChargesVersion((v) => v + 1); }}
+                />
+              )}
+
               {drawerTab === 'history' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                   {selQuote.history.map((h, idx) => (
@@ -874,6 +927,12 @@ export default function Quotes({ pushToast }) {
                       onClick={() => reenviarCorreo(selQuote.backendId)}>
                       {reenviando ? t('quotes.resending', 'Reenviando…') : t('quotes.resendEmail', 'Reenviar correo')}
                     </Button>
+                    {isFromWhatsapp(selQuote) && (
+                      <Button icon="send" disabled={reenviandoWa}
+                        onClick={() => reenviarWhatsapp(selQuote.backendId)}>
+                        {reenviandoWa ? t('quotes.resending', 'Reenviando…') : t('quotes.resendWhatsapp', 'Reenviar por WhatsApp')}
+                      </Button>
+                    )}
                     <Button onClick={() => { updateStatus(selQuote.id, 'aprobada', 'Aprobada por el cliente', 'Cotización aprobada'); }}>
                       {t('quotes.markApproved', 'Marcar aprobada')}
                     </Button>
