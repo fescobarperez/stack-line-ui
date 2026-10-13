@@ -8,7 +8,8 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 // Stackline — Inventory module
 import React, { useState as useStateInv, useMemo as useMemoInv } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useProducts, useCategories } from '../hooks/useCatalog.js';
+import { dimensionsPayload, useProducts, useCategories } from '../hooks/useCatalog.js';
+import DimensionsFields from '../components/DimensionsFields.jsx';
 import SupplierPriceModal from '../components/SupplierPriceModal.jsx';
 import { useSuppliers, useBranches } from '../hooks/useMasters.js';
 import { useStockMovements } from '../hooks/useOperations.js';
@@ -26,7 +27,7 @@ const ITEM_TYPES = {
   service:      { label: 'Servicio',      variant: 'warning' },
 };
 
-const EMPTY_FORM = { name: '', sku: '', cat: '', unit: 'Unidad', purchaseUnit: '', purchaseFactor: '', itemType: 'sellable', supplierId: '', cost: '', price: '', stock: '', min: '', desc: '', active: true, lots: false };
+const EMPTY_FORM = { name: '', sku: '', cat: '', unit: 'Unidad', purchaseUnit: '', purchaseFactor: '', itemType: 'sellable', supplierId: '', cost: '', price: '', stock: '', min: '', desc: '', active: true, lots: false, height: '', width: '', depth: '', dimensionUnit: null, madeToOrder: false };
 
 function InventoryModule({ pushToast }) {
   const { t } = useTranslation();
@@ -100,6 +101,8 @@ function InventoryModule({ pushToast }) {
       itemType: p.itemType ?? 'sellable', supplierId: p.supplierId ?? p.suppliers?.[0]?.supplierId ?? '',
       cost: p.cost ?? p.suppliers?.[0]?.unitCost ?? '', price: p.price ?? '', stock: p.stock ?? '', min: p.min ?? '',
       desc: p.description ?? '', active: (p.status ?? 'ACTIVE') !== 'INACTIVE', lots: !!p.lots,
+      height: p.height ?? '', width: p.width ?? '', depth: p.depth ?? '', dimensionUnit: p.dimensionUnit ?? null,
+      madeToOrder: p.tracksStock === false,
     });
     setShowNew(true);
   };
@@ -127,6 +130,7 @@ function InventoryModule({ pushToast }) {
       supplierCost: form.itemType === 'raw_material' ? Number(form.cost) || null : null,
       minStock: Number(form.min) || 0,
       status: form.active ? 'ACTIVE' : 'INACTIVE',
+      ...dimensionsPayload(form),
     };
     setSaving(true);
     try {
@@ -762,6 +766,11 @@ function InventoryModule({ pushToast }) {
                     value={form.purchaseFactor} placeholder="1"
                     onChange={e => setForm(f => ({ ...f, purchaseFactor: e.target.value }))} />
                 </div>
+              </div>
+              {/* Medida estándar opcional: base para cotizar muebles a medida. */}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <DimensionsFields value={form} className="field"
+                  onChange={(k, v) => setForm(f => ({ ...f, [k]: v }))} />
               </div>
               <div className="field"><label>{t('inventory.headers.supplier', 'Proveedor')}</label>
                 <Autocomplete value={form.supplierId} onChange={(id) => setForm((f) => ({ ...f, supplierId: id == null ? '' : String(id) }))}

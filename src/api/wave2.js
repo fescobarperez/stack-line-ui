@@ -112,6 +112,14 @@ export const saveMailSettings = (data) => api.put('/api/company/mail-settings', 
 export const testMailSettings = () => api.post('/api/company/mail-settings/test', {});
 /** Reenvía la cotización al cliente. Devuelve { ok, message }. */
 export const resendQuoteEmail = (id) => api.post(`/api/quotes/${id}/send-email`, {});
+// ── Condiciones comerciales (Configuración → Empresa → Cotizaciones) ──
+export const listQuoteConditions = () => api.get('/api/quote-conditions');
+export const createQuoteCondition = (data) => api.post('/api/quote-conditions', data);
+export const updateQuoteCondition = (id, data) => api.put(`/api/quote-conditions/${id}`, data);
+export const deleteQuoteCondition = (id) => api.del(`/api/quote-conditions/${id}`);
+
+/** El PDF de la cotización (generado en el backend) como Blob. */
+export const getQuotePdf = (id) => api.get(`/api/quotes/${id}/pdf`, { blob: true });
 /** Reenvía por WhatsApp la cotización enviada (solo las que nacieron por WhatsApp). */
 export const resendQuoteWhatsapp = (id) => api.post(`/api/quotes/${id}/send-whatsapp`, {});
 export const deleteSetting = (key) => api.del(`/api/settings/${encodeURIComponent(key)}`);

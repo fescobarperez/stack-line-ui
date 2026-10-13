@@ -13,7 +13,7 @@ import TreeView from './TreeView.jsx';
 import treeStyles from './TreeView.module.css';
 import useTreeSelection from '../hooks/useTreeSelection.js';
 import { getProjectMaterials, createProjectQuoteFromMaterials, appendProjectQuoteLines } from '../api/projectMaterials.js';
-import { addQuoteCharge, listQuotes } from '../api/wave2.js';
+import { addQuoteCharge, listQuotes, listSettings } from '../api/wave2.js';
 import { useTranslation } from 'react-i18next';
 
 const Q = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -40,7 +40,30 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   })();
   const [profit, setProfit] = useState({ calcType: 'fixed', value: '' });
+  const addDays = (iso, n) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    const f = new Date(y, m - 1, d + n);
+    return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+  };
   const setProfitField = (k, v) => setProfit((f) => ({ ...f, [k]: v }));
+  // Ganancia sugerida de la empresa (Configuración → Cotizaciones): se
+  // precarga como porcentaje y el vendedor la puede cambiar.
+  useEffect(() => {
+    let vigente = true;
+    listSettings()
+      .then((rows) => {
+        const ajuste = (k) => (rows || []).find((r) => r.settingKey === k)?.settingValue;
+        const pct = ajuste('quotes.default_profit_pct');
+        if (vigente && pct !== undefined && pct !== null && String(pct).trim() !== '' && Number(pct) >= 0) {
+          setProfit((f) => (f.value === '' ? { calcType: 'percent', value: String(pct) } : f));
+        }
+        // Vigencia por defecto de la empresa: precarga la fecha de expiración.
+        const dias = Number(ajuste('quotes.validity_days')) || 15;
+        if (vigente) setValidUntil((v) => v || addDays(today, dias));
+      })
+      .catch(() => { /* sin ajustes: sin ganancia sugerida */ });
+    return () => { vigente = false; };
+  }, []);
   const [charge, setCharge] = useState({ calcType: 'fixed', category: '', description: '', value: '' });
   const setCh = (k, v) => setCharge((f) => ({ ...f, [k]: v }));
   const addCharge = () => {

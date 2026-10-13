@@ -76,9 +76,10 @@
     "theme": "Tema",
     "page": "Página",
     "of": "de",
-    "rows": "filas"
+    "rows": "filas",
+    "saving": "Guardando…",
+    "select": "Seleccionar…"
   },
-
   "nav": {
     "sections": {
       "OPERACIÓN": "Operación",
@@ -121,7 +122,6 @@
     "audit": "Auditoría",
     "config": "Configuración"
   },
-
   "shell": {
     "searchPlaceholder": "Buscar productos, tickets, clientes…",
     "satOnline": "SAT-FEL en línea",
@@ -130,7 +130,6 @@
     "accessDenied": "Sin acceso",
     "accessDeniedDesc": "Tu rol no tiene permiso para ver este módulo."
   },
-
   "search": {
     "placeholder": "Buscar módulos, productos, clientes…",
     "groups": {
@@ -169,7 +168,6 @@
     },
     "stockLow": "Stock bajo"
   },
-
   "login": {
     "title": "Iniciar sesión",
     "description": "Ingresa el código de tu empresa, correo y contraseña.",
@@ -209,7 +207,6 @@
       "legal": "© 2026 Stackline · Guatemala · Todos los derechos reservados"
     }
   },
-
   "dashboard": {
     "ranges": {
       "7d": "7 días",
@@ -248,7 +245,6 @@
       "payment": "Pago"
     }
   },
-
   "pos": {
     "searchPlaceholder": "Buscar por nombre o código de barras…",
     "scan": "Escanear",
@@ -292,7 +288,6 @@
       "exempt": "Exento"
     }
   },
-
   "billing": {
     "title": "Facturación · Tickets de venta",
     "exportIva": "Exportar libro IVA",
@@ -328,7 +323,6 @@
     "certified": "Certificada",
     "general": "General"
   },
-
   "inventory": {
     "title": "Inventario",
     "subtitle": "{{count}} SKUs activos · {{categories}} categorías · Valor cost.",
@@ -384,7 +378,6 @@
     "editProduct": "Editar producto",
     "newAdjustment": "Nuevo ajuste"
   },
-
   "clients": {
     "title": "Clientes",
     "subtitle": "{{count}} clientes registrados · CxC total",
@@ -451,7 +444,6 @@
       }
     }
   },
-
   "purchases": {
     "title": "Compras y Órdenes de compra",
     "newPO": "Nueva OC",
@@ -471,7 +463,6 @@
       "deliveryDate": "Entrega"
     }
   },
-
   "reports": {
     "title": "Reportería",
     "tabs": {
@@ -483,7 +474,6 @@
     "export": "Exportar",
     "print": "Imprimir"
   },
-
   "cash": {
     "title": "Caja & Cortes",
     "open": "Abrir caja",
@@ -493,7 +483,6 @@
       "history": "Historial"
     }
   },
-
   "returns": {
     "title": "Devoluciones",
     "newReturn": "Nueva devolución",
@@ -503,13 +492,11 @@
       "creditNotes": "Notas de crédito"
     }
   },
-
   "transfers": {
     "title": "Transferencias entre sucursales",
     "newTransfer": "Nueva transferencia",
     "searchPlaceholder": "No. transferencia, sucursal…"
   },
-
   "stockcount": {
     "title": "Conteo físico",
     "newCount": "Nuevo conteo",
@@ -518,36 +505,148 @@
       "history": "Historial"
     }
   },
-
   "variants": {
     "title": "Variantes de producto",
     "newGroup": "Nuevo grupo"
   },
-
   "uom": {
     "title": "Unidades de Medida",
     "newUnit": "Nueva unidad"
   },
-
   "quotes": {
     "title": "Cotizaciones / Pre-ventas",
     "newQuote": "Nueva cotización",
     "searchPlaceholder": "No. cotización, cliente…",
     "generatePdf": "Generar PDF",
     "generatingPdf": "Generando PDF…",
-    "pdfReady": "PDF generado. Revisa la ventana de impresión para guardarlo.",
+    "pdfReady": "PDF generado. Puedes descargarlo o imprimirlo desde el visor.",
     "pdfBlocked": "Permite las ventanas emergentes para generar el PDF",
     "expirationRequiredBeforeActions": "Define una fecha de expiración vigente antes de enviar o generar el PDF.",
     "expirationRequiredBeforeSend": "No se puede enviar: define una fecha de expiración vigente.",
     "pdfExpirationBlocked": "No se puede generar el PDF: define una fecha de expiración vigente.",
-    "pdfFailed": "No se pudo generar el PDF: "
+    "pdfFailed": "No se pudo generar el PDF: ",
+    "draftUpdated": "Borrador actualizado",
+    "draftUpdateFailed": "No se pudo actualizar el borrador: ",
+    "editDraftTitle": "Editar cotización",
+    "editDraftHint": "Los cambios aplican mientras permanezca en borrador",
+    "validUntil": "Fecha de expiración",
+    "companyProfit": "Ganancia de la empresa",
+    "fixed": "Fijo",
+    "priceDisplay": "Presentación al cliente",
+    "globalHint": "El PDF muestra las líneas marcadas como «Incluido» y solo el total. Desmarca las líneas internas (p. ej. materiales).",
+    "lines": "LÍNEAS DE LA COTIZACIÓN",
+    "qty": "Cant.",
+    "unitPriceShort": "P. Unit.",
+    "dimensions": "Medidas (alto × ancho × prof.)",
+    "showToClientHint": "Sale en el PDF del cliente",
+    "showToClient": "Cliente",
+    "customSize": "Medida especial",
+    "catalogSize": "catálogo",
+    "removeLine": "Eliminar línea",
+    "internalLineHint": "No sale en el PDF del cliente",
+    "internalLine": "Interna",
+    "catalogSizeHint": "Medida del catálogo: {{size}}",
+    "newRFQ": "Nueva Solicitud de Cotización (RFQ)",
+    "supplierName": "Nombre / Empresa *",
+    "supplierNamePlaceholder": "Empresa proveedora",
+    "contact": "Contacto",
+    "contactPlaceholder": "Nombre del contacto",
+    "respondBefore": "Responder antes de",
+    "requestedProducts": "PRODUCTOS SOLICITADOS",
+    "productOrInput": "Producto o insumo",
+    "addProduct": "Agregar producto",
+    "notesSpecs": "Notas / especificaciones",
+    "notesSpecsPlaceholder": "Especificaciones técnicas, condiciones deseadas, observaciones…",
+    "createRequest": "Crear solicitud",
+    "whatsappQueued": "Cotización en cola para WhatsApp",
+    "whatsappResendFailed": "No se pudo reenviar por WhatsApp: ",
+    "adjInvalid": "Indica un monto válido",
+    "adjFailed": "No se pudo guardar el ajuste: ",
+    "quoteNo": "Cotización",
+    "items": "Ítems",
+    "totalWithIva": "Total (c/IVA)",
+    "rfqNo": "Solicitud",
+    "leadTime": "T. entrega",
+    "paymentTerm": "Plazo pago",
+    "pending": "Pendiente",
+    "notFound": "No se encontró la cotización",
+    "taken": "La cotización quedó asignada a ti; el cliente ya no puede modificarla.",
+    "takeFailed": "No se pudo tomar la cotización: ",
+    "rfqNotFound": "No se encontró la solicitud",
+    "subtitleClient": "Pre-ventas y propuestas comerciales a clientes",
+    "subtitleSupplier": "Solicitudes de cotización a proveedores (RFQ)",
+    "toClients": "A clientes",
+    "toSuppliers": "A proveedores",
+    "newRequest": "Nueva solicitud",
+    "inPipeline": "En pipeline",
+    "inProcess": "en proceso",
+    "readyToInvoice": "listas para facturar",
+    "converted": "Convertidas",
+    "thisMonth": "Este mes",
+    "expiredRejected": "Vencidas / Rechazadas",
+    "requireFollowup": "Requieren seguimiento",
+    "noQuotes": "Sin cotizaciones",
+    "rfqInProcess": "En proceso",
+    "rfqRequestedReceived": "Solicitadas + recibidas",
+    "rfqPendingResponse": "Pendientes respuesta",
+    "rfqWaitingSupplier": "Esperando al proveedor",
+    "rfqReadyForPO": "Listas para generar OC",
+    "rfqConvertedToPO": "Convertidas a OC",
+    "rfqSearchPlaceholder": "Buscar RFQ o proveedor…",
+    "noRequests": "Sin solicitudes",
+    "detail": "Detalle",
+    "history": "Historial",
+    "changeRequests": "Solicitudes del cliente",
+    "detailSection": "Detalle de la cotización",
+    "detailSectionHint": "Productos, cargos y resumen fiscal",
+    "email": "Correo",
+    "createdBy": "Creado por",
+    "sentVersion": "Versión enviada",
+    "clientReason": "Motivo del cliente",
+    "project": "Proyecto",
+    "goToProject": "Ir al proyecto",
+    "calcSubtotal": "Subtotal",
+    "calcOperating": "Gastos operativos",
+    "calcOtherCharges": "Otros cargos",
+    "calcProfitBase": "Base de ganancia",
+    "calcBeforeAdj": "Base antes de ajuste",
+    "calcAdjustment": "Ajuste",
+    "calcAdjustedBase": "Base ajustada",
+    "editDraft": "Editar borrador",
+    "sendRequiresBalancedPlan": "Completa el plan de pagos para enviar la cotización",
+    "sendToClient": "Enviar al cliente",
+    "reject": "Rechazar",
+    "resending": "Reenviando…",
+    "resendEmail": "Reenviar correo",
+    "resendWhatsapp": "Reenviar por WhatsApp",
+    "markApproved": "Marcar aprobada",
+    "convertToSale": "Convertir a venta",
+    "viewProject": "Ver proyecto",
+    "respondBeforeFull": "Resp. antes de",
+    "leadTimeFull": "Tiempo entrega",
+    "paymentTermFull": "Plazo de pago",
+    "waitingSupplierResponse": "Esperando respuesta del proveedor — precios pendientes de confirmar",
+    "subtotalNoIva": "Subtotal sin IVA",
+    "estimatedTotal": "TOTAL ESTIMADO",
+    "registerResponse": "Registrar respuesta",
+    "approve": "Aprobar",
+    "convertToPO": "Convertir a OC",
+    "pickProject": "Nueva cotización · elegir proyecto",
+    "pickProjectHint": "La cotización se compone de los materiales planificados del proyecto.",
+    "priceDetailed": "Detallado (precio por línea)",
+    "priceGlobal": "Precio global (solo el total)",
+    "calcProfitBaseDirect": "Base de ganancia (costo directo)",
+    "deliveryAddress": "Dirección de entrega / instalación",
+    "deliveryAddressPlaceholder": "Zona, colonia o dirección completa",
+    "calcRounding": "Redondeo del total",
+    "sizePriced": "Precio por medida",
+    "sizeReview": "Por cotizar",
+    "sizeReviewHint": "La medida se sale de la tolerancia: ponle precio a la línea"
   },
-
   "promotions": {
     "title": "Promociones",
     "newPromo": "Nueva promoción"
   },
-
   "loyalty": {
     "title": "Programa de Fidelización",
     "tabs": {
@@ -555,19 +654,16 @@
       "rewards": "Recompensas"
     }
   },
-
   "cxc": {
     "title": "Cuentas por Cobrar",
     "newInvoice": "Nueva factura",
     "searchPlaceholder": "Cliente, documento…"
   },
-
   "cxp": {
     "title": "Cuentas por Pagar",
     "newInvoice": "Nueva factura",
     "searchPlaceholder": "Proveedor, documento…"
   },
-
   "accounting": {
     "title": "Contabilidad",
     "tabs": {
@@ -577,17 +673,14 @@
     "newAccount": "Nueva cuenta",
     "newEntry": "Nueva partida"
   },
-
   "costcenters": {
     "title": "Centros de Costo",
     "newCenter": "Nuevo centro"
   },
-
   "presupuestos": {
     "title": "Presupuestos",
     "newBudget": "Nuevo presupuesto"
   },
-
   "ledger": {
     "title": "Mayor General",
     "tabs": {
@@ -595,7 +688,6 @@
       "ledger": "Mayor General"
     }
   },
-
   "financials": {
     "title": "Estados Financieros",
     "tabs": {
@@ -603,16 +695,13 @@
       "balance": "Balance General"
     }
   },
-
   "banks": {
     "title": "Bancos & Cuentas",
     "newAccount": "Nueva cuenta"
   },
-
   "bankrec": {
     "title": "Conciliación Bancaria"
   },
-
   "fel": {
     "title": "FEL · SAT",
     "editInConfig": "Editar en Configuración",
@@ -623,7 +712,6 @@
       "certifier": "Certificador / Emisor"
     }
   },
-
   "maintenance": {
     "title": "Mantenimientos",
     "tabs": {
@@ -633,7 +721,6 @@
       "taxes": "Impuestos & SAT"
     }
   },
-
   "users": {
     "title": "Usuarios & roles",
     "tabs": {
@@ -643,29 +730,172 @@
     "newUser": "Nuevo usuario",
     "newRole": "Nuevo rol"
   },
-
   "payroll": {
     "title": "Planilla",
     "newEmployee": "Nuevo empleado"
   },
-
   "fixedassets": {
     "title": "Activos Fijos",
     "newAsset": "Nuevo activo"
   },
-
   "audit": {
     "title": "Auditoría",
     "searchPlaceholder": "Usuario, acción, módulo…"
   },
-
   "config": {
     "title": "Configuración",
     "tabs": {
       "general": "General",
       "notifications": "Notificaciones",
-      "integrations": "Integraciones"
-    }
+      "integrations": "Integraciones",
+      "company": "Empresa",
+      "taxes": "Impuestos",
+      "quotes": "Cotizaciones",
+      "inventory": "Inventario",
+      "smtp": "Correo SMTP"
+    },
+    "branding": {
+      "badFormat": "Formato no permitido. Usa PNG, JPG, WEBP o SVG.",
+      "tooBig": "El archivo supera 2 MB.",
+      "uploaded": "Logo subido. No olvides Guardar cambios.",
+      "uploadFailed": "No se pudo subir el logo: ",
+      "sectionTitle": "Marca / Branding",
+      "logo": "Logo de la empresa",
+      "logoHint": "PNG, JPG, WEBP o SVG (máx 2 MB). Se sube a S3 y se usa en el encabezado del PDF de cotización.",
+      "uploading": "Subiendo…",
+      "replaceLogo": "Cambiar logo",
+      "chooseLogo": "Seleccionar imagen",
+      "tagline": "Lema",
+      "taglineHint": "Frase corta que acompaña al nombre en el encabezado del PDF de cotización.",
+      "taglinePlaceholder": "Ej: Diseño que transforma, detalles que iluminan",
+      "primaryColor": "Color primario",
+      "primaryColorHint": "Acento principal del PDF (títulos, total).",
+      "secondaryColor": "Color secundario",
+      "secondaryColorHint": "Acento secundario del PDF (cargos, notas).",
+      "preview": "Vista previa — encabezado del PDF",
+      "companyName": "Nombre de empresa"
+    },
+    "saved": "Configuración guardada correctamente",
+    "saveFailed": "No se pudo guardar: ",
+    "subtitle": "Datos de la empresa, credenciales FEL, impuestos y parámetros globales",
+    "companyData": "Datos de la empresa",
+    "fields": {
+      "legalName": "Razón social *",
+      "tradeName": "Nombre comercial",
+      "nit": "NIT *",
+      "fiscalAddress": "Dirección fiscal",
+      "contactEmail": "Correo de contacto",
+      "ticketPrefix": "Prefijo tickets (POS)",
+      "ticketPrefixHint": "Ej: T → T-2026-00001",
+      "ocPrefix": "Prefijo órdenes de compra",
+      "ocPrefixHint": "Ej: OC → OC-2026-00001",
+      "transferPrefix": "Prefijo transferencias",
+      "transferPrefixHint": "Ej: TR → TR-00001"
+    },
+    "docSeries": "Series de documentos",
+    "quotes": {
+      "presentation": "Presentación al cliente",
+      "priceDisplay": "Presentación de precios",
+      "priceDisplayHint": "Valor por defecto de cada cotización nueva; el vendedor puede cambiarlo en cada una. Con «precio global» el PDF muestra las líneas como «Incluido» y solo el total.",
+      "conditions": "Condiciones comerciales",
+      "conditionsHint": "Salen en orden en la sección «Condiciones comerciales» de cada PDF, después de la forma de pago y el tiempo de entrega de la cotización. Cada condición se guarda por separado.",
+      "signature": "Firma",
+      "signatureEnabled": "Firma al final del PDF",
+      "signatureOff": "No mostrar",
+      "signatureOn": "Mostrar",
+      "signatureName": "Nombre bajo la línea",
+      "signatureNameHint": "Vacío = nombre de la empresa.",
+      "signatureLabel": "Leyenda",
+      "signatureLabelHint": "Vacío = «Firma del fabricante».",
+      "signatureLabelPlaceholder": "Firma del fabricante",
+      "pricing": "Cálculo del precio",
+      "profitBase": "La ganancia (%) se calcula sobre",
+      "profitBaseHint": "Costo total: líneas + gastos operativos + cargos. Costo directo: solo las líneas (mano de obra y materiales); los cargos porcentuales y la ganancia se calculan sobre el mismo costo, sin encadenarse.",
+      "profitBaseTotal": "Costo total (con gastos y cargos)",
+      "profitBaseDirect": "Costo directo (solo las líneas)",
+      "defaultProfitPct": "Ganancia sugerida (%)",
+      "defaultProfitPctHint": "Cada cotización nueva (también las del asistente) nace con este porcentaje; el vendedor puede cambiarlo en cada una. Vacío = sin ganancia sugerida.",
+      "validityDays": "Vigencia por defecto (días)",
+      "validityDaysHint": "Cada cotización nueva vence estos días después de emitida (también las del asistente). En el PDF sale como «3 días · hasta el …». Se puede cambiar la fecha en cada una.",
+      "roundingStep": "Redondeo del total",
+      "roundingStepHint": "El total que ve el cliente queda en un múltiplo de este valor (p. ej. Q 8,995.50 → Q 8,995). La base y el IVA se recalculan para cuadrar.",
+      "roundingNone": "Sin redondeo",
+      "roundingMode": "Dirección del redondeo",
+      "roundingDown": "Hacia abajo",
+      "roundingNearest": "Al más cercano",
+      "roundingUp": "Hacia arriba",
+      "sizeFixedPct": "Medida especial: parte fija (%)",
+      "sizeFixedPctHint": "Parte del precio que no cambia con el tamaño (mano de obra, herrajes). Precio = precio × (fijo + resto × volumen pedido ÷ volumen del catálogo).",
+      "sizeTolerancePct": "Medida especial: tolerancia (%)",
+      "sizeTolerancePctHint": "Si alguna medida se aleja más de este porcentaje de la del catálogo, la línea queda «Por cotizar» y el asesor le pone precio."
+    },
+    "fel": {
+      "credentialsNote": "Las credenciales FEL se almacenan cifradas. Contacta a tu certificador SAT para obtener tu clave de API.",
+      "sectionTitle": "Certificador FEL (SAT Guatemala)",
+      "provider": "Certificador",
+      "noProvider": "— Sin configurar —",
+      "environment": "Ambiente",
+      "sandbox": "Pruebas (sandbox)",
+      "production": "Producción",
+      "felUser": "Usuario FEL",
+      "apiKey": "Clave API / Token",
+      "existingKeyHint": "Ya hay una clave guardada. Déjalo vacío para no cambiarla.",
+      "newKeyHint": "Ingresa la clave proporcionada por tu certificador.",
+      "pasteKeyPlaceholder": "Pegar clave API aquí",
+      "endpoint": "Endpoint API",
+      "endpointHint": "URL del servicio de certificación del proveedor.",
+      "series": "Serie activa",
+      "resolution": "Resolución SAT",
+      "issuerTitle": "Datos del emisor (SAT)",
+      "satCategory": "Categoría SAT",
+      "establishment": "Establecimiento",
+      "issuerNote": "Identidad fiscal",
+      "issuerHint": "El NIT, la razón social y la dirección fiscal se editan en la pestaña Empresa; el régimen fiscal, en Impuestos."
+    },
+    "taxes": {
+      "sectionTitle": "Configuración de impuestos (Guatemala)",
+      "regime": "Régimen fiscal",
+      "regimeGeneral": "Régimen General (IVA 12%)",
+      "regimeSmall": "Pequeño Contribuyente (5% sobre ventas)",
+      "regimeExempt": "Exento de IVA",
+      "ivaRate": "Tasa IVA (%)",
+      "ivaRateHint": "Porcentaje: 12 = 12%. Se aplica a ventas y cotizaciones nuevas.",
+      "preview": "Vista previa — desglose de IVA",
+      "exampleSalePrice": "Precio de venta (ejemplo)",
+      "taxBase": "Base imponible"
+    },
+    "inventory": {
+      "sectionTitle": "Parámetros de inventario",
+      "valuationMethod": "Método de valoración de inventario",
+      "valuationMethodHint": "Afecta el costo calculado para el kardex y los estados financieros.",
+      "methodAverage": "Promedio Ponderado (recomendado)",
+      "methodFifo": "PEPS — Primero en Entrar, Primero en Salir",
+      "lowStockThreshold": "Umbral de alerta de stock bajo",
+      "lowStockHint": "Fracción del stock mínimo. 0.20 = alerta cuando stock ≤ 20% del mínimo.",
+      "methodDifference": "Diferencia entre métodos",
+      "weightedAverage": "Promedio Ponderado",
+      "weightedAverageDesc": "el costo unitario se recalcula cada vez que entra mercancía nueva. Más simple y estable.",
+      "fifo": "PEPS",
+      "fifoDesc": "se vende primero el lote más antiguo. Refleja mejor el valor real en contextos inflacionarios. Requiere control de lotes."
+    },
+    "smtp": {
+      "note": "El correo SMTP se usa para enviar facturas en PDF al cliente al momento del cierre de venta.",
+      "sectionTitle": "Servidor de correo saliente (SMTP)",
+      "host": "Host SMTP",
+      "port": "Puerto",
+      "security": "Cifrado",
+      "enabled": "Estado",
+      "user": "Usuario SMTP",
+      "password": "Contraseña SMTP",
+      "existingCredHint": "Ya hay credenciales guardadas. Déjalo vacío para no cambiarlas.",
+      "noCredHint": "Aún no hay contraseña guardada.",
+      "fromEmail": "Correo remitente (From)",
+      "fromEmailHint": "Ej: facturas@tuempresa.gt",
+      "fromName": "Nombre del remitente",
+      "fromNameHint": "Lo que ve el cliente como emisor"
+    },
+    "saving": "Guardando…",
+    "saveChanges": "Guardar cambios"
   },
   "assistant": {
     "fab": "Asistente",
@@ -718,5 +948,94 @@
     "name": "Tino",
     "close": "Cerrar asistente",
     "dragHint": "Arrastre para moverlo"
+  },
+  "changeRequests": {
+    "missing": {
+      "response": "Escribe la respuesta para el cliente",
+      "rejectReason": "Elige el motivo del rechazo",
+      "adjustReason": "Elige el motivo del ajuste",
+      "explain": "Explica el motivo al cliente (al menos {{min}} caracteres)",
+      "discount": "Indica el descuento ajustado",
+      "quantity": "Indica la cantidad ajustada"
+    },
+    "loadFailed": "No se pudieron cargar las solicitudes: ",
+    "appliedNotified": "Cambios aplicados; se le avisará al cliente.",
+    "applied": "Cambios aplicados.",
+    "applyFailed": "No se pudieron aplicar: ",
+    "loading": "Cargando solicitudes…",
+    "empty": "El cliente no ha pedido cambios en esta cotización.",
+    "pending": "Pendientes ({{count}})",
+    "about": "Sobre:",
+    "decisionLabel": "Decisión",
+    "reason": "Motivo",
+    "chooseReason": "Elige un motivo…",
+    "clientWillRead": "El cliente leerá:",
+    "appliedDiscount": "Descuento que se aplica (%)",
+    "appliedQuantity": "Cantidad que se aplica",
+    "extraComment": "Comentario adicional (opcional)",
+    "clientMessageOptional": "Mensaje para el cliente (opcional)",
+    "clientMessage": "Mensaje para el cliente",
+    "rejectPlaceholder": "Motivo del rechazo",
+    "progress": "{{done}} de {{total}} respondidas · las demás quedan pendientes",
+    "openFirst": "Abre la cotización para revisarla antes de aplicar cambios",
+    "applying": "Aplicando…",
+    "apply": "Aplicar",
+    "resolved": "Resueltas",
+    "kind": {
+      "agregar": "Agregar",
+      "quitar": "Quitar",
+      "cantidad": "Cantidad",
+      "descuento": "Descuento",
+      "condiciones": "Condiciones",
+      "otro": "Otro",
+      "consulta": "Consulta"
+    },
+    "status": {
+      "pendiente": "Pendiente",
+      "aplicada": "Aplicada",
+      "ajustada": "Ajustada",
+      "rechazada": "Rechazada",
+      "respondida": "Respondida"
+    },
+    "decision": {
+      "aceptar": "Aceptar",
+      "ajustar": "Ajustar",
+      "rechazar": "Rechazar",
+      "responder": "Responder"
+    }
+  },
+  "quoteConditions": {
+    "loadFailed": "No se pudieron cargar las condiciones: ",
+    "required": "Escribe el título y el texto de la condición",
+    "saved": "Condición guardada",
+    "saveFailed": "No se pudo guardar: ",
+    "deleteFailed": "No se pudo eliminar: ",
+    "orderFailed": "No se pudo guardar el orden: ",
+    "loading": "Cargando condiciones…",
+    "empty": "Sin condiciones. Agrega, por ejemplo, «Métodos de pago», «Garantía» o «Modificaciones».",
+    "new": "Nueva condición",
+    "inactive": "Inactiva",
+    "unsaved": "Cambios sin guardar",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "delete": "Eliminar",
+    "titlePlaceholder": "Título (p. ej. Garantía)",
+    "bodyPlaceholder": "Texto que sale en el PDF",
+    "active": "Activa (sale en el PDF)",
+    "save": "Guardar",
+    "savedShort": "Guardada",
+    "add": "Agregar condición"
+  },
+  "dimensions": {
+    "standard": "Medida estándar (m) · opcional",
+    "hint": "Para muebles: el asistente la ofrece como medida estándar y marca como «medida especial» la que pida el cliente.",
+    "height": "Alto",
+    "width": "Ancho",
+    "depth": "Profundidad",
+    "madeToOrder": "Se fabrica bajo pedido (no controla existencias)"
+  },
+  "projects": {
+    "profit": "Ganancia",
+    "empty": "Sin proyectos"
   }
 }
