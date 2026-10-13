@@ -315,7 +315,8 @@ html, body {
   overflow: hidden;
 }
 
-#root { height: 100vh; overflow: hidden; }
+/* dvh: en el teléfono descuenta la barra del navegador; vh queda de respaldo. */
+#root { height: 100vh; height: 100dvh; overflow: hidden; }
 
 /* ===== App shell ===== */
 /* Color de los containers flotantes (drawer, navbar, dashboard). Un solo lugar. */
@@ -324,7 +325,9 @@ html, body {
   display: grid;
   grid-template-columns: 320px 1fr;
   grid-template-rows: 100vh;
+  grid-template-rows: 100dvh;
   height: 100vh;
+  height: 100dvh;
   background: var(--md-sys-color-surface-container-low);
 }
 
@@ -1636,6 +1639,7 @@ select.input option {
   box-shadow: var(--shadow-lg);
   max-width: 100%;
   max-height: 90vh;
+  max-height: 90dvh;
   overflow: hidden;
   display: flex; flex-direction: column;
 }
@@ -3454,6 +3458,8 @@ table.tbl tfoot td {
 
 /* FAB fijo del dashboard */
 .dash-fab { position: fixed; right: 32px; bottom: 32px; z-index: 50; }
+/* A la izquierda del lanzador de Tino (60 px a 20 px del borde), sin taparlo. */
+.dash-fab { right: 96px; bottom: 24px; }
 
 /* ============================================================
    Reutilizables Claude Design (globales) — para propagar a
@@ -4908,8 +4914,10 @@ table.tbl tfoot td {
   0%, 60%, 100% { opacity: .25; }
   30% { opacity: 1; }
 }
-@media (max-width: 480px) {
-  .assistant { right: 8px; left: 8px; bottom: 88px; max-width: none; height: calc(100vh - 104px); }
+/* Teléfono (≤ 599, ver «Responsive»): el panel ocupa el ancho y deja libre
+   el lanzador abajo, que es por donde se cierra. */
+@media (max-width: 599px) {
+  .assistant { right: 8px; left: 8px; top: 8px; bottom: 88px; max-width: none; height: auto; }
   .assistant-chat { flex: 1 1 auto; }
 }
 
@@ -5089,3 +5097,188 @@ table.tbl tfoot td {
 .quote-condition-fields textarea { resize: vertical; }
 .quote-condition-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 640px) { .quote-condition-fields, .quote-condition-preview { padding-left: 12px; } }
+
+/* ============================================================
+   Responsive · tablet y teléfono
+   ------------------------------------------------------------
+   Puntos de corte (los mismos de src/lib/breakpoints.js):
+     teléfono   ≤ 599 px   → @media (max-width: 599px)
+     tablet     600–1024   → @media (max-width: 1024px)  (aplica también al teléfono)
+     escritorio ≥ 1025     → sin @media
+   La estructura (menú, barra superior, márgenes) va por data-layout en
+   .app, que pone App.jsx con el mismo cálculo; el resto, por @media.
+
+   Lo que está aquí es la BASE: hace que cualquier módulo abra y se pueda
+   usar en un teléfono. Las reglas sobre [style*=…] son una red de seguridad
+   para los estilos inline que todavía tienen los módulos; al migrar un
+   módulo a clases dejan de aplicarle. Código nuevo: clases, no inline.
+   ============================================================ */
+
+/* ── Panel de notificaciones (antes inline en NotificationsPanel) ── */
+.notif-panel {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  width: 380px; max-height: 520px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  display: flex; flex-direction: column;
+}
+
+/* ── Menú lateral como cajón (tablet y teléfono) ── */
+.sidebar-scrim {
+  position: fixed; inset: 0;
+  background: rgba(10,10,10,0.4);
+  z-index: 94;
+  animation: confirm-fade var(--dur-short) var(--ease-standard);
+}
+.app[data-sidebar="drawer"] .sidebar {
+  position: fixed; top: 0; bottom: 0; left: 0;
+  z-index: 95;
+  width: min(320px, calc(100vw - 56px));
+  margin: 0;
+  border-radius: 0 var(--shape-xl) var(--shape-xl) 0;
+  box-shadow: var(--shadow-lg);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Tablet: el texto de la búsqueda se recorta en vez de partir en líneas. */
+.app[data-layout="tablet"] .topbar-search { min-width: 0; }
+.app[data-layout="tablet"] .topbar-search > span:not(.icon) { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Tablet: riel de iconos fijo; el cajón flota encima sin mover el contenido. */
+.app[data-layout="tablet"] { grid-template-columns: 84px 1fr; }
+.app[data-layout="tablet"] .main { grid-column: 2; }
+.app[data-layout="tablet"] .topbar { margin: 12px 12px 0 8px; }
+.app[data-layout="tablet"] .content { margin: 8px 12px 12px 8px; }
+
+/* Teléfono: sin menú visible; se abre con el botón de la barra superior. */
+.app[data-layout="phone"] { grid-template-columns: minmax(0, 1fr); }
+.app[data-layout="phone"] .main { grid-column: 1; }
+.app[data-sidebar="hidden"] .sidebar { display: none; }
+.app[data-layout="phone"] .topbar {
+  height: 56px;
+  margin: 8px 8px 0;
+  margin-top: max(8px, env(safe-area-inset-top));
+  padding: 0 4px 0 4px;
+  gap: 2px;
+}
+.app[data-layout="phone"] .content {
+  margin: 8px;
+  margin-bottom: max(8px, env(safe-area-inset-bottom));
+}
+/* La búsqueda queda como botón redondo; lo secundario se oculta. */
+.app[data-layout="phone"] .topbar-search {
+  flex: 0 0 48px; max-width: 48px;
+  margin-left: 0; padding: 0;
+}
+.app[data-layout="phone"] .topbar-search > span:not(.icon) { display: none; }
+.app[data-layout="phone"] .topbar-search .icon { left: 12px; }
+.app[data-layout="phone"] .topbar-status,
+.app[data-layout="phone"] .topbar-lang,
+.app[data-layout="phone"] .topbar-theme,
+.app[data-layout="phone"] .topbar-help,
+.app[data-layout="phone"] .topbar-avatar { display: none; }
+.app[data-layout="phone"] .topbar-actions { gap: 0; }
+.app[data-layout="tablet"] .topbar-search .kbd,
+.app[data-layout="tablet"] .topbar-help { display: none; }
+
+/* ── Tablet y teléfono ── */
+@media (max-width: 1024px) {
+  .page { padding: 16px 16px 28px; }
+  .page-head { flex-wrap: wrap; align-items: flex-start; }
+  .page-head-actions, .page-head .actions { flex-wrap: wrap; }
+  .page-head > .grow { min-width: 0; }
+  /* Pestañas y segmentados: se desplazan de lado en vez de desbordar. */
+  .tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex-shrink: 0; }
+  .segmented { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .seg { flex-shrink: 0; }
+  .stat-grid, .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .modal-overlay, .modal-backdrop { padding: 16px; }
+  /* Grillas inline de 4+ columnas (indicadores): a dos. */
+  .content [style*="repeat(4"],
+  .content [style*="repeat(5"],
+  .content [style*="repeat(6"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  /* Anchos fijos inline: nunca más anchos que su contenedor. */
+  .content [style*="width"]:not(td):not(th):not(col):not(table) { max-width: 100%; }
+}
+
+/* ── Teléfono ── */
+@media (max-width: 599px) {
+  .page { padding: 12px 12px 24px; }
+  /* headline-small: un escalón menos que en escritorio. */
+  .page-title, .page-head .headline-large { font: 400 24px/32px var(--font-sans); }
+  .page-head { gap: 8px; }
+  .page-head-actions { width: 100%; }
+
+  /* Grillas a una columna: las de clase y las inline. */
+  .stat-grid, .kpi-grid,
+  .grid-2, .grid-3, .split-2, .split-3,
+  .dash .grid-2, .dash .grid-2b, .fel-mini-grid,
+  .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .content [style*="grid-template-columns"]:not(table *) { grid-template-columns: minmax(0, 1fr) !important; }
+  /* Filas flex inline: que bajen de línea antes que desbordar. */
+  .content [style*="display: flex"]:not(button):not(.btn):not(td):not(th):not(table *) { flex-wrap: wrap; }
+  /* Un min-width inline (p. ej. 560) no puede obligar a desplazar la pantalla. */
+  .content [style*="min-width"]:not(td):not(th):not(table):not(table *) { min-width: 0 !important; }
+
+  /* Tablas hechas a mano sin contenedor con scroll: se desplazan solas. */
+  .content :not(.tbl-scroll):not(.tbl-wrap):not(.table-wrap) > table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Modales y paneles laterales a pantalla completa. */
+  .modal-overlay, .modal-backdrop { padding: 0; place-items: stretch; }
+  .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 100vh; height: 100dvh;
+    max-height: 100vh; max-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+  .modal-head { padding-top: max(14px, env(safe-area-inset-top)); }
+  .modal-body { flex: 1 1 auto; }
+  .modal-foot {
+    flex-wrap: wrap;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .drawer { width: 100% !important; max-width: 100%; }
+  .confirm-overlay { padding: 16px; }
+  .gsearch-overlay { padding: 8px; }
+
+  /* Notificaciones: panel a lo ancho, debajo de la barra superior. */
+  .notif-panel {
+    position: fixed;
+    top: 72px; left: 8px; right: 8px;
+    width: auto;
+    max-height: calc(100dvh - 88px);
+  }
+
+  .toast-stack { left: 8px; right: 8px; bottom: calc(88px + env(safe-area-inset-bottom)); }
+
+  .login-root { height: 100vh; height: 100dvh; overflow-y: auto; }
+  .login-form-panel { padding: 24px 16px; align-items: flex-start; }
+}
+
+/* iOS amplía la pantalla al enfocar un campo de menos de 16 px: en el
+   teléfono los campos van en body-large (16 px). */
+@media (max-width: 599px) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select, textarea { font-size: 16px !important; }
+}
+
+/* Pantallas táctiles: lo que en escritorio aparece al pasar el mouse,
+   aquí siempre está visible y con área de toque suficiente. */
+@media (hover: none) {
+  table.tbl .row-actions { opacity: 1; }
+  table.tbl .row-actions .icon-btn { width: 40px; height: 40px; }
+}

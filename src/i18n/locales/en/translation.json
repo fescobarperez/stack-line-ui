@@ -128,7 +128,9 @@
     "create": "Create",
     "underConstruction": "Module under construction",
     "accessDenied": "Access denied",
-    "accessDeniedDesc": "Your role does not have permission to view this module."
+    "accessDeniedDesc": "Your role does not have permission to view this module.",
+    "openMenu": "Menu",
+    "closeMenu": "Close menu"
   },
   "search": {
     "placeholder": "Search modules, products, clients…",

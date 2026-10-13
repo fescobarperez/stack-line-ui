@@ -94,7 +94,8 @@ export default function DatePicker({
         : placement === 'down' ? false
         : debajo < 320 && r.top > debajo;
       setCaja({
-        left: Math.min(r.left, window.innerWidth - 300),
+        // Sin salirse de la pantalla en un teléfono angosto.
+        left: Math.max(8, Math.min(r.left, window.innerWidth - 300)),
         ...(arriba ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
       });
     };

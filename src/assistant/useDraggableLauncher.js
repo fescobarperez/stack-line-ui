@@ -4,6 +4,7 @@ import {
   ANCLA_INICIAL, UMBRAL_ARRASTRE,
   acotarAVentana, anclaMasCercana, colocacionWidget, coordsDesdeAncla,
 } from './launcherPosition.js';
+import { PHONE_MAX } from '../lib/breakpoints.js';
 
 const CLAVE = 'maya_assistant_anchor';
 
@@ -84,6 +85,7 @@ export function useDraggableLauncher() {
     estiloWidget: colocacionWidget(posicion, vista),
     handlers: { onPointerDown, onPointerMove, onPointerUp: terminar, onPointerCancel: terminar },
     consumirArrastre,
-    compacto: vista.ancho <= 480,
+    // Teléfono: el panel ocupa la pantalla y no sigue al lanzador.
+    compacto: vista.ancho <= PHONE_MAX,
   };
 }

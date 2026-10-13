@@ -73,13 +73,7 @@ export function NotificationsPanel({ notifications, unreadCount, onMarkRead, onM
       </button>
 
       {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-          width: 380, maxHeight: 520,
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 10, boxShadow: 'var(--shadow-lg)', zIndex: 200,
-          display: 'flex', flexDirection: 'column',
-        }}>
+        <div className="notif-panel">
           {/* Cabecera */}
           <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <div style={{ fontWeight: 500, fontSize: 14 }}>

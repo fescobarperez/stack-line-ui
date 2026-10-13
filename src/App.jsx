@@ -17,6 +17,8 @@ import Logo from './components/Logo.jsx';
 
 import { useNotifications, NotificationsPanel } from './components/NotificationsPanel.jsx';
 import GlobalSearch from './components/GlobalSearch.jsx';
+import { useLayout, useMediaQuery } from './hooks/useLayout.js';
+import { sidebarMode } from './lib/breakpoints.js';
 import Dashboard from './modules/Dashboard.jsx';
 import POS from './modules/POS.jsx';
 import Billing from './modules/Billing.jsx';
@@ -181,6 +183,15 @@ export default function App({ session, onLogout }) {
   const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [collapsed, setCollapsed] = useState({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Tablet y teléfono: el menú se abre encima del contenido, como cajón.
+  const layout = useLayout();
+  const compacto = layout !== 'desktop';
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const menu = sidebarMode(layout, { collapsed: sidebarCollapsed, drawerOpen });
+  const enRiel = menu === 'collapsed';
+  // El tooltip del riel solo con mouse: en pantalla táctil quedaría pegado.
+  const conHover = useMediaQuery('(hover: hover)', true);
+  const alternarMenu = () => (compacto ? setDrawerOpen((v) => !v) : setSidebarCollapsed((v) => !v));
   const [navTooltip, setNavTooltip] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
@@ -198,6 +209,15 @@ export default function App({ session, onLogout }) {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+
+  // El cajón se cierra al navegar, con Escape y al volver a escritorio.
+  useEffect(() => { setDrawerOpen(false); }, [route, layout]);
+  useEffect(() => {
+    if (menu !== 'drawer') return undefined;
+    const alTeclear = (e) => { if (e.key === 'Escape') setDrawerOpen(false); };
+    window.addEventListener('keydown', alTeclear);
+    return () => window.removeEventListener('keydown', alTeclear);
+  }, [menu]);
 
   // Aplicar tema/estilo al <html>
   useEffect(() => {
@@ -235,7 +255,7 @@ export default function App({ session, onLogout }) {
   const currentNav = NAV.flatMap((s) => s.items).find((i) => i.id === route);
 
   return (
-    <div className="app" data-screen-label={`Module · ${currentNav?.label}`} data-sidebar={sidebarCollapsed ? 'collapsed' : 'expanded'}>
+    <div className="app" data-screen-label={`Module · ${currentNav?.label}`} data-layout={layout} data-sidebar={menu}>
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-brand">
@@ -247,10 +267,11 @@ export default function App({ session, onLogout }) {
           <button
             className="icon-btn sidebar-toggle"
             style={{ marginLeft: 'auto' }}
-            title={sidebarCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
-            onClick={() => setSidebarCollapsed(v => !v)}
+            title={menu === 'drawer' ? t('shell.closeMenu', 'Cerrar menú') : sidebarCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+            aria-label={menu === 'drawer' ? t('shell.closeMenu', 'Cerrar menú') : undefined}
+            onClick={alternarMenu}
           >
-            <Icon name="chevronDown" size={13} style={{ transform: sidebarCollapsed ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.2s' }} />
+            <Icon name="chevronDown" size={13} style={{ transform: enRiel ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.2s' }} />
           </button>
         </div>
 
@@ -290,11 +311,11 @@ export default function App({ session, onLogout }) {
                     key={it.id}
                     className={`nav-item ${route === it.id ? 'active' : ''}`}
                     onClick={() => navigate('/' + it.id)}
-                    onMouseEnter={sidebarCollapsed ? (e) => {
+                    onMouseEnter={enRiel && conHover ? (e) => {
                       const r = e.currentTarget.getBoundingClientRect();
                       setNavTooltip({ label: it.label, y: r.top + r.height / 2 });
                     } : undefined}
-                    onMouseLeave={sidebarCollapsed ? () => setNavTooltip(null) : undefined}
+                    onMouseLeave={enRiel && conHover ? () => setNavTooltip(null) : undefined}
                   >
                     <Icon name={it.icon} size={24} fill={route === it.id} className="icon" />
                     <span className="nav-item-label">{t(`nav.${it.id}`, it.label)}</span>
@@ -319,11 +340,13 @@ export default function App({ session, onLogout }) {
           </button>
         </div>
       </aside>
+      {menu === 'drawer' && <div className="sidebar-scrim" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
 
       {/* Main */}
       <main className="main">
         <header className="topbar">
-          <button className="icon-btn" title="Menú" onClick={() => setSidebarCollapsed(v => !v)}>
+          <button className="icon-btn" title={t('shell.openMenu', 'Menú')} aria-label={t('shell.openMenu', 'Menú')}
+            aria-expanded={compacto ? drawerOpen : !sidebarCollapsed} onClick={alternarMenu}>
             <Icon name="menu" size={24} />
           </button>
           <div className="topbar-search" role="button" tabIndex={0} onClick={() => setShowSearch(true)} onKeyDown={e => e.key === 'Enter' && setShowSearch(true)}>
@@ -333,11 +356,11 @@ export default function App({ session, onLogout }) {
           </div>
           <div className="topbar-spacer"></div>
           <div className="topbar-actions">
-            <span className="badge-m3 success" style={{ marginRight: 4 }}>
+            <span className="badge-m3 success topbar-status" style={{ marginRight: 4 }}>
               <span className="dot" />
               {t('shell.satOnline')}
             </span>
-            <Button variant="ghost" title={t('common.language')} onClick={toggleLang} style={{ minWidth: 44, padding: '0 10px' }}>
+            <Button variant="ghost" className="topbar-lang" title={t('common.language')} onClick={toggleLang} style={{ minWidth: 44, padding: '0 10px' }}>
               {i18n.language === 'es' ? 'ES' : 'EN'}
             </Button>
             {canApprove && (
@@ -364,16 +387,16 @@ export default function App({ session, onLogout }) {
               onMarkAllRead={markAllRead}
             />
             <button
-              className="icon-btn"
+              className="icon-btn topbar-theme"
               title={t('common.theme')}
               onClick={() => setTweak('theme', tweaks.theme === 'dark' ? 'light' : 'dark')}
             >
               <Icon name={tweaks.theme === 'dark' ? 'light_mode' : 'moon'} size={24} />
             </button>
-            <button className="icon-btn" title={t('common.help', 'Ayuda')}>
+            <button className="icon-btn topbar-help" title={t('common.help', 'Ayuda')}>
               <Icon name="help" size={24} />
             </button>
-            <div className="avatar" title={session.user.name} style={{ width: 32, height: 32, fontSize: 12, marginLeft: 8 }}>
+            <div className="avatar topbar-avatar" title={session.user.name} style={{ width: 32, height: 32, fontSize: 12, marginLeft: 8 }}>
               {session.user.initials}
             </div>
           </div>
@@ -385,7 +408,7 @@ export default function App({ session, onLogout }) {
       </main>
 
       {/* Tooltip sidebar colapsado */}
-      {sidebarCollapsed && navTooltip && (
+      {enRiel && navTooltip && (
         <div style={{
           position: 'fixed',
           left: 60,
