@@ -128,7 +128,9 @@
     "create": "Crear",
     "underConstruction": "Módulo en construcción",
     "accessDenied": "Sin acceso",
-    "accessDeniedDesc": "Tu rol no tiene permiso para ver este módulo."
+    "accessDeniedDesc": "Tu rol no tiene permiso para ver este módulo.",
+    "openMenu": "Menú",
+    "closeMenu": "Cerrar menú"
   },
   "search": {
     "placeholder": "Buscar módulos, productos, clientes…",

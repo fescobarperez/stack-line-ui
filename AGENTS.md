@@ -71,6 +71,31 @@ fueron uno por uno y no deben volver.
 **Textos por i18n** (`react-i18next`, español e inglés), con el texto en español
 como valor por defecto: `t('clave', 'Texto')`.
 
+## Responsive: escritorio, tablet y teléfono
+
+Tres anchos, definidos en `src/lib/breakpoints.js` y repetidos en los `@media`
+de `global.css` (las variables CSS no funcionan dentro de `@media`):
+
+| Dispositivo | Ancho | En CSS |
+|---|---|---|
+| Teléfono | ≤ 599 px | `@media (max-width: 599px)` |
+| Tablet | 600–1024 px | `@media (max-width: 1024px)` (incluye teléfono) |
+| Escritorio | ≥ 1025 px | sin `@media` |
+
+- La estructura (menú lateral, barra superior, márgenes) la decide `App.jsx`
+  con `useLayout()` y la expone en `.app[data-layout][data-sidebar]`. En tablet
+  el menú es un riel de iconos y en teléfono un cajón; los dos se abren encima
+  del contenido.
+- **Código nuevo sin estilos inline de layout.** Grillas, anchos fijos y filas
+  flex van en clases de `global.css` con su versión para tablet y teléfono. Un
+  `style={{ width: 600 }}` no se puede adaptar desde un `@media`.
+- La sección «Responsive» al final de `global.css` tiene una red de seguridad
+  para los estilos inline que aún quedan (reglas sobre `[style*=…]`). Es para
+  que nada se rompa mientras se migran los módulos, no para apoyarse en ella.
+- Lo que en escritorio aparece al pasar el mouse tiene que estar visible en
+  pantallas táctiles (`@media (hover: none)`).
+- Al tocar una pantalla, revisarla a 375, 768 y 1280 px.
+
 ## Verificar antes de dar algo por hecho
 
 `npx vite build` **no detecta identificadores indefinidos**: un componente sin
