@@ -10,11 +10,9 @@ import { getClientByNit } from '../api/partners.js';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
-import { useClientQuotes, useSupplierRfqs, mapQuote, mapRfq } from '../hooks/useQuotes.js';
-import { getQuote, getQuoteCharges, createQuote as apiCreateQuote, updateQuoteStatus, listSettings, setQuoteAdjustment, resendQuoteEmail, resendQuoteWhatsapp, takeQuote } from '../api/wave2.js';
+import { useClientQuotes, useSupplierRfqs, mapQuote, mapRfq, formatDimensions } from '../hooks/useQuotes.js';
+import { getQuote, getQuotePdf, createQuote as apiCreateQuote, updateQuoteStatus, setQuoteAdjustment, resendQuoteEmail, resendQuoteWhatsapp, takeQuote } from '../api/wave2.js';
 import QuoteChangeRequestsPanel from '../components/QuoteChangeRequestsPanel.jsx';
-import { sessionCompany } from '../api/auth.js';
-import { renderQuotePdfWindow } from '../lib/quotePdf.js';
 import QuoteBuilderModal from '../components/QuoteBuilderModal.jsx';
 import QuoteDraftEditModal from '../components/QuoteDraftEditModal.jsx';
 import QuoteChargesPanel from '../components/QuoteChargesPanel.jsx';
@@ -56,6 +54,42 @@ function computeTotals(items, taxRate = 12) {
   const total    = lines.reduce((s, l) => s + l.lineTotal, 0);
   const iva      = total * (taxRate / (100 + taxRate));
   return { lines, subtotal: total - iva, iva, total, taxRate };
+}
+
+// Nombre de la línea con sus medidas; «medida especial» si difieren del
+// catálogo, con la medida base en el tooltip para el vendedor.
+function QuoteLineName({ line, global = false }) {
+  const { t } = useTranslation();
+  const medida = formatDimensions(line.dimensions, line.dimensionUnit);
+  // Precio global: las líneas internas no salen en el PDF del cliente.
+  const interna = global && line.showToClient === false
+    ? <span className="badge-m3" style={{ marginLeft: 6 }} title={t('quotes.internalLineHint', 'No sale en el PDF del cliente')}>{t('quotes.internalLine', 'Interna')}</span>
+    : null;
+  if (!medida) return <>{line.name}{interna}</>;
+  const base = formatDimensions(line.baseDimensions, line.dimensionUnit);
+  return (
+    <>
+      {line.name}{interna}
+      <div className="body-small muted mono">
+        {medida}
+        {line.customSize && (
+          <span className="badge-m3" style={{ marginLeft: 6, color: 'var(--warning, #b26b00)' }}
+            title={base ? t('quotes.catalogSizeHint', 'Medida del catálogo: {{size}}', { size: base }) : undefined}>
+            {t('quotes.customSize', 'Medida especial')}
+          </span>
+        )}
+        {line.sizePricing === 'calculated' && (
+          <span className="badge-m3" style={{ marginLeft: 6 }}>{t('quotes.sizePriced', 'Precio por medida')}</span>
+        )}
+        {line.sizePricing === 'review' && (
+          <span className="badge-m3" style={{ marginLeft: 6, color: 'var(--danger)' }}
+            title={t('quotes.sizeReviewHint', 'La medida se sale de la tolerancia: ponle precio a la línea')}>
+            {t('quotes.sizeReview', 'Por cotizar')}
+          </span>
+        )}
+      </div>
+    </>
+  );
 }
 
 const newRfqId = () => `RFQ-${Date.now()}`;
@@ -425,27 +459,14 @@ export default function Quotes({ pushToast }) {
     popup.document.close();
     setGeneratingPdf(true);
     try {
-      const charges = await getQuoteCharges(selQuote.backendId);
-      let branding;
-      try {
-        const rows = await listSettings();
-        const byKey = Object.fromEntries((rows || []).map((r) => [r.settingKey, r.settingValue]));
-        branding = {
-          logoUrl: byKey['company.logo_url'] || '',
-          primaryColor: byKey['brand.primary_color'] || '',
-          secondaryColor: byKey['brand.secondary_color'] || '',
-        };
-      } catch { /* sin settings, el PDF usa el logo y colores por defecto */ }
-      renderQuotePdfWindow(popup, selQuote, {
-        company: sessionCompany(),
-        charges,
-        branding,
-        // La tasa de la cotización manda por estar congelada en el documento;
-        // si no la trae, la configurada en la empresa. El 12 duro se fue: era
-        // el que hacía que el PDF ignorara la configuración.
-        taxRate: Number(selQuote.taxRate ?? taxRate),
-      });
-      pushToast(t('quotes.pdfReady', 'PDF generado. Revisa la ventana de impresión para guardarlo.'), 'success');
+      // Un solo generador: el del backend, el mismo PDF que recibe el cliente
+      // por correo y WhatsApp (logo, colores y datos de la empresa incluidos).
+      const pdf = await getQuotePdf(selQuote.backendId);
+      const url = URL.createObjectURL(pdf);
+      popup.location.href = url;
+      // El visor ya lo cargó: se libera la URL al rato.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      pushToast(t('quotes.pdfReady', 'PDF generado. Puedes descargarlo o imprimirlo desde el visor.'), 'success');
     } catch (err) {
       popup.close();
       pushToast(t('quotes.pdfFailed', 'No se pudo generar el PDF: ') + err.message, 'danger');
@@ -729,6 +750,7 @@ export default function Quotes({ pushToast }) {
                         [t('quotes.email', 'Correo'),       selQuote.client.email || '—'],
                         [t('quotes.validUntil', 'Válida hasta'), fmtDate(selQuote.validUntil)],
                         [t('quotes.createdBy', 'Creado por'),   selQuote.createdBy],
+                        ...(selQuote.deliveryAddress ? [[t('quotes.deliveryAddress', 'Dirección de entrega / instalación'), selQuote.deliveryAddress]] : []),
                         ...(selQuote.sentVersion > 0 ? [[t('quotes.sentVersion', 'Versión enviada'), `v${selQuote.sentVersion}`]] : []),
                         ...(selQuote.clientReasonCode || selQuote.clientReasonNote ? [[
                           t('quotes.clientReason', 'Motivo del cliente'),
@@ -769,7 +791,7 @@ export default function Quotes({ pushToast }) {
                       <tbody>
                         {lines.map(l => (
                           <tr key={l.id}>
-                            <td>{l.name}</td>
+                            <td><QuoteLineName line={l} global={selQuote.priceDisplay === 'global'} /></td>
                             <td style={{ textAlign: 'center' }}>{l.qty}</td>
                             <td style={{ textAlign: 'center' }}><span className="badge-m3">{l.uom}</span></td>
                             <td className="num">{Q(l.unitPrice)}</td>
@@ -812,13 +834,18 @@ export default function Quotes({ pushToast }) {
                             Q(resumen.operatingExpenses)],
                           ...(num(resumen.otherCharges) !== 0
                             ? [[t('quotes.calcOtherCharges', 'Otros cargos'), Q(resumen.otherCharges)]] : []),
-                          [t('quotes.calcProfitBase', 'Base de ganancia'), Q(resumen.operatingCost)],
+                          [resumen.profitBaseMode === 'direct_cost'
+                            ? t('quotes.calcProfitBaseDirect', 'Base de ganancia (costo directo)')
+                            : t('quotes.calcProfitBase', 'Base de ganancia'), Q(resumen.profitBase ?? resumen.operatingCost)],
                           [`${t('projects.profit', 'Ganancia')}${resumen.profitCalcType === 'percent' ? ` (${num(resumen.profitValue)}%)` : ''}`, Q(resumen.profitAmount)],
                           // Los tres renglones del ajuste solo cuando hay uno:
                           // sin ajuste serían la misma cifra repetida tres veces.
                           ...(num(resumen.manualAdjustment) !== 0 ? [
                             [t('quotes.calcBeforeAdj', 'Base antes de ajuste'), Q(resumen.taxableSubtotal)],
                             [t('quotes.calcAdjustment', 'Ajuste'), Q(resumen.manualAdjustment)],
+                          ] : []),
+                          ...(num(resumen.roundingAdjustment) !== 0 ? [
+                            [t('quotes.calcRounding', 'Redondeo del total'), Q(resumen.roundingAdjustment)],
                           ] : []),
                           [t('quotes.calcAdjustedBase', 'Base ajustada'), Q(resumen.adjustedBase)],
                           [`${t('common.iva', 'IVA')} (${tasa}%)`, Q(resumen.tax)],
@@ -1044,7 +1071,7 @@ export default function Quotes({ pushToast }) {
                       <tbody>
                         {lines.map(l => (
                           <tr key={l.id}>
-                            <td>{l.name}</td>
+                            <td><QuoteLineName line={l} /></td>
                             <td style={{ textAlign: 'center' }}>{l.qty}</td>
                             <td style={{ textAlign: 'center' }}><span className="badge-m3">{l.uom}</span></td>
                             {hasPrices && (

@@ -5,6 +5,25 @@ import { listProducts, listCategories, createProduct, updateProduct, deleteProdu
 import { listStock } from '../api/inventory.js';
 
 // Mapea un ProductResponse del backend a la forma que usan los componentes.
+/**
+ * Medidas para el PUT/POST de producto. Siempre se mandan: el backend toma
+ * vacío como «sin medida», así que un formulario que no las enviara las
+ * borraría al guardar.
+ */
+export function dimensionsPayload(src) {
+  const num = (v) => (v === '' || v == null || !(Number(v) > 0) ? null : Number(v));
+  // Bajo pedido = no controla existencias. Se manda siempre: sin el campo el
+  // backend lo reactivaba al guardar (vendible ⇒ controla stock).
+  const tracksStock = src?.madeToOrder !== undefined ? !src.madeToOrder : (src?.tracksStock ?? null);
+  return {
+    height: num(src?.height),
+    width: num(src?.width),
+    depth: num(src?.depth),
+    dimensionUnit: src?.dimensionUnit || null,
+    tracksStock,
+  };
+}
+
 function mapProduct(p) {
   return {
     id: p.id,
@@ -20,6 +39,11 @@ function mapProduct(p) {
     unit: p.unit,
     purchaseUnit: p.purchaseUnit,
     purchaseFactor: p.purchaseFactor,
+    // Medida estándar (opcional): base para cotizar muebles a medida.
+    height: p.height ?? null,
+    width: p.width ?? null,
+    depth: p.depth ?? null,
+    dimensionUnit: p.dimensionUnit ?? null,
     itemType: p.itemType ?? 'sellable',
     tracksStock: p.tracksStock ?? true,
     status: p.status,

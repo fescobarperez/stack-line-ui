@@ -1,6 +1,8 @@
 // Stackline — Módulo de Configuración del sistema
 import React, { useState, useEffect } from 'react';
 import Autocomplete from '../components/Autocomplete.jsx';
+import { PRICE_DISPLAY_OPTIONS } from '../components/QuoteDraftEditModal.jsx';
+import QuoteConditionsEditor from '../components/QuoteConditionsEditor.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +13,14 @@ import { listSettings, putSetting, uploadCompanyLogo, getMailSettings, saveMailS
 const SETTING_KEYS = {
   nit: 'company.nit', address: 'company.address', phone: 'company.phone', email: 'company.email',
   logoUrl: 'company.logo_url', primaryColor: 'brand.primary_color', secondaryColor: 'brand.secondary_color',
+  tagline: 'company.tagline',
+  priceDisplay: 'quotes.price_display',
+  profitBase: 'quotes.profit_base',
+  defaultProfitPct: 'quotes.default_profit_pct',
+  validityDays: 'quotes.validity_days',
+  roundingStep: 'quotes.rounding_step', roundingMode: 'quotes.rounding_mode',
+  sizeFixedPct: 'quotes.size_fixed_pct', sizeTolerancePct: 'quotes.size_tolerance_pct',
+  signatureEnabled: 'quotes.signature.enabled', signatureName: 'quotes.signature.name', signatureLabel: 'quotes.signature.label',
   felProvider: 'fel.provider', felUser: 'fel.user', felEnvironment: 'fel.environment',
   felEndpoint: 'fel.endpoint', felSeries: 'fel.series', felResolution: 'fel.resolution',
   satCategory: 'fel.sat_category', establishment: 'fel.establishment',
@@ -30,6 +40,18 @@ const MOCK_CONFIG = {
   logoUrl: '',
   primaryColor: '#8b1e3f',
   secondaryColor: '#d47a5a',
+  tagline: '',
+  priceDisplay: 'detailed',
+  profitBase: 'total_cost',
+  defaultProfitPct: '',
+  validityDays: '15',
+  roundingStep: '0',
+  sizeFixedPct: '30',
+  sizeTolerancePct: '25',
+  roundingMode: 'down',
+  signatureEnabled: 'false',
+  signatureName: '',
+  signatureLabel: '',
   felProvider: 'infile',
   felUser: 'feluser@stackline.gt',
   hasFelKey: true,
@@ -92,7 +114,7 @@ function SecretInput({ value, onChange, placeholder, mono = false, autoComplete 
 function Field({ label, hint, span = 1, children }) {
   return (
     <div className={`field${span === 2 ? ' span-2' : ''}`}>
-      <label className="field-label">{label}</label>
+      {label && <label className="field-label">{label}</label>}
       {children}
       {hint && <div className="cfg-hint">{hint}</div>}
     </div>
@@ -251,6 +273,7 @@ export default function Config({ pushToast }) {
     { id: 'empresa',    label: t('config.tabs.company', 'Empresa'),      icon: 'settings' },
     { id: 'fel',        label: 'FEL / SAT',                              icon: 'receipt'  },
     { id: 'impuestos',  label: t('config.tabs.taxes', 'Impuestos'),      icon: 'tag'      },
+    { id: 'cotizaciones', label: t('config.tabs.quotes', 'Cotizaciones'), icon: 'receipt' },
     { id: 'inventario', label: t('config.tabs.inventory', 'Inventario'), icon: 'box'      },
     { id: 'smtp',       label: t('config.tabs.smtp', 'Correo SMTP'),     icon: 'bell'     },
   ];
@@ -335,6 +358,12 @@ export default function Config({ pushToast }) {
                     )}
                   </div>
                 </Field>
+                <Field label={t('config.branding.tagline', 'Lema')} span={2}
+                  hint={t('config.branding.taglineHint', 'Frase corta que acompaña al nombre en el encabezado del PDF de cotización.')}>
+                  <input className="field-input" value={config.tagline} maxLength={80}
+                    placeholder={t('config.branding.taglinePlaceholder', 'Ej: Diseño que transforma, detalles que iluminan')}
+                    onChange={e => set('tagline', e.target.value)} />
+                </Field>
                 <Field label={t('config.branding.primaryColor', 'Color primario')}
                   hint={t('config.branding.primaryColorHint', 'Acento principal del PDF (títulos, total).')}>
                   <div className="cfg-color-row">
@@ -370,11 +399,117 @@ export default function Config({ pushToast }) {
                   </div>
                   <div className="cfg-brand-meta">
                     <div className="cfg-brand-name">{config.tradeName || config.legalName || t('config.branding.companyName', 'Nombre de empresa')}</div>
+                    {config.tagline && <div className="cfg-brand-tagline">{config.tagline}</div>}
                     <div className="cfg-brand-doc" style={{ color: config.primaryColor }}>COTIZACIÓN</div>
                     <span className="cfg-brand-chip" style={{ background: config.secondaryColor }}>Cargo adicional</span>
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {tab === 'cotizaciones' && (
+            <div className="card cfg-card">
+              <Section title={t('config.quotes.presentation', 'Presentación al cliente')} icon="receipt">
+                <Field label={t('config.quotes.validityDays', 'Vigencia por defecto (días)')}
+                  hint={t('config.quotes.validityDaysHint', 'Cada cotización nueva vence estos días después de emitida (también las del asistente). En el PDF sale como «3 días · hasta el …». Se puede cambiar la fecha en cada una.')}>
+                  <input className="field-input mono" type="number" min="1" max="365" step="1"
+                    value={config.validityDays} placeholder="15"
+                    onChange={(e) => set('validityDays', e.target.value)} />
+                </Field>
+                <Field label={t('config.quotes.priceDisplay', 'Presentación de precios')} span={2}
+                  hint={t('config.quotes.priceDisplayHint', 'Valor por defecto de cada cotización nueva; el vendedor puede cambiarlo en cada una. Con «precio global» el PDF muestra las líneas como «Incluido» y solo el total.')}>
+                  <Autocomplete value={config.priceDisplay} allowClear={false}
+                    onChange={(id) => id && set('priceDisplay', String(id))}
+                    options={PRICE_DISPLAY_OPTIONS.map((o) => ({ id: o.id, name: t(o.key, o.label) }))}
+                    aria-label={t('config.quotes.priceDisplay', 'Presentación de precios')} />
+                </Field>
+              </Section>
+              <Section title={t('config.quotes.pricing', 'Cálculo del precio')} icon="cash">
+                <Field label={t('config.quotes.profitBase', 'La ganancia (%) se calcula sobre')} span={2}
+                  hint={t('config.quotes.profitBaseHint', 'Costo total: líneas + gastos operativos + cargos. Costo directo: solo las líneas (mano de obra y materiales); los cargos porcentuales y la ganancia se calculan sobre el mismo costo, sin encadenarse.')}>
+                  <Autocomplete value={config.profitBase === 'direct_cost' ? 'direct_cost' : 'total_cost'} allowClear={false}
+                    onChange={(id) => id && set('profitBase', String(id))}
+                    options={[
+                      { id: 'total_cost', name: t('config.quotes.profitBaseTotal', 'Costo total (con gastos y cargos)') },
+                      { id: 'direct_cost', name: t('config.quotes.profitBaseDirect', 'Costo directo (solo las líneas)') },
+                    ]}
+                    aria-label={t('config.quotes.profitBase', 'La ganancia (%) se calcula sobre')} />
+                </Field>
+                <Field label={t('config.quotes.roundingStep', 'Redondeo del total')}
+                  hint={t('config.quotes.roundingStepHint', 'El total que ve el cliente queda en un múltiplo de este valor (p. ej. Q 8,995.50 → Q 8,995). La base y el IVA se recalculan para cuadrar.')}>
+                  <Autocomplete value={String(config.roundingStep || '0')} allowClear={false}
+                    onChange={(id) => id != null && set('roundingStep', String(id))}
+                    options={[
+                      { id: '0', name: t('config.quotes.roundingNone', 'Sin redondeo') },
+                      ...['1', '5', '10', '50', '100'].map((v) => ({ id: v, name: `Q ${v}` })),
+                    ]}
+                    aria-label={t('config.quotes.roundingStep', 'Redondeo del total')} />
+                </Field>
+                {config.roundingStep && config.roundingStep !== '0' && (
+                  <Field label={t('config.quotes.roundingMode', 'Dirección del redondeo')}>
+                    <Autocomplete value={config.roundingMode || 'down'} allowClear={false}
+                      onChange={(id) => id && set('roundingMode', String(id))}
+                      options={[
+                        { id: 'down', name: t('config.quotes.roundingDown', 'Hacia abajo') },
+                        { id: 'nearest', name: t('config.quotes.roundingNearest', 'Al más cercano') },
+                        { id: 'up', name: t('config.quotes.roundingUp', 'Hacia arriba') },
+                      ]}
+                      aria-label={t('config.quotes.roundingMode', 'Dirección del redondeo')} />
+                  </Field>
+                )}
+                <Field label={t('config.quotes.sizeFixedPct', 'Medida especial: parte fija (%)')}
+                  hint={t('config.quotes.sizeFixedPctHint', 'Parte del precio que no cambia con el tamaño (mano de obra, herrajes). Precio = precio × (fijo + resto × volumen pedido ÷ volumen del catálogo).')}>
+                  <input className="field-input mono" type="number" min="0" max="100" step="1"
+                    value={config.sizeFixedPct} placeholder="30"
+                    onChange={(e) => set('sizeFixedPct', e.target.value)} />
+                </Field>
+                <Field label={t('config.quotes.sizeTolerancePct', 'Medida especial: tolerancia (%)')}
+                  hint={t('config.quotes.sizeTolerancePctHint', 'Si alguna medida se aleja más de este porcentaje de la del catálogo, la línea queda «Por cotizar» y el asesor le pone precio.')}>
+                  <input className="field-input mono" type="number" min="0" max="100" step="1"
+                    value={config.sizeTolerancePct} placeholder="25"
+                    onChange={(e) => set('sizeTolerancePct', e.target.value)} />
+                </Field>
+                <Field label={t('config.quotes.defaultProfitPct', 'Ganancia sugerida (%)')}
+                  hint={t('config.quotes.defaultProfitPctHint', 'Cada cotización nueva (también las del asistente) nace con este porcentaje; el vendedor puede cambiarlo en cada una. Vacío = sin ganancia sugerida.')}>
+                  <input className="field-input mono" type="number" min="0" max="1000" step="0.01"
+                    value={config.defaultProfitPct} placeholder="30"
+                    onChange={(e) => set('defaultProfitPct', e.target.value)} />
+                </Field>
+              </Section>
+              <Section title={t('config.quotes.signature', 'Firma')} icon="edit">
+                <Field label={t('config.quotes.signatureEnabled', 'Firma al final del PDF')}>
+                  <Autocomplete value={config.signatureEnabled === 'true' ? 'true' : 'false'} allowClear={false}
+                    onChange={(id) => id && set('signatureEnabled', String(id))}
+                    options={[
+                      { id: 'false', name: t('config.quotes.signatureOff', 'No mostrar') },
+                      { id: 'true', name: t('config.quotes.signatureOn', 'Mostrar') },
+                    ]}
+                    aria-label={t('config.quotes.signatureEnabled', 'Firma al final del PDF')} />
+                </Field>
+                {config.signatureEnabled === 'true' && (
+                  <>
+                    <Field label={t('config.quotes.signatureName', 'Nombre bajo la línea')}
+                      hint={t('config.quotes.signatureNameHint', 'Vacío = nombre de la empresa.')}>
+                      <input className="field-input" maxLength={80} value={config.signatureName}
+                        placeholder={config.tradeName || config.legalName || ''}
+                        onChange={(e) => set('signatureName', e.target.value)} />
+                    </Field>
+                    <Field label={t('config.quotes.signatureLabel', 'Leyenda')}
+                      hint={t('config.quotes.signatureLabelHint', 'Vacío = «Firma del fabricante».')}>
+                      <input className="field-input" maxLength={80} value={config.signatureLabel}
+                        placeholder={t('config.quotes.signatureLabelPlaceholder', 'Firma del fabricante')}
+                        onChange={(e) => set('signatureLabel', e.target.value)} />
+                    </Field>
+                  </>
+                )}
+              </Section>
+              <Section title={t('config.quotes.conditions', 'Condiciones comerciales')} icon="tag">
+                <Field span={2}
+                  hint={t('config.quotes.conditionsHint', 'Salen en orden en la sección «Condiciones comerciales» de cada PDF, después de la forma de pago y el tiempo de entrega de la cotización. Cada condición se guarda por separado.')}>
+                  <QuoteConditionsEditor pushToast={pushToast} />
+                </Field>
+              </Section>
             </div>
           )}
 

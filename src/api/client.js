@@ -43,8 +43,9 @@ export class ApiError extends Error {
  *   de loading.js, que es donde se busca.
  * @param {AbortSignal} opts.signal  Para cortar la petición (p. ej. por tiempo
  *   límite). Una petición abortada se reporta como ApiError de estado 0.
+ * @param {boolean} opts.blob  Devuelve el cuerpo como Blob en vez de JSON.
  */
-async function request(path, { method = 'GET', body, headers, silent = false, signal } = {}) {
+async function request(path, { method = 'GET', body, headers, silent = false, signal, blob = false } = {}) {
   const token = getToken();
   const conVelo = !silent && !estaExenta(path);
   if (conVelo) inicioPeticion();
@@ -70,7 +71,9 @@ async function request(path, { method = 'GET', body, headers, silent = false, si
       }
       throw new ApiError(res.status, detail?.message || res.statusText);
     }
-    return res.status === 204 ? null : res.json();
+    if (res.status === 204) return null;
+    // Archivos (el PDF de la cotización): se devuelven como Blob.
+    return blob ? res.blob() : res.json();
   } catch (error) {
     if (error instanceof ApiError) throw error;
     const service = resolveBaseUrl(path) || 'mismo origen';

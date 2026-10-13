@@ -11,7 +11,21 @@ function mapItems(items) {
     uom: i.uom || '',
     unitPrice: Number(i.unitPrice || 0),
     discount: Number(i.discount || 0),
+    // Medida pedida, la del catálogo al cotizar y si difieren («medida especial»).
+    dimensions: i.dimensions ?? null,
+    baseDimensions: i.baseDimensions ?? null,
+    dimensionUnit: i.dimensionUnit || 'm',
+    customSize: Boolean(i.customSize),
+    showToClient: i.showToClient !== false,
+    sizePricing: i.sizePricing || null,
   }));
+}
+
+/** «2 × 1.5 × 0.6 m», o '' si la línea no tiene medidas. */
+export function formatDimensions(d, unit = 'm') {
+  if (!d) return '';
+  const partes = [d.height, d.width, d.depth].filter((v) => v != null).map((v) => Number(v).toString());
+  return partes.length ? `${partes.join(' × ')} ${unit}` : '';
 }
 
 function mapHistory(history) {
@@ -37,6 +51,8 @@ export function mapQuote(q) {
     // Del asistente: «agente» habilita la pestaña de solicitudes del cliente.
     origin: q.origin || null,
     takenBy: q.takenBy || null,
+    priceDisplay: q.priceDisplay || 'detailed',
+    deliveryAddress: q.deliveryAddress || '',
     // Canal de la conversación que la originó: «whatsapp» habilita el reenvío por ahí.
     channel: q.channel || null,
     conversationRef: q.conversationRef || null,

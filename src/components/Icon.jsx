@@ -25,6 +25,7 @@ const MAP = {
   x: 'close',
   close: 'close',
   check: 'check',
+  chevronUp: 'expand_less',
   chevronDown: 'expand_more',
   chevronRight: 'chevron_right',
   chevronLeft: 'chevron_left',
