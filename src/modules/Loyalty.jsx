@@ -114,10 +114,10 @@ export default function Loyalty({ pushToast }) {
   }, [txnFiltro]);
 
   const memberColumns = [
-    { key: 'nombre', header: t('common.client', 'Cliente'), sortable: true, render: (m) => (
+    { key: 'nombre', header: t('common.client', 'Cliente'), sortable: true, card: 'title', render: (m) => (
       <div className="cell-stack"><span className="nm">{m.nombre}</span><span className="sku">{m.nit}</span></div>
     ) },
-    { key: 'nivel', header: 'Nivel', render: (m) => {
+    { key: 'nivel', header: 'Nivel', card: 'badge', render: (m) => {
       const tier = tierOf(m.points);
       const next = TIERS.find(ti => ti.min > tier.min);
       const pctNext = next ? Math.min((m.points / next.min) * 100, 100) : 100;
@@ -133,10 +133,10 @@ export default function Loyalty({ pushToast }) {
         </div>
       );
     } },
-    { key: 'points', header: 'Puntos actuales', align: 'right', sortable: true, render: (m) => <span className="num" style={{ fontWeight: 500, color: 'var(--accent)' }}>{pts(m.points)}</span> },
-    { key: 'earned', header: 'Total acumulado', align: 'right', sortable: true, render: (m) => <span className="num">{pts(m.earned)}</span> },
+    { key: 'points', header: 'Puntos actuales', align: 'right', sortable: true, card: 'amount', render: (m) => <span className="num" style={{ fontWeight: 500, color: 'var(--accent)' }}>{pts(m.points)}</span> },
+    { key: 'earned', header: 'Total acumulado', align: 'right', sortable: true, hideOnTablet: true, render: (m) => <span className="num">{pts(m.earned)}</span> },
     { key: 'totalSpent', header: 'Total gastado', align: 'right', sortable: true, render: (m) => <span className="num">{Qs(m.totalSpent)}</span> },
-    { key: 'lastPurchase', header: 'Último movimiento', render: (m) => <span className="sku">{m.lastPurchase}</span> },
+    { key: 'lastPurchase', header: 'Último movimiento', hideOnTablet: true, render: (m) => <span className="sku">{m.lastPurchase}</span> },
   ];
 
   return (
@@ -293,7 +293,7 @@ export default function Loyalty({ pushToast }) {
           </div>
 
           <div className="card" style={{padding:0, overflow:'hidden'}}>
-            <table className="mtable">
+            <table className="mtable tbl-stack">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -353,7 +353,7 @@ export default function Loyalty({ pushToast }) {
 
           <div className="card" style={{padding:20}}>
             <div style={{fontWeight: 500, fontSize: 14, marginBottom:16}}>Niveles de fidelización</div>
-            <table className="mtable">
+            <table className="mtable tbl-stack">
               <thead>
                 <tr>
                   <th>Nivel</th>

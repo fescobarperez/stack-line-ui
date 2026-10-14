@@ -162,7 +162,7 @@ function NewEntryModal({ accounts, periods, onSave, onClose }) {
               </div>
             </div>
 
-            <table className="data-table" style={{ marginBottom: 8 }}>
+            <table className="data-table tbl-stack" style={{ marginBottom: 8 }}>
               <thead>
                 <tr>
                   <th style={{ width: '35%' }}>{t('accounting.account', 'Cuenta')}</th>
@@ -273,7 +273,7 @@ function EntryDetail({ entry, onClose, onReverse }) {
           </div>
         </div>
 
-        <table className="data-table">
+        <table className="data-table tbl-stack">
           <thead>
             <tr>
               <th>{t('accounting.account', 'Cuenta')}</th>
@@ -484,7 +484,7 @@ export default function Accounting({ pushToast }) {
             <span className="muted" style={{ fontSize: 12 }}>{filteredAccounts.length} {t('accounting.accountsCount', 'cuentas')}</span>
           </div>
           <div className="table-wrap">
-            <table className="data-table">
+            <table className="data-table tbl-stack">
               <thead>
                 <tr>
                   <th>{t('common.code', 'Código')}</th>
@@ -574,7 +574,7 @@ export default function Accounting({ pushToast }) {
       {/* ── Períodos ── */}
       {tab === 'periodos' && (
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table tbl-stack">
             <thead>
               <tr>
                 <th>{t('accounting.periodCol', 'Período')}</th>

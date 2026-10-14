@@ -191,27 +191,27 @@ function InventoryModule({ pushToast }) {
   // Columnas de la tabla de productos (demo del componente <DataTable>)
   const catName = (id) => CATEGORIES.find(c => c.id === id)?.name;
   const productColumns = [
-    { key: 'sku', header: t('inventory.headers.sku', 'SKU / Código'), sortable: true, mono: true },
-    { key: 'name', header: t('inventory.headers.product', 'Producto'), sortable: true,
+    { key: 'sku', header: t('inventory.headers.sku', 'SKU / Código'), sortable: true, mono: true, card: 'subtitle', hideOnTablet: true },
+    { key: 'name', header: t('inventory.headers.product', 'Producto'), sortable: true, card: 'title',
       render: (p) => (<><div style={{ fontWeight: 500 }}>{p.name}</div><div className="muted" style={{ fontSize: 11 }}>{p.unit}</div></>) },
-    { key: 'cat', header: t('inventory.headers.category', 'Categoría'), sortable: true,
+    { key: 'cat', header: t('inventory.headers.category', 'Categoría'), sortable: true, hideOnTablet: true,
       sortValue: (p) => catName(p.cat), render: (p) => catName(p.cat) },
-    { key: 'itemType', header: t('inventory.headers.itemType', 'Tipo'), sortable: true,
+    { key: 'itemType', header: t('inventory.headers.itemType', 'Tipo'), sortable: true, card: 'badge', hideOnTablet: true,
       render: (p) => {
         const it = ITEM_TYPES[p.itemType] || ITEM_TYPES.sellable;
         return <span className={`badge-m3 ${it.variant}`}>{it.label}</span>;
       } },
-    { key: 'cost', header: t('inventory.headers.cost', 'Costo'), align: 'right', sortable: true, render: (p) => Q(p.cost) },
-    { key: 'price', header: t('inventory.headers.price', 'Precio'), align: 'right', sortable: true,
+    { key: 'cost', header: t('inventory.headers.cost', 'Costo'), align: 'right', sortable: true, card: 'hide', hideOnTablet: true, render: (p) => Q(p.cost) },
+    { key: 'price', header: t('inventory.headers.price', 'Precio'), align: 'right', sortable: true, card: 'amount',
       render: (p) => (<span style={{ fontWeight: 500 }}>{Q(p.price)}</span>) },
-    { key: 'margin', header: t('inventory.headers.margin', 'Margen'), align: 'right', sortable: true,
+    { key: 'margin', header: t('inventory.headers.margin', 'Margen'), align: 'right', sortable: true, card: 'hide', hideOnTablet: true, hideOnLaptop: true,
       sortValue: (p) => ((p.price - p.cost) / p.price * 100),
       render: (p) => { const m = ((p.price - p.cost) / p.price * 100); return <span style={{ color: m > 30 ? 'var(--success)' : m > 15 ? 'var(--text-2)' : 'var(--warning)' }}>{m.toFixed(1)}%</span>; } },
     { key: 'stock', header: t('inventory.headers.stock', 'Stock'), align: 'right', sortable: true,
       render: (p) => (<span style={{ fontWeight: 500, color: p.stock === 0 ? 'var(--danger)' : p.stock < p.min ? 'var(--warning)' : 'var(--text)' }}>{p.stock}</span>) },
-    { key: 'min', header: t('inventory.headers.min', 'Mín'), align: 'right', sortable: true, className: 'muted' },
-    { key: 'batch', header: t('inventory.headers.lot', 'Lote'), mono: true, className: 'muted', render: (p) => p.batch || '—' },
-    { key: 'exp', header: t('inventory.headers.expires', 'Vence'), mono: true, className: 'muted', render: (p) => p.exp || '—' },
+    { key: 'min', header: t('inventory.headers.min', 'Mín'), align: 'right', sortable: true, className: 'muted', card: 'hide', hideOnTablet: true },
+    { key: 'batch', header: t('inventory.headers.lot', 'Lote'), mono: true, className: 'muted', card: 'hide', hideOnTablet: true, hideOnLaptop: true, render: (p) => p.batch || '—' },
+    { key: 'exp', header: t('inventory.headers.expires', 'Vence'), mono: true, className: 'muted', card: 'hide', hideOnTablet: true, hideOnLaptop: true, render: (p) => p.exp || '—' },
   ];
 
   return (
@@ -282,9 +282,9 @@ function InventoryModule({ pushToast }) {
       {tab === 'productos' && (
         <>
           <div className="filterbar">
-            <div style={{position:'relative', width:280}}>
-              <Icon name="search" size={12} style={{position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', color:'var(--muted)'}}/>
-              <input className="input" style={{width:'100%', paddingLeft:26}} placeholder={t('inventory.searchPlaceholder', 'Buscar SKU, código de barras o nombre…')} value={search} onChange={e=>setSearch(e.target.value)}/>
+            <div className="filterbar-search">
+              <Icon name="search" size={12}/>
+              <input className="input" placeholder={t('inventory.searchPlaceholder', 'Buscar SKU, código de barras o nombre…')} value={search} onChange={e=>setSearch(e.target.value)}/>
             </div>
             <Autocomplete value={cat} onChange={(id) => setCat(id == null || id === '' ? 'todos' : String(id))}
               options={CATEGORIES.map((c) => ({ id: c.id, name: c.name }))}
@@ -346,7 +346,7 @@ function InventoryModule({ pushToast }) {
             <Button icon="download" size="sm">{t('inventory.exportMovements', 'Exportar')}</Button>
           </div>
           <div className="card card-outlined">
-            <table className="mtable">
+            <table className="mtable tbl-stack" data-title-col="3">
               <thead>
                 <tr>
                   <th>{t('inventory.headers.date', 'Fecha')}</th>
@@ -398,7 +398,7 @@ function InventoryModule({ pushToast }) {
             <Button icon="tag" variant="accent" size="sm">{t('inventory.createPromoExpiring', 'Crear promoción para vencimientos')}</Button>
           </div>
           <div className="card">
-            <table className="tbl">
+            <table className="tbl tbl-stack" data-title-col="1">
               <thead>
                 <tr>
                   <th>{t('inventory.headers.lot', 'Lote')}</th>
@@ -457,7 +457,7 @@ function InventoryModule({ pushToast }) {
               <span className="muted mono" style={{fontSize:11}}>{LOW_STOCK.length} de {PRODUCTS.length} SKUs</span>
             </div>
             <div className="card-body flush">
-              <table className="tbl">
+              <table className="tbl tbl-stack" data-title-col="2">
                 <thead>
                   <tr>
                     <th><input type="checkbox"/></th>
@@ -590,7 +590,7 @@ function InventoryModule({ pushToast }) {
           </div>
           <div className="card">
             <div className="tbl-wrap">
-              <table className="tbl">
+              <table className="tbl tbl-stack" data-title-col="1">
                 <thead>
                   <tr>
                     <th>{t('inventory.headers.sku', 'SKU / Código')}</th>
@@ -678,7 +678,7 @@ function InventoryModule({ pushToast }) {
               <div className="card">
                 <div className="card-head"><h3>Stock por sucursal</h3></div>
                 <div className="card-body flush">
-                  <table className="tbl">
+                  <table className="tbl tbl-stack" data-title-col="0">
                     <thead><tr><th>{t('inventory.headers.branch', 'Sucursal')}</th><th className="num">{t('inventory.headers.stock', 'Stock')}</th><th className="num">{t('inventory.headers.min', 'Mín')}</th><th>{t('inventory.headers.status', 'Estado')}</th></tr></thead>
                     <tbody>
                       {BRANCHES.map((b, i) => {

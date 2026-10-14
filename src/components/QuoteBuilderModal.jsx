@@ -337,13 +337,13 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ width: 900, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal modal-xl" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h3>{appendingToDraft ? t('quotes.appendDraftTitle', 'Agregar líneas a cotización') : t('quotes.builderTitle', 'Nueva cotización desde materiales')} · {project.code}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="close" /></button>
         </div>
 
-        <div className="modal-body" style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16 }}>
+        <div className="modal-body quote-builder-body">
           {/* Árbol de materiales disponibles */}
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: 'var(--muted)', marginBottom: 8 }}>

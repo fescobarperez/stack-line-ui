@@ -90,7 +90,7 @@ function BillingModule({ pushToast }) {
 
   // Columnas de la tabla de tickets (estándar <DataTable>).
   const columns = [
-    { key: 'id', header: t('billing.headers.invoice', 'No. Factura'), sortable: true, mono: true,
+    { key: 'id', header: t('billing.headers.invoice', 'No. Factura'), sortable: true, mono: true, card: 'title',
       render: (r) => (
         <>
           <span style={{ fontWeight: 500, color: 'var(--accent)' }}>{r.id}</span>
@@ -105,9 +105,9 @@ function BillingModule({ pushToast }) {
         </>
       ) },
     { key: 'date', header: t('billing.headers.dateTime', 'Fecha & hora'), sortable: true, mono: true },
-    { key: 'branch', header: t('billing.headers.branch', 'Sucursal'), sortable: true },
-    { key: 'cashier', header: t('billing.headers.cashier', 'Cajero') },
-    { key: 'client', header: t('billing.headers.clientNit', 'Cliente · NIT'),
+    { key: 'branch', header: t('billing.headers.branch', 'Sucursal'), sortable: true, hideOnTablet: true, hideOnLaptop: true },
+    { key: 'cashier', header: t('billing.headers.cashier', 'Cajero'), hideOnTablet: true, hideOnLaptop: true, card: 'hide' },
+    { key: 'client', header: t('billing.headers.clientNit', 'Cliente · NIT'), card: 'subtitle',
       sortValue: (r) => r.fel?.receptorName || '',
       render: (r) => (
         <>
@@ -115,18 +115,18 @@ function BillingModule({ pushToast }) {
           <div className="muted code" style={{ fontSize: 11 }}>NIT {r.fel?.receptorNit || 'CF'}</div>
         </>
       ) },
-    { key: 'items', header: t('billing.headers.items', 'Items'), align: 'right', sortable: true },
+    { key: 'items', header: t('billing.headers.items', 'Items'), align: 'right', sortable: true, hideOnTablet: true, hideOnLaptop: true, card: 'hide' },
     { key: 'pay', header: t('billing.headers.payment', 'Pago'), sortable: true,
       render: (r) => (
         <span className="badge-m3"><Icon name={payIcon(r.pay)} size={10} />{r.pay}</span>
       ) },
-    { key: 'subtotal', header: t('billing.headers.subtotal', 'Subtotal'), align: 'right', sortable: true,
+    { key: 'subtotal', header: t('billing.headers.subtotal', 'Subtotal'), align: 'right', sortable: true, hideOnTablet: true, hideOnLaptop: true, card: 'hide',
       sortValue: (r) => subOf(r), render: (r) => Q(subOf(r)) },
-    { key: 'iva', header: t('billing.headers.iva', 'IVA'), align: 'right', sortable: true, className: 'muted',
+    { key: 'iva', header: t('billing.headers.iva', 'IVA'), align: 'right', sortable: true, className: 'muted', hideOnTablet: true, hideOnLaptop: true, card: 'hide',
       sortValue: (r) => ivaOf(r), render: (r) => Q(ivaOf(r)) },
-    { key: 'total', header: t('billing.headers.total', 'Total'), align: 'right', sortable: true,
+    { key: 'total', header: t('billing.headers.total', 'Total'), align: 'right', sortable: true, card: 'amount',
       render: (r) => <span style={{ fontWeight: 500 }}>{Q(r.total)}</span> },
-    { key: 'status', header: t('billing.headers.status', 'Estado'), sortable: true,
+    { key: 'status', header: t('billing.headers.status', 'Estado'), sortable: true, card: 'badge',
       render: (r) => (
         r.status === 'refunded'
           ? <span className="badge-m3 danger"><span className="dot" />Anulada</span>
@@ -196,9 +196,9 @@ function BillingModule({ pushToast }) {
       </div>
 
       <div className="filterbar">
-        <div style={{position:'relative', width:240}}>
-          <Icon name="search" size={12} style={{position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', color:'var(--muted)'}}/>
-          <input className="input" style={{width:'100%', paddingLeft:26}} placeholder={t('billing.searchPlaceholder', 'No. de factura, NIT…')} value={search} onChange={e=>setSearch(e.target.value)}/>
+        <div className="filterbar-search">
+          <Icon name="search" size={12}/>
+          <input className="input" placeholder={t('billing.searchPlaceholder', 'No. de factura, NIT…')} value={search} onChange={e=>setSearch(e.target.value)}/>
         </div>
         <select className="input">
           <option>{t('common.allFem', 'Todas')} las sucursales</option>
@@ -219,6 +219,7 @@ function BillingModule({ pushToast }) {
       </div>
 
       <DataTable
+        cards="tablet"
         columns={columns}
         rows={filtered}
         rowKey={(r) => r.id}
@@ -261,7 +262,7 @@ function BillingModule({ pushToast }) {
               </div>
               <button className="icon-btn" onClick={() => setSelected(null)}><Icon name="x"/></button>
             </div>
-            <div className="drawer-body" style={{display:'flex', gap:16}}>
+            <div className="drawer-body billing-detail">
               <Ticket data={{
                 id: selected.id,
                 items: (selected._items || []).map(it => ({
@@ -283,7 +284,7 @@ function BillingModule({ pushToast }) {
                 <div className="card">
                   <div className="card-head"><h3>{t('billing.satInfo', 'Información SAT-FEL')}</h3></div>
                   {selected.fel ? (
-                    <div className="card-body" style={{display:'grid', gridTemplateColumns:'auto 1fr', gap:'4px 10px', fontSize:12}}>
+                    <div className="card-body kv-grid" style={{fontSize:12}}>
                       <div className="muted">{t('billing.uuid', 'UUID')}</div><div className="code">{selected.fel.uuid}</div>
                       <div className="muted">{t('billing.serie', 'Serie')}</div><div className="code">{selected.fel.series}-{selected.fel.number}</div>
                       <div className="muted">{t('billing.authNo', 'No. autorización')}</div><div className="code">{selected.fel.authorizationNumber}</div>

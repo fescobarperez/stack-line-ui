@@ -125,16 +125,16 @@ function CreateRFQModal({ onSave, onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ width: 620, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+      <div className="modal modal-md" onClick={e => e.stopPropagation()}>
         <div className="modal-head">
           <h3>{t('quotes.newRFQ', 'Nueva Solicitud de Cotización (RFQ)')}</h3>
           <button className="icon-btn" onClick={onClose}><Icon name="close" /></button>
         </div>
 
-        <div className="modal-body" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="modal-body modal-stack">
           <div>
             <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 10 }}>{t('common.supplier', 'PROVEEDOR').toUpperCase()}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="form-grid">
               <div className="field-group">
                 <label className="field-label">{t('quotes.supplierName', 'Nombre / Empresa *')}</label>
                 <input className="field-input" value={supplier.name} onChange={e => setS('name', e.target.value)} placeholder={t('quotes.supplierNamePlaceholder', 'Empresa proveedora')} />
@@ -162,7 +162,7 @@ function CreateRFQModal({ onSave, onClose }) {
 
           <div>
             <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 10 }}>{t('quotes.requestedProducts', 'PRODUCTOS SOLICITADOS')}</div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="tbl-stack" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   <th style={{ padding: '4px 6px', textAlign: 'left', fontWeight: 500, color: 'var(--text-2)' }}>{t('common.description', 'Descripción')}</th>
@@ -174,19 +174,19 @@ function CreateRFQModal({ onSave, onClose }) {
               <tbody>
                 {items.map(item => (
                   <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '4px 6px' }}>
+                    <td className="stack-title" style={{ padding: '4px 6px' }}>
                       <input className="field-input" style={{ padding: '3px 6px' }} value={item.name}
                         onChange={e => setItem(item.id, 'name', e.target.value)} placeholder={t('quotes.productOrInput', 'Producto o insumo')} />
                     </td>
-                    <td style={{ padding: '4px 6px' }}>
+                    <td data-label={t('common.quantity', 'Cantidad')} style={{ padding: '4px 6px' }}>
                       <input className="field-input" type="number" min="1" style={{ padding: '3px 6px', textAlign: 'center', width: '100%' }}
                         value={item.qty} onChange={e => setItem(item.id, 'qty', Number(e.target.value))} />
                     </td>
-                    <td style={{ padding: '4px 6px' }}>
+                    <td data-label="UOM" style={{ padding: '4px 6px' }}>
                       <input className="field-input" style={{ padding: '3px 6px', textAlign: 'center', width: '100%' }}
                         value={item.uom} onChange={e => setItem(item.id, 'uom', e.target.value)} />
                     </td>
-                    <td style={{ padding: '4px 2px' }}>
+                    <td className="stack-actions" style={{ padding: '4px 2px' }}>
                       <button className="icon-btn" onClick={() => removeItem(item.id)} disabled={items.length === 1}>
                         <Icon name="close" size={11} />
                       </button>
@@ -329,27 +329,27 @@ export default function Quotes({ pushToast }) {
    * fecha real.
    */
   const quoteColumns = [
-    { key: 'id', header: t('quotes.quoteNo', 'Cotización'), sortable: true, mono: true, width: 150 },
-    { key: 'client', header: t('common.client', 'Cliente'), sortable: true,
+    { key: 'id', header: t('quotes.quoteNo', 'Cotización'), sortable: true, mono: true, width: 150, card: 'title' },
+    { key: 'client', header: t('common.client', 'Cliente'), sortable: true, card: 'subtitle',
       sortValue: (q) => q.client?.name || '',
       render: (q) => (<>
         <div style={{ fontWeight: 500 }}>{q.client?.name}</div>
         {q.client?.contact && <div className="muted" style={{ fontSize: 11 }}>{q.client.contact}</div>}
       </>) },
-    { key: 'date', header: t('common.date', 'Fecha'), sortable: true, className: 'muted',
+    { key: 'date', header: t('common.date', 'Fecha'), sortable: true, className: 'muted', hideOnTablet: true,
       sortValue: (q) => q.date || '', render: (q) => fmtDate(q.date) },
-    { key: 'validUntil', header: t('quotes.validUntil', 'Válida hasta'), sortable: true,
+    { key: 'validUntil', header: t('quotes.validUntil', 'Válida hasta'), sortable: true, hideOnTablet: true,
       sortValue: (q) => q.validUntil || '',
       render: (q) => {
         const vencida = q.validUntil < today && !['convertida', 'rechazada', 'vencida'].includes(q.status);
         return <span style={{ color: vencida ? 'var(--danger)' : 'inherit' }}>{fmtDate(q.validUntil)}</span>;
       } },
-    { key: 'items', header: t('quotes.items', 'Ítems'), align: 'center', sortable: true,
+    { key: 'items', header: t('quotes.items', 'Ítems'), align: 'center', sortable: true, hideOnTablet: true,
       sortValue: (q) => (q.items || []).length, render: (q) => (q.items || []).length },
-    { key: 'total', header: t('quotes.totalWithIva', 'Total (c/IVA)'), align: 'right', sortable: true,
+    { key: 'total', header: t('quotes.totalWithIva', 'Total (c/IVA)'), align: 'right', sortable: true, card: 'amount',
       sortValue: (q) => computeTotals(q.items, taxRate).total,
       render: (q) => <span className="num" style={{ fontWeight: 500 }}>{Q(computeTotals(q.items, taxRate).total)}</span> },
-    { key: 'status', header: t('common.status', 'Estado'), sortable: true,
+    { key: 'status', header: t('common.status', 'Estado'), sortable: true, card: 'badge',
       render: (q) => <span className={`badge-m3 ${STATUS_CLASS[q.status]}`}>{STATUS_LABEL[q.status]}</span> },
   ];
 
@@ -362,24 +362,24 @@ export default function Quotes({ pushToast }) {
    * fondo y no compitan con montos reales.
    */
   const rfqColumns = [
-    { key: 'id', header: t('quotes.rfqNo', 'Solicitud'), sortable: true, mono: true, width: 150 },
-    { key: 'supplier', header: t('common.supplier', 'Proveedor'), sortable: true,
+    { key: 'id', header: t('quotes.rfqNo', 'Solicitud'), sortable: true, mono: true, width: 150, card: 'title' },
+    { key: 'supplier', header: t('common.supplier', 'Proveedor'), sortable: true, card: 'subtitle',
       sortValue: (r) => r.supplier?.name || '',
       render: (r) => (<>
         <div style={{ fontWeight: 500 }}>{r.supplier?.name}</div>
         {r.supplier?.contact && <div className="muted" style={{ fontSize: 11 }}>{r.supplier.contact}</div>}
       </>) },
-    { key: 'date', header: t('common.date', 'Fecha'), sortable: true, className: 'muted',
+    { key: 'date', header: t('common.date', 'Fecha'), sortable: true, className: 'muted', hideOnTablet: true,
       sortValue: (r) => r.date || '', render: (r) => fmtDate(r.date) },
-    { key: 'deadline', header: t('quotes.respondBefore', 'Resp. antes'), sortable: true,
+    { key: 'deadline', header: t('quotes.respondBefore', 'Resp. antes'), sortable: true, hideOnTablet: true,
       sortValue: (r) => r.deadline || '',
       render: (r) => {
         const vencida = r.deadline && r.deadline < today && ['solicitada', 'recibida'].includes(r.status);
         return <span style={{ color: vencida ? 'var(--danger)' : 'inherit' }}>{r.deadline ? fmtDate(r.deadline) : '—'}</span>;
       } },
-    { key: 'leadTime', header: t('quotes.leadTime', 'T. entrega'), sortable: true, render: (r) => r.leadTime || '—' },
-    { key: 'paymentTerms', header: t('quotes.paymentTerm', 'Plazo pago'), sortable: true, render: (r) => r.paymentTerms || '—' },
-    { key: 'total', header: t('quotes.totalWithIva', 'Total (c/IVA)'), align: 'right', sortable: true,
+    { key: 'leadTime', header: t('quotes.leadTime', 'T. entrega'), sortable: true, hideOnTablet: true, render: (r) => r.leadTime || '—' },
+    { key: 'paymentTerms', header: t('quotes.paymentTerm', 'Plazo pago'), sortable: true, hideOnTablet: true, render: (r) => r.paymentTerms || '—' },
+    { key: 'total', header: t('quotes.totalWithIva', 'Total (c/IVA)'), align: 'right', sortable: true, card: 'amount',
       sortValue: (r) => ((r.items || []).some((i) => i.unitPrice > 0) ? computeTotals(r.items, taxRate).total : -1),
       render: (r) => {
         const conPrecios = (r.items || []).some((i) => i.unitPrice > 0);
@@ -387,7 +387,7 @@ export default function Quotes({ pushToast }) {
           ? <span className="num" style={{ fontWeight: 500 }}>{Q(computeTotals(r.items, taxRate).total)}</span>
           : <span className="muted">{t('quotes.pending', 'Pendiente')}</span>;
       } },
-    { key: 'status', header: t('common.status', 'Estado'), sortable: true,
+    { key: 'status', header: t('common.status', 'Estado'), sortable: true, card: 'badge',
       render: (r) => <span className={`badge-m3 ${RFQ_CLASS[r.status]}`}>{RFQ_LABEL[r.status]}</span> },
   ];
 
@@ -605,9 +605,9 @@ export default function Quotes({ pushToast }) {
               derecha. Los estados pasan de select a chips porque son siete y
               cortos: se ven todos de un vistazo y se cambian con un clic. */}
           <div className="filterbar">
-            <div style={{ position: 'relative', width: 280 }}>
-              <Icon name="search" size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
-              <input className="input" style={{ width: '100%', paddingLeft: 26 }}
+            <div className="filterbar-search">
+              <Icon name="search" size={12} />
+              <input className="input"
                 placeholder={t('quotes.searchPlaceholder', 'Buscar cotización o cliente…')}
                 value={search} onChange={e => setSearch(e.target.value)} />
             </div>
@@ -667,9 +667,9 @@ export default function Quotes({ pushToast }) {
               del mismo módulo y verlas distintas al cambiar de pestaña haría
               dudar de cuál es la buena. */}
           <div className="filterbar">
-            <div style={{ position: 'relative', width: 280 }}>
-              <Icon name="search" size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
-              <input className="input" style={{ width: '100%', paddingLeft: 26 }}
+            <div className="filterbar-search">
+              <Icon name="search" size={12} />
+              <input className="input"
                 placeholder={t('quotes.rfqSearchPlaceholder', 'Buscar RFQ o proveedor…')}
                 value={rfqSearch} onChange={e => setRfqSearch(e.target.value)} />
             </div>
@@ -741,8 +741,12 @@ export default function Quotes({ pushToast }) {
                           <div className="quote-section-description">{t('quotes.detailSectionHint', 'Productos, cargos y resumen fiscal')}</div>
                         </div>
                       </div>
-                      <div className="quote-section-card quote-section-card--detail-core">
-                        <div className="detail-grid" style={{ marginBottom: 16 }}>
+                      <div className="quote-subsection">
+                        <div className="quote-subsection-heading">
+                          <div className="quote-subsection-title">{t('quotes.clientData', 'Datos del cliente')}</div>
+                        </div>
+                        <div className="quote-subsection-card">
+                        <div className="detail-grid">
                       {[
                         [t('common.client', 'Cliente'),      selQuote.client.name],
                         ['NIT',          selQuote.client.nit || '—'],
@@ -760,13 +764,13 @@ export default function Quotes({ pushToast }) {
                       ].map(([l, v]) => (
                         <div className="detail-row" key={l}>
                           <span className="detail-label">{l}</span>
-                          <span style={{ fontSize: 12, textAlign: 'right' }}>{v}</span>
+                          <span className="detail-value">{v}</span>
                         </div>
                       ))}
                       {selQuote.projectId && (
                         <div className="detail-row">
                           <span className="detail-label">{t('quotes.project', 'Proyecto')}</span>
-                          <span style={{ fontSize: 12, textAlign: 'right' }}>
+                          <span className="detail-value">
                             <a href="#" onClick={(e) => { e.preventDefault(); navigate('/projects', { state: { openProjectId: selQuote.projectId } }); }}
                               style={{ color: 'var(--accent)', textDecoration: 'none' }}>
                               {t('quotes.goToProject', 'Ir al proyecto')} <Icon name="chevronRight" size={13} />
@@ -775,42 +779,54 @@ export default function Quotes({ pushToast }) {
                         </div>
                       )}
                     </div>
+                        </div>
+                      </div>
 
-                    <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 8 }}>{t('common.product', 'PRODUCTOS').toUpperCase()}</div>
-                    <table className="tbl" style={{ marginBottom: 4 }}>
+                      <div className="quote-subsection">
+                        <div className="quote-subsection-heading">
+                          <div>
+                            <div className="quote-subsection-title">{t('quotes.products', 'Productos')}</div>
+                            <div className="quote-subsection-description">{t('quotes.productsHint', 'Líneas cotizadas al cliente')}</div>
+                          </div>
+                        </div>
+                        <div className="quote-subsection-card">
+                    <table className="data-table tbl-stack quote-table">
                       <thead>
                         <tr>
                           <th>{t('common.description', 'Descripción')}</th>
                           <th style={{ textAlign: 'center' }}>{t('quotes.qty', 'Cant.')}</th>
-                          <th style={{ textAlign: 'center' }}>UOM</th>
+                          <th className="hide-tablet" style={{ textAlign: 'center' }}>UOM</th>
                           <th style={{ textAlign: 'right' }}>{t('quotes.unitPriceShort', 'P. Unit.')}</th>
-                          <th style={{ textAlign: 'center' }}>{t('common.discount', 'Desc.')}</th>
+                          <th className="hide-tablet" style={{ textAlign: 'center' }}>{t('common.discount', 'Desc.')}</th>
                           <th style={{ textAlign: 'right' }}>{t('common.total', 'Total')}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {lines.map(l => (
                           <tr key={l.id}>
-                            <td><QuoteLineName line={l} global={selQuote.priceDisplay === 'global'} /></td>
-                            <td style={{ textAlign: 'center' }}>{l.qty}</td>
-                            <td style={{ textAlign: 'center' }}><span className="badge-m3">{l.uom}</span></td>
-                            <td className="num">{Q(l.unitPrice)}</td>
-                            <td style={{ textAlign: 'center', color: l.discount> 0 ? 'var(--success)' : 'var(--muted)' }}>
+                            <td className="stack-title"><QuoteLineName line={l} global={selQuote.priceDisplay === 'global'} /></td>
+                            <td data-label={t('quotes.qty', 'Cant.')} style={{ textAlign: 'center' }}>{l.qty}</td>
+                            <td data-label="UOM" className="hide-tablet" style={{ textAlign: 'center' }}><span className="badge-m3">{l.uom}</span></td>
+                            <td data-label={t('quotes.unitPriceShort', 'P. Unit.')} className="num">{Q(l.unitPrice)}</td>
+                            <td data-label={t('common.discount', 'Desc.')} className="hide-tablet" style={{ textAlign: 'center', color: l.discount> 0 ? 'var(--success)' : 'var(--muted)' }}>
                               {l.discount > 0 ? `${l.discount}%` : '—'}
                             </td>
-                            <td className="num" style={{ fontWeight: 500 }}>{Q(l.lineTotal)}</td>
+                            <td data-label={t('common.total', 'Total')} className="num" style={{ fontWeight: 500 }}>{Q(l.lineTotal)}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                        </div>
+                      </div>
 
                     {selQuote.notes && (
-                      <div style={{ fontSize: 12, color: 'var(--text-2)', background: 'var(--surface-2)', padding: '10px 14px', borderRadius: 'var(--r-md)', borderLeft: '3px solid var(--border)' }}>
-                        <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)', marginBottom: 4, letterSpacing: '0.05em' }}>{t('common.notes', 'NOTAS').toUpperCase()}</div>
-                        {selQuote.notes}
+                      <div className="quote-subsection">
+                        <div className="quote-subsection-heading">
+                          <div className="quote-subsection-title">{t('common.notes', 'Notas')}</div>
+                        </div>
+                        <div className="quote-subsection-card quote-notes">{selQuote.notes}</div>
                       </div>
                     )}
-                      </div>
 
                     <QuoteChargesPanel
                       quoteId={selQuote.backendId}
@@ -820,9 +836,16 @@ export default function Quotes({ pushToast }) {
                       pushToast={pushToast}
                     />
 
-                    <div className="quote-fiscal-card" style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginTop: 14, marginBottom: 14 }}>
+                    <div className="quote-subsection">
+                      <div className="quote-subsection-heading">
+                        <div>
+                          <div className="quote-subsection-title">{t('quotes.summary', 'Resumen')}</div>
+                          <div className="quote-subsection-description">{t('quotes.summaryHint', 'Ganancia, IVA y total de la cotización')}</div>
+                        </div>
+                      </div>
+                    <div className="quote-subsection-card quote-sum">
                       {!resumen ? (
-                        <div className="muted" style={{ fontSize: 12 }}>{t('common.loading', 'Cargando…')}</div>
+                        <div className="cfg-hint">{t('common.loading', 'Cargando…')}</div>
                       ) : (<>
                         {[
                           [t('quotes.calcSubtotal', 'Subtotal'), Q(resumen.subtotal)],
@@ -850,7 +873,7 @@ export default function Quotes({ pushToast }) {
                           [t('quotes.calcAdjustedBase', 'Base ajustada'), Q(resumen.adjustedBase)],
                           [`${t('common.iva', 'IVA')} (${tasa}%)`, Q(resumen.tax)],
                         ].map(([l, v]) => (
-                          <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5, color: 'var(--text-2)' }}>
+                          <div key={l} className="quote-sum-row">
                             <span>{l}</span><span className="mono">{v}</span>
                           </div>
                         ))}
@@ -871,10 +894,11 @@ export default function Quotes({ pushToast }) {
                             </Button>
                           </div>
                         )}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, fontSize: 14, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-                          <span>{t('common.total', 'TOTAL').toUpperCase()}</span><span className="mono">{Q(resumen.total)}</span>
+                        <div className="quote-sum-row quote-sum-total">
+                          <span>{t('common.total', 'Total')}</span><span className="mono">{Q(resumen.total)}</span>
                         </div>
                       </>)}
+                    </div>
                     </div>
 
                     </section>
@@ -927,7 +951,7 @@ export default function Quotes({ pushToast }) {
               >
                 {generatingPdf ? t('quotes.generatingPdf', 'Generando PDF…') : t('quotes.generatePdf', 'Generar PDF')}
               </Button>
-              <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+              <div className="drawer-foot-actions">
                 {selQuote.status === 'borrador' && (
                   <>
                     <Button onClick={() => setShowDraftEdit(true)}>
@@ -1053,16 +1077,16 @@ export default function Quotes({ pushToast }) {
                       </div>
                     )}
 
-                    <table className="tbl" style={{ marginBottom: 4 }}>
+                    <table className="tbl tbl-stack" style={{ marginBottom: 4 }}>
                       <thead>
                         <tr>
                           <th>{t('common.description', 'Descripción')}</th>
                           <th style={{ textAlign: 'center' }}>{t('quotes.qty', 'Cant.')}</th>
-                          <th style={{ textAlign: 'center' }}>UOM</th>
+                          <th className="hide-tablet" style={{ textAlign: 'center' }}>UOM</th>
                           {hasPrices && (
                             <>
                               <th style={{ textAlign: 'right' }}>{t('quotes.unitPriceShort', 'P. Unit.')}</th>
-                              <th style={{ textAlign: 'center' }}>{t('common.discount', 'Desc.')}</th>
+                              <th className="hide-tablet" style={{ textAlign: 'center' }}>{t('common.discount', 'Desc.')}</th>
                               <th style={{ textAlign: 'right' }}>{t('common.total', 'Total')}</th>
                             </>
                           )}
@@ -1071,16 +1095,16 @@ export default function Quotes({ pushToast }) {
                       <tbody>
                         {lines.map(l => (
                           <tr key={l.id}>
-                            <td><QuoteLineName line={l} /></td>
-                            <td style={{ textAlign: 'center' }}>{l.qty}</td>
-                            <td style={{ textAlign: 'center' }}><span className="badge-m3">{l.uom}</span></td>
+                            <td className="stack-title"><QuoteLineName line={l} /></td>
+                            <td data-label={t('quotes.qty', 'Cant.')} style={{ textAlign: 'center' }}>{l.qty}</td>
+                            <td data-label="UOM" className="hide-tablet" style={{ textAlign: 'center' }}><span className="badge-m3">{l.uom}</span></td>
                             {hasPrices && (
                               <>
-                                <td className="num">{Q(l.unitPrice)}</td>
-                                <td style={{ textAlign: 'center', color: l.discount> 0 ? 'var(--success)' : 'var(--muted)' }}>
+                                <td data-label={t('quotes.unitPriceShort', 'P. Unit.')} className="num">{Q(l.unitPrice)}</td>
+                                <td data-label={t('common.discount', 'Desc.')} className="hide-tablet" style={{ textAlign: 'center', color: l.discount> 0 ? 'var(--success)' : 'var(--muted)' }}>
                                   {l.discount > 0 ? `${l.discount}%` : '—'}
                                 </td>
-                                <td className="num" style={{ fontWeight: 500 }}>{Q(l.lineTotal)}</td>
+                                <td data-label={t('common.total', 'Total')} className="num" style={{ fontWeight: 500 }}>{Q(l.lineTotal)}</td>
                               </>
                             )}
                           </tr>
@@ -1131,7 +1155,7 @@ export default function Quotes({ pushToast }) {
 
             <div className="drawer-foot" style={{ flexWrap: 'wrap', gap: 8 }}>
               <Button variant="ghost" onClick={() => setSelectedRfq(null)}>{t('common.close', 'Cerrar')}</Button>
-              <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+              <div className="drawer-foot-actions">
                 {selRfq.status === 'solicitada' && (
                   <Button onClick={() => { updateRfqStatus(selRfq.id, 'recibida', 'Cotización recibida del proveedor', 'Respuesta registrada'); }}>
                     {t('quotes.registerResponse', 'Registrar respuesta')}
@@ -1161,7 +1185,7 @@ export default function Quotes({ pushToast }) {
           así que primero se selecciona el proyecto y luego se abre el constructor. */}
       {showCreate && !builderProject && (
         <div className="modal-backdrop" onClick={() => { setShowCreate(false); setPrefillClient(null); }}>
-          <div className="modal" style={{ width: 460 }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal modal-sm" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
               <h3>{t('quotes.pickProject', 'Nueva cotización · elegir proyecto')}</h3>
               <button className="icon-btn" onClick={() => { setShowCreate(false); setPrefillClient(null); }}><Icon name="close" /></button>

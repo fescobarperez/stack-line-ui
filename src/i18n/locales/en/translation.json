@@ -130,7 +130,11 @@
     "accessDenied": "Access denied",
     "accessDeniedDesc": "Your role does not have permission to view this module.",
     "openMenu": "Menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "moreOptions": "More options",
+    "satOffline": "SAT-FEL offline",
+    "themeDark": "Dark",
+    "themeLight": "Light"
   },
   "search": {
     "placeholder": "Search modules, products, clients…",
@@ -643,7 +647,15 @@
     "calcRounding": "Total rounding",
     "sizePriced": "Priced by size",
     "sizeReview": "To be quoted",
-    "sizeReviewHint": "The size is outside the tolerance: set the line price"
+    "sizeReviewHint": "The size is outside the tolerance: set the line price",
+    "dimensionsShort": "Size",
+    "termN": "Installment",
+    "clientData": "Client details",
+    "products": "Products",
+    "productsHint": "Lines quoted to the client",
+    "summary": "Summary",
+    "summaryHint": "Profit, VAT and quote total",
+    "planSummary": "Plan summary"
   },
   "promotions": {
     "title": "Promotions",
@@ -949,7 +961,9 @@
     "sentPanel": "Sent on {{date}} · {{channels}} · status",
     "name": "Tino",
     "close": "Close assistant",
-    "dragHint": "Drag to move it"
+    "dragHint": "Drag to move it",
+    "tabChat": "Chat",
+    "tabPanel": "Work"
   },
   "changeRequests": {
     "missing": {

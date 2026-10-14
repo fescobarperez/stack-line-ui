@@ -327,10 +327,10 @@ function MaintenanceModule({ pushToast }) {
       </>
     );
     if (id === 'impuestos') return (
-      <div className="grid-2">
+      <div className="split-2">
         <div className="card">
           <div className="card-head"><h3>{t('maintenance.taxpayerData', 'Datos fiscales del contribuyente')}</h3></div>
-          <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 14px', fontSize: 12 }}>
+          <div className="card-body kv-grid" style={{ gap: '8px 14px', fontSize: 12 }}>
             <div className="muted">{t('maintenance.regime', 'Régimen')}</div><div>General sobre Utilidades</div>
             <div className="muted">{t('maintenance.satCategory', 'Categoría SAT')}</div><div>Definitivo IVA</div>
             <div className="muted" style={{ gridColumn: '1 / -1', fontSize: 11, marginTop: 4 }}>
@@ -341,7 +341,7 @@ function MaintenanceModule({ pushToast }) {
         <div className="card">
           <div className="card-head"><h3>{t('maintenance.taxConfig', 'Configuración de impuestos')}</h3></div>
           <div className="card-body flush">
-            <table className="mtable">
+            <table className="mtable tbl-stack" data-title-col="1">
               <thead><tr><th>{t('common.code', 'Código')}</th><th>{t('common.name', 'Nombre')}</th><th className="r">{t('maintenance.rate', 'Tasa')}</th><th>{t('common.status', 'Estado')}</th></tr></thead>
               <tbody>
                 <tr><td><span className="sku">IVA</span></td><td>Impuesto al Valor Agregado</td><td className="r num" style={{ fontWeight: 500 }}>12 %</td><td><span className="badge-m3 success">{t('common.active', 'Activo')}</span></td></tr>

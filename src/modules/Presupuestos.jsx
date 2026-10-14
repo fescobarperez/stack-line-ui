@@ -174,7 +174,7 @@ export default function Presupuestos({ pushToast }) {
               <span style={{fontWeight: 500, fontSize: 14}}>{t('presupuestos.byDeptYTD', 'Por departamento — YTD')} ene–{MESES[MES_ACT]}</span>
               <span className="badge-m3">{AÑO_ACT}</span>
             </div>
-            <table className="mtable">
+            <table className="mtable tbl-stack">
               <thead>
                 <tr>
                   <th>{t('presupuestos.department', 'Departamento')}</th>
@@ -256,7 +256,7 @@ export default function Presupuestos({ pushToast }) {
             <div style={{padding:'12px 16px', borderBottom:'1px solid var(--border)', fontWeight: 500, fontSize: 14}}>
               {dptSelec.nombre} — {vista==='ppto' ? t('presupuestos.viewBudget', 'Presupuesto') : vista==='real' ? t('presupuestos.realExecuted', 'Real ejecutado') : t('presupuestos.variationFormula', 'Variación (real − ppto)')}
             </div>
-            <table className="mtable" style={{minWidth:900}}>
+            <table className="mtable tbl-stack" style={{minWidth:900}}>
               <thead>
                 <tr>
                   <th style={{minWidth:220}}>{t('presupuestos.budgetLine', 'Línea presupuestaria')}</th>
@@ -357,7 +357,7 @@ export default function Presupuestos({ pushToast }) {
           <div style={{padding:'12px 16px', borderBottom:'1px solid var(--border)', fontWeight: 500, fontSize: 14}}>
             {t('presupuestos.comparisonTitle', 'Ingresos · Gastos · Utilidad — mes a mes')} {AÑO_ACT}
           </div>
-          <table className="mtable" style={{minWidth:960}}>
+          <table className="mtable tbl-stack" style={{minWidth:960}}>
             <thead>
               <tr>
                 <th style={{width:54}}>{t('presupuestos.month', 'Mes')}</th>
@@ -443,7 +443,7 @@ export default function Presupuestos({ pushToast }) {
             <Button size="sm" icon="plus" variant="accent" disabled={creatingPeriod} onClick={createPeriod}>{t('presupuestos.newPeriod', 'Nuevo período')}
             </Button>
           </div>
-          <table className="mtable">
+          <table className="mtable tbl-stack">
             <thead>
               <tr>
                 <th>{t('presupuestos.fiscalYearCol', 'Año fiscal')}</th>
@@ -528,7 +528,7 @@ export default function Presupuestos({ pushToast }) {
                     <div style={{fontSize:11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8, fontFamily:'var(--font-mono)'}}>
                       {t('presupuestos.lines', 'Líneas')}
                     </div>
-                    <table className="mtable">
+                    <table className="mtable tbl-stack">
                       <thead>
                         <tr>
                           <th>{t('accounting.account', 'Cuenta')}</th>

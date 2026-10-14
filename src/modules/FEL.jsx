@@ -116,7 +116,7 @@ export default function FEL({ pushToast }) {
 
   // ── Columnas (estándar <DataTable>) ──────────────────────────────────────
   const colCorrelativo = {
-    key: 'numero', header: 'Correlativo', sortable: true, mono: true,
+    key: 'numero', header: 'Correlativo', sortable: true, mono: true, card: 'title',
     render: (d) => (
       <>
         <div className="code">{d.serie}-{d.numero}</div>
@@ -124,23 +124,23 @@ export default function FEL({ pushToast }) {
       </>
     ),
   };
-  const colReceptor = { key: 'receptor', header: 'Receptor', sortable: true,
+  const colReceptor = { key: 'receptor', header: 'Receptor', sortable: true, card: 'subtitle',
     render: (d) => <span className="nm">{d.receptor}</span> };
-  const colTotal = { key: 'total', header: t('common.total', 'Total'), align: 'right', sortable: true,
+  const colTotal = { key: 'total', header: t('common.total', 'Total'), align: 'right', sortable: true, card: 'amount',
     render: (d) => <span className="nm">{Q(d.total)}</span> };
 
   const dteColumns = [
     colCorrelativo,
-    { key: 'tipo', header: t('common.type', 'Tipo'), sortable: true,
+    { key: 'tipo', header: t('common.type', 'Tipo'), sortable: true, card: 'badge',
       sortValue: (d) => TIPOS[d.tipo]?.label,
       render: (d) => <span className={`badge-m3 ${TIPOS[d.tipo].pill}`}>{TIPOS[d.tipo].label}</span> },
     { key: 'fecha', header: t('common.date', 'Fecha'), sortable: true, mono: true },
     colReceptor,
-    { key: 'nit', header: 'NIT', sortable: true, mono: true },
-    { key: 'afecto', header: 'Afecto', align: 'right', sortable: true, render: (d) => Q(d.afecto) },
-    { key: 'iva', header: t('common.iva', 'IVA'), align: 'right', sortable: true, render: (d) => Q(d.iva) },
+    { key: 'nit', header: 'NIT', sortable: true, mono: true, hideOnTablet: true },
+    { key: 'afecto', header: 'Afecto', align: 'right', sortable: true, hideOnTablet: true, hideOnLaptop: true, card: 'hide', render: (d) => Q(d.afecto) },
+    { key: 'iva', header: t('common.iva', 'IVA'), align: 'right', sortable: true, hideOnTablet: true, card: 'hide', render: (d) => Q(d.iva) },
     colTotal,
-    { key: 'estado', header: t('common.status', 'Estado'), sortable: true,
+    { key: 'estado', header: t('common.status', 'Estado'), sortable: true, card: 'badge',
       sortValue: (d) => ESTADOS[d.estado]?.label,
       render: (d) => <span className={`badge-m3 ${ESTADOS[d.estado].pill}`}>{ESTADOS[d.estado].label}</span> },
   ];
@@ -149,10 +149,10 @@ export default function FEL({ pushToast }) {
     { ...colCorrelativo, render: (d) => <span className="code">{d.serie}-{d.numero}</span> },
     { key: 'fecha', header: 'Fecha anulación', sortable: true, mono: true },
     colReceptor,
-    { key: 'total', header: t('common.total', 'Total'), align: 'right', sortable: true,
+    { key: 'total', header: t('common.total', 'Total'), align: 'right', sortable: true, card: 'amount',
       render: (d) => <span style={{ color: 'var(--md-sys-color-error)' }}>{Q(d.total)}</span> },
     { key: 'motivoAnul', header: 'Motivo', className: 'muted', render: (d) => d.motivoAnul ?? '—' },
-    { key: 'estado', header: t('common.status', 'Estado'),
+    { key: 'estado', header: t('common.status', 'Estado'), card: 'badge',
       render: () => <span className="badge-m3 danger">Anulado</span> },
   ];
 
@@ -164,17 +164,17 @@ export default function FEL({ pushToast }) {
   ];
 
   const libroColumns = [
-    { key: 'no', header: 'No.', mono: true, width: 64,
+    { key: 'no', header: 'No.', mono: true, width: 64, card: 'hide', hideOnTablet: true,
       render: (_d, i) => String(i + 1).padStart(3, '0') },
     { key: 'fecha', header: t('common.date', 'Fecha'), sortable: true, mono: true },
-    { key: 'numero', header: 'Serie-Número', sortable: true, mono: true,
+    { key: 'numero', header: 'Serie-Número', sortable: true, mono: true, card: 'title',
       render: (d) => `${d.serie}-${d.numero}` },
-    { key: 'uuid', header: 'UUID (corto)', mono: true,
+    { key: 'uuid', header: 'UUID (corto)', mono: true, card: 'hide', hideOnTablet: true,
       render: (d) => (d.uuid ? `${d.uuid.slice(0, 8)}…` : '—') },
-    { key: 'nit', header: 'NIT receptor', sortable: true, mono: true },
-    { key: 'receptor', header: 'Nombre receptor', sortable: true },
+    { key: 'nit', header: 'NIT receptor', sortable: true, mono: true, hideOnTablet: true },
+    { key: 'receptor', header: 'Nombre receptor', sortable: true, card: 'subtitle' },
     { key: 'afecto', header: 'Afecto', align: 'right', sortable: true, render: (d) => Q(d.afecto) },
-    { key: 'exento', header: 'Exento', align: 'right', sortable: true, className: 'muted',
+    { key: 'exento', header: 'Exento', align: 'right', sortable: true, className: 'muted', hideOnTablet: true,
       render: (d) => (d.exento > 0 ? Q(d.exento) : '—') },
     { key: 'iva', header: 'IVA 12%', align: 'right', sortable: true, render: (d) => Q(d.iva) },
     colTotal,
@@ -183,7 +183,7 @@ export default function FEL({ pushToast }) {
   const rechazadosColumns = [
     { ...colCorrelativo, render: (d) => <span className="code">{d.serie}-{d.numero}</span> },
     colReceptor,
-    { key: 'total', header: t('common.total', 'Total'), align: 'right', sortable: true, render: (d) => Q(d.total) },
+    { key: 'total', header: t('common.total', 'Total'), align: 'right', sortable: true, card: 'amount', render: (d) => Q(d.total) },
     { key: 'errorMsg', header: 'Error SAT',
       render: (d) => <span className="fel-err-cell">{d.errorMsg || '—'}</span> },
   ];
@@ -277,6 +277,7 @@ export default function FEL({ pushToast }) {
           </div>
 
           <DataTable
+            cards="tablet"
             columns={dteColumns}
             rows={filtered}
             rowKey={(d) => d.id}
