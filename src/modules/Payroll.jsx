@@ -327,18 +327,18 @@ export default function Payroll({ pushToast }) {
               </div>
             </div>
             <div className="tbl-wrap">
-              <table className="tbl">
+              <table className="tbl tbl-stack">
                 <thead>
                   <tr>
                     <th>{t('payroll.headers.employee', 'Empleado')}</th>
-                    <th>{t('payroll.headers.position', 'Puesto')}</th>
+                    <th className="hide-laptop">{t('payroll.headers.position', 'Puesto')}</th>
                     <th className="num">{t('payroll.headers.baseSalary', 'Salario base')}</th>
-                    <th className="num">{t('payroll.headers.bonIncentive', 'Bon. incentivo')}</th>
-                    <th className="num">{t('payroll.headers.igssEmployee', 'IGSS emp. (4.83%)')}</th>
-                    <th className="num">{t('payroll.headers.monthlyIsr', 'ISR mensual')}</th>
-                    <th className="num">{t('payroll.headers.totalDeductions', 'Total deducc.')}</th>
+                    <th className="num hide-tablet">{t('payroll.headers.bonIncentive', 'Bon. incentivo')}</th>
+                    <th className="num hide-laptop">{t('payroll.headers.igssEmployee', 'IGSS emp. (4.83%)')}</th>
+                    <th className="num hide-laptop">{t('payroll.headers.monthlyIsr', 'ISR mensual')}</th>
+                    <th className="num hide-tablet">{t('payroll.headers.totalDeductions', 'Total deducc.')}</th>
                     <th className="num" style={{color:'var(--success)'}}>{t('payroll.headers.netPay', 'Neto a pagar')}</th>
-                    <th className="num" style={{color:'var(--muted)'}}>{t('payroll.headers.igssEmployer', 'IGSS pat. (10.67%)')}</th>
+                    <th className="num hide-tablet" style={{color:'var(--muted)'}}>{t('payroll.headers.igssEmployer', 'IGSS pat. (10.67%)')}</th>
                     <th className="num" style={{color:'var(--accent)'}}>{t('payroll.headers.companyCost', 'Costo empresa')}</th>
                     <th className="center">{t('payroll.headers.receipt', 'Recibo')}</th>
                   </tr>
@@ -350,17 +350,17 @@ export default function Payroll({ pushToast }) {
                         <div style={{fontWeight:500}}>{r.name}</div>
                         <div className="code muted" style={{fontSize: 11}}>{r.id}</div>
                       </td>
-                      <td>
+                      <td className="hide-laptop">
                         <div>{r.pos}</div>
                         <div className="muted" style={{fontSize: 11}}>{r.dept}</div>
                       </td>
                       <td className="num">{Q(r.calc.base)}</td>
-                      <td className="num" style={{color:'var(--success)'}}>{Q(r.calc.bon)}</td>
-                      <td className="num" style={{color:'var(--danger)'}}>−{Q(r.calc.igssE)}</td>
-                      <td className="num" style={{color:'var(--danger)'}}>−{Q(r.calc.isrM)}</td>
-                      <td className="num" style={{ color:'var(--danger)', fontWeight:500 }}>−{Q(r.calc.deducc)}</td>
+                      <td className="num hide-tablet" style={{color:'var(--success)'}}>{Q(r.calc.bon)}</td>
+                      <td className="num hide-laptop" style={{color:'var(--danger)'}}>−{Q(r.calc.igssE)}</td>
+                      <td className="num hide-laptop" style={{color:'var(--danger)'}}>−{Q(r.calc.isrM)}</td>
+                      <td className="num hide-tablet" style={{ color:'var(--danger)', fontWeight:500 }}>−{Q(r.calc.deducc)}</td>
                       <td className="num" style={{ color:'var(--success)', fontWeight:500 }}>{Q(r.calc.neto)}</td>
-                      <td className="num" style={{color:'var(--muted)'}}>{Q(r.calc.igssP)}</td>
+                      <td className="num hide-tablet" style={{color:'var(--muted)'}}>{Q(r.calc.igssP)}</td>
                       <td className="num" style={{ color:'var(--accent)', fontWeight:500 }}>{Q(r.calc.totalEmp)}</td>
                       <td className="center">
                         <Button icon="receipt" variant="ghost" size="sm" onClick={() => setShowRecibo(r)}>{t('common.view', 'Ver')}
@@ -371,14 +371,17 @@ export default function Payroll({ pushToast }) {
                 </tbody>
                 <tfoot>
                   <tr style={{background:'var(--surface-2)', fontWeight: 500}}>
-                    <td colSpan={2} style={{ padding:'8px 12px' }}>{t('payroll.totals', 'TOTALES')}</td>
+                    {/* Una celda por columna (no colSpan): así las columnas que se
+                        ocultan en laptop o tablet no desalinean los totales. */}
+                    <td style={{ padding:'8px 12px' }}>{t('payroll.totals', 'TOTALES')}</td>
+                    <td className="hide-laptop" />
                     <td className="num" style={{padding:'8px 12px'}}>{Q(summary.totalBase)}</td>
-                    <td className="num" style={{padding:'8px 12px', color:'var(--success)'}}>{Q(summary.totalBon)}</td>
-                    <td className="num" style={{padding:'8px 12px', color:'var(--danger)'}}>−{Q(summary.totalIgssE)}</td>
-                    <td className="num" style={{padding:'8px 12px', color:'var(--danger)'}}>−{Q(summary.totalIsr)}</td>
-                    <td className="num" style={{padding:'8px 12px', color:'var(--danger)'}}>−{Q(summary.totalIgssE + summary.totalIsr)}</td>
+                    <td className="num hide-tablet" style={{padding:'8px 12px', color:'var(--success)'}}>{Q(summary.totalBon)}</td>
+                    <td className="num hide-laptop" style={{padding:'8px 12px', color:'var(--danger)'}}>−{Q(summary.totalIgssE)}</td>
+                    <td className="num hide-laptop" style={{padding:'8px 12px', color:'var(--danger)'}}>−{Q(summary.totalIsr)}</td>
+                    <td className="num hide-tablet" style={{padding:'8px 12px', color:'var(--danger)'}}>−{Q(summary.totalIgssE + summary.totalIsr)}</td>
                     <td className="num" style={{padding:'8px 12px', color:'var(--success)'}}>{Q(summary.totalNeto)}</td>
-                    <td className="num" style={{padding:'8px 12px', color:'var(--muted)'}}>{Q(summary.totalIgssP)}</td>
+                    <td className="num hide-tablet" style={{padding:'8px 12px', color:'var(--muted)'}}>{Q(summary.totalIgssP)}</td>
                     <td className="num" style={{padding:'8px 12px', color:'var(--accent)'}}>{Q(summary.totalEmpresa)}</td>
                     <td/>
                   </tr>
@@ -457,7 +460,7 @@ export default function Payroll({ pushToast }) {
           </div>
 
           <div className="table-wrap">
-            <table className="data-table">
+            <table className="data-table tbl-stack">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -509,7 +512,7 @@ export default function Payroll({ pushToast }) {
       {/* ── TAB: HISTORIAL ── */}
       {tab === 'historial' && (
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table tbl-stack">
             <thead>
               <tr>
                 <th>{t('payroll.headers.payrollNo', 'No. Planilla')}</th>
@@ -549,7 +552,7 @@ export default function Payroll({ pushToast }) {
           <div className="card">
             <div className="card-head"><h3>{t('payroll.igssRates', 'Tasas IGSS vigentes · Decreto 295')}</h3></div>
             <div className="card-body">
-              <table className="tbl">
+              <table className="tbl tbl-stack">
                 <thead><tr><th>{t('payroll.concept', 'Concepto')}</th><th className="num">{t('payroll.rate', 'Tasa')}</th><th>{t('payroll.chargedTo', 'Cargo a')}</th></tr></thead>
                 <tbody>
                   <tr><td>{t('payroll.employeeShareIvs', 'Cuota empleado (IVS)')}</td><td className="num">4.83%</td><td>{t('payroll.employee', 'Empleado')}</td></tr>
@@ -567,7 +570,7 @@ export default function Payroll({ pushToast }) {
           <div className="card">
             <div className="card-head"><h3>{t('payroll.isrRates', 'ISR en relación de dependencia · Ley ISR')}</h3></div>
             <div className="card-body">
-              <table className="tbl">
+              <table className="tbl tbl-stack">
                 <thead><tr><th>{t('payroll.concept', 'Concepto')}</th><th className="num">{t('payroll.annualValue', 'Valor anual')}</th></tr></thead>
                 <tbody>
                   <tr><td>{t('payroll.exemptIncome', 'Renta exenta')}</td><td className="num">Q 48,000</td></tr>
@@ -590,7 +593,7 @@ export default function Payroll({ pushToast }) {
           <div className="card" style={{gridColumn:'1 / -1'}}>
             <div className="card-head"><h3>{t('payroll.salarySimulator', 'Simulador de cálculo por salario')}</h3></div>
             <div className="card-body">
-              <table className="tbl">
+              <table className="tbl tbl-stack">
                 <thead>
                   <tr>
                     <th>{t('payroll.headers.baseSalary', 'Salario base')}</th>
@@ -670,7 +673,7 @@ export default function Payroll({ pushToast }) {
                     <div style={{fontFamily:'var(--font-mono)', fontSize: 11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8}}>{t('payroll.monthlySalaryBreakdown', 'Desglose salarial mensual')}</div>
                     <div className="card" style={{marginBottom:16}}>
                       <div className="card-body" style={{padding:0}}>
-                        <table className="tbl">
+                        <table className="tbl tbl-stack">
                           <tbody>
                             <tr><td>{t('payroll.headers.baseSalary', 'Salario base')}</td><td className="num">{Q(c.base)}</td></tr>
                             <tr><td style={{color:'var(--success)'}}>+ {t('payroll.incentiveBonus', 'Bonificación incentivo')}</td><td className="num" style={{color:'var(--success)'}}>{Q(c.bon)}</td></tr>
@@ -954,7 +957,7 @@ function ReportModal({ report, Q, onClose }) {
           <button className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
         <div className="modal-body" style={{ overflow: 'auto', flex: 1 }}>
-          <table className="tbl">
+          <table className="tbl tbl-stack">
             <thead>
               {isIgss ? (
                 <tr>

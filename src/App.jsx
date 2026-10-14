@@ -17,8 +17,10 @@ import Logo from './components/Logo.jsx';
 
 import { useNotifications, NotificationsPanel } from './components/NotificationsPanel.jsx';
 import GlobalSearch from './components/GlobalSearch.jsx';
+import TopbarMoreMenu from './components/TopbarMoreMenu.jsx';
 import { useLayout, useMediaQuery } from './hooks/useLayout.js';
 import { sidebarMode } from './lib/breakpoints.js';
+import { vigilarTablasApiladas } from './lib/stackLabels.js';
 import Dashboard from './modules/Dashboard.jsx';
 import POS from './modules/POS.jsx';
 import Billing from './modules/Billing.jsx';
@@ -182,7 +184,9 @@ export default function App({ session, onLogout }) {
   const [toasts, setToasts] = useState([]);
   const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [collapsed, setCollapsed] = useState({});
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Laptops de menos de 1440 px arrancan con el menú en riel: con el menú
+  // expandido (320 px) las tablas anchas no caben. El usuario lo puede abrir.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1440);
   // Tablet y teléfono: el menú se abre encima del contenido, como cajón.
   const layout = useLayout();
   const compacto = layout !== 'desktop';
@@ -218,6 +222,9 @@ export default function App({ session, onLogout }) {
     window.addEventListener('keydown', alTeclear);
     return () => window.removeEventListener('keydown', alTeclear);
   }, [menu]);
+
+  // Tablas hechas a mano con .tbl-stack: etiquetas para apilarlas en el teléfono.
+  useEffect(() => vigilarTablasApiladas(document.body), []);
 
   // Aplicar tema/estilo al <html>
   useEffect(() => {
@@ -399,6 +406,15 @@ export default function App({ session, onLogout }) {
             <div className="avatar topbar-avatar" title={session.user.name} style={{ width: 32, height: 32, fontSize: 12, marginLeft: 8 }}>
               {session.user.initials}
             </div>
+            {/* Teléfono: lo que se oculta de la barra queda en este menú. */}
+            <TopbarMoreMenu
+              user={{ name: session.user.name, initials: session.user.initials, role: session.user.role, branch }}
+              language={i18n.language === 'en' ? 'en' : 'es'}
+              theme={tweaks.theme}
+              onToggleLanguage={toggleLang}
+              onToggleTheme={() => setTweak('theme', tweaks.theme === 'dark' ? 'light' : 'dark')}
+              onLogout={onLogout}
+            />
           </div>
         </header>
 

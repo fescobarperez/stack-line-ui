@@ -172,15 +172,15 @@ export default function Audit() {
 
       {/* Tabla de log */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="tbl-wrap"><table className="tbl">
+        <div className="tbl-wrap"><table className="tbl tbl-stack">
           <thead>
             <tr>
               <th style={{ width: 140 }}>{t('audit.dateTime', 'Fecha y hora')}</th>
               <th>{t('common.user', 'Usuario')}</th>
-              <th>{t('audit.module', 'Módulo')}</th>
+              <th className="hide-tablet">{t('audit.module', 'Módulo')}</th>
               <th>{t('audit.action', 'Acción')}</th>
               <th>{t('common.description', 'Descripción')}</th>
-              <th>{t('common.branch', 'Sucursal')}</th>
+              <th className="hide-tablet">{t('common.branch', 'Sucursal')}</th>
               <th style={{ width: 70 }}>{t('audit.severity', 'Severidad')}</th>
             </tr>
           </thead>
@@ -201,7 +201,7 @@ export default function Audit() {
                   <div style={{ fontSize: 13, fontWeight: 500 }}>{entry.user}</div>
                   <div className="muted" style={{ fontSize: 11 }}>{entry.role}</div>
                 </td>
-                <td>
+                <td className="hide-tablet">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Icon name={MODULE_ICON[entry.module] || 'dashboard'} size={12} style={{ color: 'var(--muted)' }} />
                     <span style={{ fontSize: 12 }}>{MODULE_LABEL[entry.module] || entry.module}</span>
@@ -211,7 +211,7 @@ export default function Audit() {
                 <td className="muted" style={{ fontSize: 12, maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {entry.description}
                 </td>
-                <td style={{ fontSize: 12 }}>{entry.branch}</td>
+                <td className="hide-tablet" style={{ fontSize: 12 }}>{entry.branch}</td>
                 <td>
                   <span className={`pill ${SEVERITY_CLASS[entry.severity]}`} style={{ fontSize: 9 }}>
                     {SEVERITY_LABEL[entry.severity]}

@@ -119,7 +119,7 @@ function NewTransferModal({ branches, products, onSave, onClose }) {
               )}
             </div>
 
-            <table className="data-table" style={{ marginBottom: 8 }}>
+            <table className="data-table tbl-stack" style={{ marginBottom: 8 }}>
               <thead>
                 <tr>
                   <th>{t('common.product', 'Producto')}</th>
@@ -235,7 +235,7 @@ function TransferDetail({ transfer, onClose, onDispatch, onReceive }) {
           </div>
         </div>
 
-        <table className="data-table">
+        <table className="data-table tbl-stack">
           <thead>
             <tr>
               <th>{t('common.product', 'Producto')}</th>
@@ -385,7 +385,7 @@ export default function Transfers({ pushToast }) {
 
       {/* Filtros */}
       <div className="toolbar">
-        <div className="search-wrap" style={{ flex: 1, maxWidth: 300 }}>
+        <div className="search-wrap filterbar-grow">
           <Icon name="search" className="icon" size={13} />
           <input className="search-input" placeholder={t('transfers.searchPlaceholder', 'No. transferencia, sucursal…')}
             value={search} onChange={e => setSearch(e.target.value)} />
@@ -407,15 +407,15 @@ export default function Transfers({ pushToast }) {
       </div>
 
       <div className="table-wrap">
-        <table className="data-table">
+        <table className="data-table tbl-stack">
           <thead>
             <tr>
               <th>ID</th>
               <th>{t('common.date', 'Fecha')}</th>
               <th>Origen</th>
               <th>Destino</th>
-              <th>{t('inventory.transfer.carrier', 'Transportista / chofer')}</th>
-              <th className="right">Ítems</th>
+              <th className="hide-tablet">{t('inventory.transfer.carrier', 'Transportista / chofer')}</th>
+              <th className="right hide-tablet">Ítems</th>
               <th>{t('common.status', 'Estado')}</th>
               <th>{t('common.actions', 'Acciones')}</th>
             </tr>
@@ -429,10 +429,10 @@ export default function Transfers({ pushToast }) {
                 <td className="mono muted">{t.date}</td>
                 <td>{t.fromBranch}</td>
                 <td>{t.toBranch}</td>
-                <td className="muted">{t.transporter || '—'}</td>
-                <td className="right mono">{t.items.length}</td>
+                <td className="muted hide-tablet">{t.transporter || '—'}</td>
+                <td className="right mono hide-tablet">{t.items.length}</td>
                 <td><span className={`badge-m3 ${STATUS_CLASS[t.status]}`}>{STATUS_LABEL[t.status]}</span></td>
-                <td>
+                <td className="stack-actions">
                   {t.status === 'draft' && (
                     <Button size="sm" icon="truck" onClick={e => { e.stopPropagation(); setSelected(t); handleDispatch(t); }}>Despachar
                     </Button>

@@ -102,7 +102,7 @@ export default function QuoteDraftEditModal({ quote, onClose, onSaved, pushToast
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ width: 760, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <div>
             <h3>{t('quotes.editDraftTitle', 'Editar cotización')}</h3>
@@ -112,7 +112,7 @@ export default function QuoteDraftEditModal({ quote, onClose, onSaved, pushToast
         </div>
 
         <div className="modal-body" style={{ flex: 1, overflowY: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+          <div className="form-grid" style={{ marginBottom: 18 }}>
             <div className="field-group">
               <label className="field-label">{t('quotes.validUntil', 'Fecha de expiración')} *</label>
               <DatePicker value={validUntil} onChange={(iso) => setValidUntil(iso)} min={quote.date || today}
@@ -149,7 +149,7 @@ export default function QuoteDraftEditModal({ quote, onClose, onSaved, pushToast
             {t('quotes.lines', 'LÍNEAS DE LA COTIZACIÓN')}
           </div>
           <div className="table-wrap" style={{ marginBottom: 16 }}>
-            <table className="tbl">
+            <table className="tbl tbl-stack">
               <thead>
                 <tr>
                   <th>{t('common.description', 'Descripción')}</th>
@@ -164,12 +164,12 @@ export default function QuoteDraftEditModal({ quote, onClose, onSaved, pushToast
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id}>
-                    <td><input className="field-input" value={item.description} onChange={(e) => setItem(item.id, 'description', e.target.value)} /></td>
-                    <td><input className="field-input mono" type="number" min="0.001" step="0.001" style={{ textAlign: 'right' }} value={item.quantity} onChange={(e) => setItem(item.id, 'quantity', e.target.value)} /></td>
-                    <td><input className="field-input mono" type="number" min="0" step="0.01" style={{ textAlign: 'right' }} value={item.unitPrice} onChange={(e) => setItem(item.id, 'unitPrice', e.target.value)} /></td>
-                    <td><input className="field-input mono" type="number" min="0" max="100" step="0.01" style={{ textAlign: 'right' }} value={item.discount} onChange={(e) => setItem(item.id, 'discount', e.target.value)} /></td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4 }}>
+                    <td className="stack-title"><input className="field-input" value={item.description} onChange={(e) => setItem(item.id, 'description', e.target.value)} /></td>
+                    <td data-label={t('quotes.qty', 'Cant.')}><input className="field-input mono" type="number" min="0.001" step="0.001" style={{ textAlign: 'right' }} value={item.quantity} onChange={(e) => setItem(item.id, 'quantity', e.target.value)} /></td>
+                    <td data-label={t('quotes.unitPriceShort', 'P. Unit.')}><input className="field-input mono" type="number" min="0" step="0.01" style={{ textAlign: 'right' }} value={item.unitPrice} onChange={(e) => setItem(item.id, 'unitPrice', e.target.value)} /></td>
+                    <td data-label={t('common.discount', 'Desc. %')}><input className="field-input mono" type="number" min="0" max="100" step="0.01" style={{ textAlign: 'right' }} value={item.discount} onChange={(e) => setItem(item.id, 'discount', e.target.value)} /></td>
+                    <td data-label={t('quotes.dimensionsShort', 'Medidas')} className="stack-wrap">
+                      <div className="dims-inputs">
                         {['height', 'width', 'depth'].map((k) => (
                           <input key={k} className="field-input mono" type="number" min="0" step="0.01" style={{ padding: '3px 4px' }}
                             placeholder={item.base?.[k] != null ? String(item.base[k]) : '—'}
@@ -183,13 +183,13 @@ export default function QuoteDraftEditModal({ quote, onClose, onSaved, pushToast
                       )}
                     </td>
                     {global && (
-                      <td style={{ textAlign: 'center' }}>
+                      <td data-label={t('quotes.showToClient', 'Cliente')} style={{ textAlign: 'center' }}>
                         <input type="checkbox" checked={item.showToClient}
                           aria-label={t('quotes.showToClientHint', 'Sale en el PDF del cliente')}
                           onChange={(e) => setItem(item.id, 'showToClient', e.target.checked)} />
                       </td>
                     )}
-                    <td style={{ textAlign: 'right' }}>
+                    <td className="stack-actions" style={{ textAlign: 'right' }}>
                       <button className="icon-btn" type="button" onClick={() => removeItem(item.id)} disabled={items.length === 1 || busy} aria-label={t('quotes.removeLine', 'Eliminar línea')}>
                         <Icon name="close" size={12} />
                       </button>

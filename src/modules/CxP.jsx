@@ -199,7 +199,7 @@ export default function CxP({ pushToast }) {
       {tab === 'aging' && (
         <>
           {/* Aging bucket summary cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 24 }}>
+          <div className="aging-buckets">
             {BUCKET_ORDER.map(b => (
               <div key={b} className="card" style={{ padding: '14px 16px', borderTop: `3px solid var(--${BUCKET_CLASS[b]})` }}>
                 <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{BUCKET_LABEL[b]}</div>
@@ -211,7 +211,7 @@ export default function CxP({ pushToast }) {
 
           {/* Aging by supplier table */}
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="tbl-wrap"><table className="mtable">
+            <div className="tbl-wrap"><table className="mtable tbl-stack">
               <thead>
                 <tr>
                   <th>{t('common.supplier', 'Proveedor')}</th>
@@ -221,7 +221,7 @@ export default function CxP({ pushToast }) {
                   <th style={{ textAlign: 'right' }}>61–90 días</th>
                   <th style={{ textAlign: 'right' }}>+90 días</th>
                   <th style={{ textAlign: 'right' }}>{t('common.total', 'Total')}</th>
-                  <th>Plazo</th>
+                  <th className="hide-tablet">Plazo</th>
                 </tr>
               </thead>
               <tbody>
@@ -248,7 +248,7 @@ export default function CxP({ pushToast }) {
                       <td style={{ textAlign: 'right', fontWeight: 500, color: hasOverdue ? 'var(--danger)' : 'inherit' }}>
                         {Q(row.total)}
                       </td>
-                      <td>
+                      <td className="hide-tablet">
                         <span className={`badge-m3 ${hasOverdue ? 'danger' : 'success'}`}>
                           {s?.terms || '—'}
                         </span>
@@ -265,7 +265,7 @@ export default function CxP({ pushToast }) {
       {tab === 'bills' && (
         <>
           <div className="filterbar">
-            <div className="search-wrap" style={{ flex: 1, maxWidth: 320 }}>
+            <div className="search-wrap filterbar-grow">
               <Icon name="search" className="icon" size={13} />
               <input className="search-input" placeholder={t('cxp.searchPlaceholder', 'Buscar proveedor o documento…')} value={search} onChange={e => setSearch(e.target.value)} />
             </div>
@@ -278,17 +278,17 @@ export default function CxP({ pushToast }) {
           </div>
 
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="tbl-wrap"><table className="mtable">
+            <div className="tbl-wrap"><table className="mtable tbl-stack">
               <thead>
                 <tr>
                   <th>Documento</th>
                   <th>{t('common.supplier', 'Proveedor')}</th>
-                  <th>OC</th>
-                  <th>Emisión</th>
+                  <th className="hide-tablet">OC</th>
+                  <th className="hide-tablet">Emisión</th>
                   <th>Vencimiento</th>
-                  <th style={{ textAlign: 'right' }}>{t('common.amount', 'Monto')}</th>
+                  <th className="hide-tablet" style={{ textAlign: 'right' }}>{t('common.amount', 'Monto')}</th>
                   <th style={{ textAlign: 'right' }}>Pendiente</th>
-                  <th>Antigüedad</th>
+                  <th className="hide-tablet">Antigüedad</th>
                   <th>{t('common.status', 'Estado')}</th>
                   <th></th>
                 </tr>
@@ -300,12 +300,12 @@ export default function CxP({ pushToast }) {
                   <tr key={b.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedBill(b)}>
                     <td><span className="mono" style={{ fontSize: 12 }}>{b.id}</span></td>
                     <td>{b.supplierName}</td>
-                    <td><span className="mono muted" style={{ fontSize: 11 }}>{b.ocId || '—'}</span></td>
-                    <td className="muted">{b.date}</td>
+                    <td className="hide-tablet"><span className="mono muted" style={{ fontSize: 11 }}>{b.ocId || '—'}</span></td>
+                    <td className="muted hide-tablet">{b.date}</td>
                     <td style={{ color: b.daysOverdue> 0 ? 'var(--danger)' : 'inherit' }}>{b.dueDate}</td>
-                    <td style={{ textAlign: 'right' }}>{Q(b.amount)}</td>
+                    <td className="hide-tablet" style={{ textAlign: 'right' }}>{Q(b.amount)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 500 }}>{Q(b.balance)}</td>
-                    <td>
+                    <td className="hide-tablet">
                       {b.balance > 0 && (
                         <span className={`badge-m3 ${BUCKET_CLASS[b.bucket]}`}>
                           {b.bucket === 'current' ? 'Al día' : `${b.bucket} días`}
@@ -330,16 +330,16 @@ export default function CxP({ pushToast }) {
 
       {tab === 'payments' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="tbl-wrap"><table className="mtable">
+          <div className="tbl-wrap"><table className="mtable tbl-stack" data-title-col="1">
             <thead>
               <tr>
                 <th>{t('common.date', 'Fecha')}</th>
                 <th>{t('common.supplier', 'Proveedor')}</th>
-                <th>Documento</th>
-                <th>{t('common.reference', 'Referencia')}</th>
+                <th className="hide-tablet">Documento</th>
+                <th className="hide-tablet">{t('common.reference', 'Referencia')}</th>
                 <th>Método</th>
                 <th style={{ textAlign: 'right' }}>{t('common.amount', 'Monto')}</th>
-                <th>{t('common.notes', 'Notas')}</th>
+                <th className="hide-tablet">{t('common.notes', 'Notas')}</th>
               </tr>
             </thead>
             <tbody>
@@ -347,11 +347,11 @@ export default function CxP({ pushToast }) {
                 <tr key={p.id}>
                   <td className="muted">{p.date}</td>
                   <td>{p.supplierName || suppliers[p.supplierId]?.name || '—'}</td>
-                  <td><span className="mono" style={{ fontSize: 11 }}>{p.billId}</span></td>
-                  <td><span className="mono" style={{ fontSize: 11 }}>{p.reference || '—'}</span></td>
+                  <td className="hide-tablet"><span className="mono" style={{ fontSize: 11 }}>{p.billId}</span></td>
+                  <td className="hide-tablet"><span className="mono" style={{ fontSize: 11 }}>{p.reference || '—'}</span></td>
                   <td><span className="badge-m3 info" style={{ textTransform: 'capitalize' }}>{p.method}</span></td>
                   <td style={{ textAlign: 'right', fontWeight: 500, color: 'var(--danger)' }}>{Q(p.amount)}</td>
-                  <td className="muted">{p.notes || '—'}</td>
+                  <td className="muted hide-tablet">{p.notes || '—'}</td>
                 </tr>
               ))}
             </tbody>

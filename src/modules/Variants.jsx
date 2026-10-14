@@ -110,21 +110,21 @@ export default function Variants({ pushToast }) {
 
   // Columnas de la tabla de grupos (CRUD → DataTable)
   const groupColumns = [
-    { key: 'name', header: t('common.product', 'Producto'), sortable: true, render: (g) => (
+    { key: 'name', header: t('common.product', 'Producto'), sortable: true, card: 'title', render: (g) => (
       <div className="cell-stack">
         <span className="nm">{g.name}</span>
         {g.variants.some(v => !v.active) && <span className="sku">{g.variants.filter(v => !v.active).length} {t('variants.inactiveVariants', 'variante(s) inactiva(s)')}</span>}
       </div>
     ) },
-    { key: 'brand', header: t('variants.brand', 'Marca'), sortable: true, render: (g) => <span className="sku">{g.brand}</span> },
-    { key: 'cat', header: t('common.category', 'Categoría'), sortable: true, render: (g) => <span className="badge-m3 tertiary" style={{ textTransform: 'capitalize' }}>{g.cat}</span> },
-    { key: 'attrType', header: t('variants.attribute', 'Atributo'), render: (g) => ATTR_LABEL[g.attrType] || g.attrType },
-    { key: 'activeCount', header: t('variants.variantsCol', 'Variantes'), align: 'right', sortable: true, render: (g) => (
+    { key: 'brand', header: t('variants.brand', 'Marca'), sortable: true, hideOnTablet: true, card: 'subtitle', render: (g) => <span className="sku">{g.brand}</span> },
+    { key: 'cat', header: t('common.category', 'Categoría'), sortable: true, hideOnTablet: true, render: (g) => <span className="badge-m3 tertiary" style={{ textTransform: 'capitalize' }}>{g.cat}</span> },
+    { key: 'attrType', header: t('variants.attribute', 'Atributo'), hideOnTablet: true, render: (g) => ATTR_LABEL[g.attrType] || g.attrType },
+    { key: 'activeCount', header: t('variants.variantsCol', 'Variantes'), align: 'right', sortable: true, hideOnTablet: true, render: (g) => (
       <span className="num"><strong>{g.activeCount}</strong>{g.variants.length !== g.activeCount && <span className="sku" style={{ display: 'inline' }}> /{g.variants.length}</span>}</span>
     ) },
     { key: 'totalStock', header: t('variants.totalStock', 'Stock total'), align: 'right', sortable: true, render: (g) => <span className="num" style={{ color: g.totalStock === 0 ? 'var(--md-error)' : undefined }}>{g.totalStock}</span> },
-    { key: 'price', header: t('variants.priceRange', 'Rango de precios'), align: 'right', render: (g) => <span className="num">{g.minPrice === g.maxPrice ? Q(g.minPrice) : `${Q(g.minPrice)} – ${Q(g.maxPrice)}`}</span> },
-    { key: 'status', header: t('common.status', 'Estado'), render: (g) => (
+    { key: 'price', header: t('variants.priceRange', 'Rango de precios'), align: 'right', card: 'amount', render: (g) => <span className="num">{g.minPrice === g.maxPrice ? Q(g.minPrice) : `${Q(g.minPrice)} – ${Q(g.maxPrice)}`}</span> },
+    { key: 'status', header: t('common.status', 'Estado'), card: 'badge', render: (g) => (
       <>
         {g.variants.some(v => v.active && v.stock === 0) && <span className="badge-m3 error" style={{ marginRight: 4 }}>{t('variants.outOfStock', 'Agotada')}</span>}
         {g.variants.some(v => v.active && v.stock > 0 && v.stock < v.min) && <span className="badge-m3 warning">{t('variants.stockLow', 'Stock bajo')}</span>}
@@ -178,7 +178,7 @@ export default function Variants({ pushToast }) {
 
       {/* Filtros */}
       <div className="filterbar">
-        <div className="search-wrap" style={{ flex: 1, maxWidth: 320 }}>
+        <div className="search-wrap filterbar-grow">
           <Icon name="search" className="icon" size={13} />
           <input
             className="search-input"
@@ -229,7 +229,7 @@ export default function Variants({ pushToast }) {
               </div>
             </div>
             <div className="drawer-body" style={{ padding: 0 }}>
-              <table className="mtable">
+              <table className="mtable tbl-stack">
                 <thead>
                   <tr>
                     <th>{ATTR_LABEL[selected.attrType]}</th>

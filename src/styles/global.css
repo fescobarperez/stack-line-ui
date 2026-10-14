@@ -1726,92 +1726,113 @@ select.input option {
   z-index: 90;
 }
 /* ===== Quote drawer sections ===== */
-/* Jerarquía visual del drawer de cotización: títulos grandes, superficies
-   ligeras y suficiente aire sin convertir cada fila en una tarjeta. */
-.quote-section {
-  margin-top: 28px;
-}
+/* Estándar del detalle de cotización — dos niveles y un solo tipo de tarjeta:
+     .quote-section      Sección      (16 px medio)  + descripción debajo
+     .quote-subsection   Subsección   (14 px medio)  + descripción debajo;
+                         un control opcional va a la derecha del título
+     .quote-subsection-card  tarjeta blanca, borde, radio lg, relleno 16/12
+   Espacios: 32 px entre secciones, 16 px entre subsecciones, 8 px del
+   título a su tarjeta. Dentro, las tablas usan .quote-table. */
+.quote-section { margin-top: 32px; }
 .quote-section:first-child { margin-top: 0; }
 .quote-section-heading {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 0 2px 12px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 0 2px 4px;
 }
 .quote-section-title {
-  font: 600 19px/24px var(--font-sans);
-  letter-spacing: -.015em;
+  font: 500 16px/24px var(--font-sans);
+  letter-spacing: .15px;
+  color: var(--text);
+}
+.quote-subsection { margin-top: 16px; }
+.quote-subsection-heading {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 0 2px 8px;
+}
+.quote-subsection-title {
+  font: 500 14px/20px var(--font-sans);
+  letter-spacing: .1px;
   color: var(--text);
 }
 .quote-section-description,
 .quote-subsection-description {
-  margin-top: 3px;
+  margin-top: 2px;
+  font: 400 12px/16px var(--font-sans);
+  letter-spacing: .4px;
   color: var(--muted);
-  font-size: 12px;
-  line-height: 16px;
 }
 .quote-section-card,
 .quote-subsection-card {
-  background: var(--surface-2);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  padding: 14px;
-}
-.quote-section-card--detail-core {
   padding: 16px;
 }
-.quote-section-card--summary {
-  padding: 14px 16px;
+@media (max-width: 599px) {
+  .quote-section-card, .quote-subsection-card { padding: 12px; }
+  .quote-subsection-heading { flex-wrap: wrap; row-gap: 8px; }
 }
-.quote-subsection {
-  margin-top: 20px;
+
+/* Tablas dentro de las tarjetas: encabezado label-medium sin fondo, cuerpo
+   body-medium; la primera y última columna alinean con el borde de la
+   tarjeta. En el teléfono manda .tbl-stack. */
+@media (min-width: 600px) {
+  table.data-table.quote-table thead th {
+    position: static;
+    background: transparent;
+    font: 500 12px/16px var(--font-sans);
+    letter-spacing: .5px;
+    color: var(--muted);
+    padding: 0 12px 8px;
+  }
+  table.data-table.quote-table tbody td,
+  table.data-table.quote-table tfoot td { padding: 10px 12px; }
+  table.data-table.quote-table th:first-child, table.data-table.quote-table td:first-child { padding-left: 0; }
+  table.data-table.quote-table th:last-child, table.data-table.quote-table td:last-child { padding-right: 0; }
+  table.data-table.quote-table tfoot td { border-top: 1px solid var(--border); color: var(--muted); }
+  table.data-table.quote-table tfoot td.num { color: var(--text); }
 }
-.quote-subsection--payments {
-  margin-top: 24px;
-}
-.quote-subsection-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 2px 8px;
-}
-.quote-subsection-title {
-  font: 600 14px/20px var(--font-sans);
-  letter-spacing: .01em;
+table.data-table.quote-table + * { margin-top: 12px; }
+
+/* Datos del cliente: valor a la derecha, mismo cuerpo que las tablas. */
+.detail-value { text-align: right; overflow-wrap: anywhere; }
+
+/* Notas de la cotización. */
+.quote-notes { font: 400 14px/20px var(--font-sans); letter-spacing: .25px; white-space: pre-wrap; }
+
+/* Resumen: pares etiqueta / monto y el total destacado al final. */
+.quote-sum-row {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 4px 0;
+  font: 400 14px/20px var(--font-sans); letter-spacing: .25px;
   color: var(--text-2);
 }
-.quote-subsection-card {
-  background: var(--surface);
-  padding: 12px 14px;
+.quote-sum-total {
+  margin-top: 8px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font: 500 16px/24px var(--font-sans);
+  color: var(--text);
 }
-.quote-section--detail .quote-subsection-card,
-.quote-section--plan .quote-subsection-card {
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 3%, transparent);
-}
+.quote-sum-total .mono { font-weight: 500; }
+
+/* Resumen del plan. */
 .quote-plan-summary {
-  display: flex;
-  gap: 16px;
-  font-size: 12px;
-  flex-wrap: wrap;
+  display: flex; flex-wrap: wrap; gap: 8px 24px;
+  font: 400 14px/20px var(--font-sans); letter-spacing: .25px;
 }
 .quote-plan-summary span { color: var(--text-2); }
-.quote-plan-summary b { color: var(--text); }
+.quote-plan-summary b { color: var(--text); font-weight: 500; }
 .quote-plan-balance {
   margin-top: 12px;
-  padding: 8px 10px;
+  padding: 8px 12px;
   border-radius: var(--r-md);
-  font-size: 12px;
+  font: 500 12px/16px var(--font-sans); letter-spacing: .5px;
 }
-.quote-fiscal-card {
-  border: 1px solid var(--border) !important;
-  background: var(--surface-2) !important;
-  padding: 12px 14px !important;
-  border-radius: var(--r-lg) !important;
-}
-@media (max-width: 560px) {
-  .quote-subsection-heading { display: block; }
-  .quote-subsection-description { margin-top: 2px; }
+/* Teléfono: el tono de la fila de gastos operativos va en la tarjeta, no
+   en cada celda. */
+@media (max-width: 599px) {
+  table.tbl-stack > tbody > tr.quote-op-row > td { background: transparent; }
+  table.tbl-stack > tbody > tr.quote-op-row { background: color-mix(in srgb, var(--md-sys-color-primary) 5%, transparent); }
 }
 
 .drawer {
@@ -1844,6 +1865,16 @@ select.input option {
   padding: 12px 18px;
   border-top: 1px solid var(--border);
   display: flex; justify-content: flex-end; gap: 8px;
+}
+/* Grupo de acciones según el estado, alineado a la derecha del pie. */
+.drawer-foot-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+/* Tablet: las acciones del estado van en su propio renglón, arriba y a lo
+   ancho (se reparten el espacio); Cerrar y las secundarias quedan abajo a la
+   derecha. En el teléfono se refuerza con 2 columnas (ver más abajo). */
+@media (max-width: 1024px) {
+  .drawer-foot { flex-wrap: wrap; }
+  .drawer-foot-actions { order: -1; flex: 1 1 100%; margin-left: 0; }
+  .drawer-foot-actions > * { flex: 1 1 auto; }
 }
 
 /* ===== Toast ===== */
@@ -2225,7 +2256,6 @@ textarea.field-input { height: auto; min-height: var(--control-h); }
 
 @media (max-width: 860px) {
   .login-root { grid-template-columns: 1fr; }
-  .login-brand { display: none; }
 }
 
 /* Brand panel */
@@ -2337,6 +2367,54 @@ textarea.field-input { height: auto; min-height: var(--control-h); }
   font-family: var(--font-mono);
 }
 [data-theme="dark"] .login-brand-legal { color: var(--muted); }
+
+/* Copia de la leyenda para el pie de página; se ve en teléfono y tablet vertical. */
+.login-page-legal {
+  display: none;
+  padding: 16px;
+  text-align: center;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--muted);
+}
+
+/* Tablet vertical (una sola columna): la marca va arriba como encabezado
+   centrado y compacto, con las características en 2 × 2; el formulario queda
+   centrado debajo. */
+@media (min-width: 600px) and (max-width: 860px) {
+  .login-root { grid-template-rows: auto 1fr auto; }
+  .login-brand { padding: 32px 40px; text-align: center; }
+  .login-brand .login-logo { justify-content: center; margin-bottom: 28px; text-align: left; }
+  .login-subheadline { margin-bottom: 28px; }
+  .login-features {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 32px;
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: left;
+  }
+  .login-feature-desc { display: block; }
+  .login-feature-sep { display: none; }
+  .login-brand-footer { display: none; }
+  .login-page-legal { display: block; }
+  .login-card-head { text-align: center; }
+  .login-root .login-form-panel { align-items: flex-start; padding-top: 48px; }
+}
+
+/* Teléfono: del panel de marca solo queda el logo, como encabezado
+   compacto; el titular, las características y el pie no caben. */
+@media (max-width: 599px) {
+  .login-root { grid-template-rows: auto 1fr auto; }
+  .login-page-legal { display: block; }
+  .login-brand { padding: 20px 16px; }
+  .login-brand .login-logo { margin-bottom: 0; }
+  .login-headline,
+  .login-subheadline,
+  .login-features,
+  .login-brand-footer { display: none; }
+  .login-card-head { text-align: center; }
+}
 
 /* Form panel */
 .login-form-panel {
@@ -4192,13 +4270,6 @@ table.tbl tfoot td {
   flex-wrap: wrap;
   margin-bottom: 10px;
 }
-/* El encabezado ya no es solo texto: el switch va al otro extremo. */
-.quote-subsection--plan .quote-subsection-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
 
 /* ===== Comparación de precios por proveedor ===== */
 .price-modal { max-width: 880px; width: 92vw; }
@@ -5144,7 +5215,10 @@ table.tbl tfoot td {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Tablet: el texto de la búsqueda se recorta en vez de partir en líneas. */
+/* El texto de la búsqueda nunca parte en líneas: se recorta. */
+.topbar-search > span:not(.icon):not(.kbd) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar-search { padding-right: 52px; }
+/* Tablet: además la caja se puede encoger. */
 .app[data-layout="tablet"] .topbar-search { min-width: 0; }
 .app[data-layout="tablet"] .topbar-search > span:not(.icon) { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -5222,12 +5296,12 @@ table.tbl tfoot td {
   .form-grid { grid-template-columns: minmax(0, 1fr); }
   .content [style*="grid-template-columns"]:not(table *) { grid-template-columns: minmax(0, 1fr) !important; }
   /* Filas flex inline: que bajen de línea antes que desbordar. */
-  .content [style*="display: flex"]:not(button):not(.btn):not(td):not(th):not(table *) { flex-wrap: wrap; }
+  .content [style*="display: flex"]:not([style*="flex-direction: column"]):not(button):not(.btn):not(td):not(th):not(table *) { flex-wrap: wrap; }
   /* Un min-width inline (p. ej. 560) no puede obligar a desplazar la pantalla. */
   .content [style*="min-width"]:not(td):not(th):not(table):not(table *) { min-width: 0 !important; }
 
   /* Tablas hechas a mano sin contenedor con scroll: se desplazan solas. */
-  .content :not(.tbl-scroll):not(.tbl-wrap):not(.table-wrap) > table {
+  .content :not(.tbl-scroll):not(.tbl-wrap):not(.table-wrap) > table:not(.tbl-stack) {
     display: block;
     max-width: 100%;
     overflow-x: auto;
@@ -5266,7 +5340,7 @@ table.tbl tfoot td {
   .toast-stack { left: 8px; right: 8px; bottom: calc(88px + env(safe-area-inset-bottom)); }
 
   .login-root { height: 100vh; height: 100dvh; overflow-y: auto; }
-  .login-form-panel { padding: 24px 16px; align-items: flex-start; }
+  .login-form-panel { padding: 24px 16px 32px; }
 }
 
 /* iOS amplía la pantalla al enfocar un campo de menos de 16 px: en el
@@ -5281,4 +5355,433 @@ table.tbl tfoot td {
 @media (hover: none) {
   table.tbl .row-actions { opacity: 1; }
   table.tbl .row-actions .icon-btn { width: 40px; height: 40px; }
+}
+
+/* ── DataTable como tarjetas (teléfono) ──
+   Una tarjeta por fila: título y estado arriba, subtítulo, pares
+   etiqueta/valor y al pie el monto y las acciones. */
+.datatable.as-cards { border: 0; background: transparent; overflow: visible; }
+.tbl-cards { display: flex; flex-direction: column; gap: 8px; }
+.tbl-cards-sort {
+  display: flex; align-items: center; gap: 8px; align-self: flex-end;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.tbl-cards-sort select {
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--shape-full);
+  background: transparent; color: inherit;
+  padding: 6px 12px; font: inherit;
+}
+.tbl-card {
+  background: var(--md-sys-color-surface-container-lowest);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--shape-md);
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 0;
+}
+.tbl-card.clickable { cursor: pointer; }
+.tbl-card.clickable:active { background: var(--md-sys-color-surface-container); }
+.tbl-card.selected {
+  border-color: var(--md-sys-color-primary);
+  background: color-mix(in oklab, var(--md-sys-color-primary) 6%, transparent);
+}
+.tbl-card-head { display: flex; align-items: flex-start; gap: 8px; }
+/* title-medium */
+.tbl-card-title {
+  flex: 1; min-width: 0;
+  font: 500 16px/24px var(--font-sans); letter-spacing: .15px;
+  display: flex; flex-wrap: wrap; column-gap: 8px;
+  overflow-wrap: anywhere;
+}
+.tbl-card-badge { flex: none; }
+/* body-medium */
+.tbl-card-sub {
+  font: 400 14px/20px var(--font-sans); letter-spacing: .25px;
+  color: var(--md-sys-color-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+.tbl-card-meta, .tbl-card-totals { display: grid; gap: 4px; margin: 2px 0 0; }
+.tbl-card-meta > div, .tbl-card-totals > div {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+}
+/* label-medium / body-medium */
+.tbl-card-meta dt, .tbl-card-totals dt {
+  font: 500 12px/16px var(--font-sans); letter-spacing: .5px;
+  color: var(--md-sys-color-on-surface-variant);
+  flex: none;
+}
+.tbl-card-meta dd, .tbl-card-totals dd {
+  margin: 0; text-align: right; min-width: 0; overflow-wrap: anywhere;
+  font: 400 14px/20px var(--font-sans); letter-spacing: .25px;
+  font-variant-numeric: tabular-nums;
+}
+.tbl-card-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-top: 2px;
+}
+/* title-medium, cifras tabulares */
+.tbl-card-amount {
+  font: 500 16px/24px var(--font-sans); letter-spacing: .15px;
+  font-variant-numeric: tabular-nums;
+  display: flex; flex-direction: column;
+}
+.tbl-card-actions { display: inline-flex; gap: 2px; margin-left: auto; }
+.tbl-card-totals { background: var(--md-sys-color-surface-container); }
+.tbl-card-totals dd { font-weight: 500; }
+.datatable.as-cards .tbl-footer { border-top: 0; padding: 8px 0; }
+.datatable.as-cards .tbl-pagination .rows { display: none; }
+.datatable.as-cards .tbl-empty { border: 1px dashed var(--md-sys-color-outline-variant); border-radius: var(--shape-md); }
+
+/* ── Tino en el teléfono: chat o panel de trabajo, uno a la vez ── */
+.assistant-tabs { display: none; }
+@media (max-width: 599px) {
+  .assistant[data-movil] { flex-direction: column; }
+  .assistant[data-movil] .assistant-tabs {
+    display: flex; flex: none;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+  /* title-small */
+  .assistant-tab {
+    flex: 1; height: 44px;
+    border: 0; border-bottom: 3px solid transparent; background: none;
+    font: 500 14px/20px var(--font-sans); letter-spacing: .1px;
+    color: var(--md-sys-color-on-surface-variant);
+    cursor: pointer;
+  }
+  .assistant-tab.active { color: var(--md-sys-color-primary); border-bottom-color: var(--md-sys-color-primary); }
+  .assistant[data-movil="panel"] .assistant-chat { display: none; }
+  .assistant[data-movil="chat"] .assistant-panel { display: none; }
+  .assistant[data-movil] .assistant-chat,
+  .assistant[data-movil] .assistant-panel { flex: 1 1 auto; min-height: 0; border-left: 0; }
+}
+
+/* ── Clases para migrar estilos inline (grupo 1 en adelante) ── */
+
+/* Tamaños de modal. El ancho nunca pasa del de la pantalla; en el teléfono
+   la regla de «Responsive» los pone a pantalla completa. */
+.modal.modal-sm { width: min(460px, 100%); }
+.modal.modal-md { width: min(620px, 100%); }
+.modal.modal-lg { width: min(760px, 100%); }
+.modal.modal-xl { width: min(900px, 100%); }
+/* Cuerpo de modal con secciones apiladas y el pie siempre visible. */
+.modal-body.modal-stack { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+/* Buscador de la barra de filtros: ícono dentro del campo. */
+.filterbar-search { position: relative; width: 280px; max-width: 100%; }
+.filterbar-search > .msi {
+  position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); pointer-events: none;
+}
+.filterbar-search > .input { width: 100%; padding-left: 26px; }
+
+@media (max-width: 599px) {
+  .filterbar { flex-wrap: wrap; }
+  .filterbar-search { width: 100%; }
+  .filterbar > .grow { display: none; }
+}
+
+/* Tabla que en el teléfono se apila: cada fila es una tarjeta y cada celda
+   un par «etiqueta: valor» con la etiqueta de data-label. La celda
+   .stack-title va arriba sin etiqueta y .stack-actions abajo a la derecha. */
+@media (max-width: 599px) {
+  table.tbl-stack, table.tbl-stack > tbody, table.tbl-stack > tfoot,
+  table.tbl-stack tr, table.tbl-stack td { display: block; width: 100%; }
+  table.tbl-stack > thead { display: none; }
+  table.tbl-stack tr {
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: var(--shape-md);
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background: var(--md-sys-color-surface-container-lowest);
+  }
+  table.tbl-stack td {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 4px 0 !important;
+    border: 0 !important;
+    text-align: right !important;
+    min-height: 0; height: auto;
+  }
+  /* label-medium */
+  table.tbl-stack td[data-label]::before {
+    content: attr(data-label);
+    flex: none; text-align: left;
+    font: 500 12px/16px var(--font-sans); letter-spacing: .5px;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+  table.tbl-stack td > input, table.tbl-stack td > select { max-width: 60%; }
+  table.tbl-stack td.stack-title { display: block; text-align: left !important; font-weight: 500; }
+  table.tbl-stack td.stack-title > input { max-width: none; width: 100%; }
+  table.tbl-stack td.stack-actions { justify-content: flex-end; }
+  table.tbl-stack tr:hover td { background: transparent; }
+  table.tbl-stack td:empty { display: none; }
+  /* Celda que ocupa toda la fila (avisos, paneles plegables): texto normal. */
+  table.tbl-stack td[colspan] { display: block; text-align: left !important; }
+  /* Totales: etiqueta a la izquierda y monto a la derecha, sin tarjeta. */
+  table.tbl-stack > tfoot tr {
+    display: flex; justify-content: space-between; gap: 12px;
+    border: 0; border-radius: 0; margin: 0; padding: 4px 4px;
+    background: transparent;
+  }
+  table.tbl-stack > tfoot td { width: auto; display: block; }
+  /* Pie con varios montos: tarjeta con pares, como una fila del cuerpo. */
+  table.tbl-stack > tfoot tr.stack-card {
+    display: block;
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: var(--shape-md);
+    padding: 8px 12px;
+    background: var(--md-sys-color-surface-container);
+  }
+  table.tbl-stack > tfoot tr.stack-card > td { display: flex; justify-content: space-between; width: 100%; padding: 2px 0 !important; }
+  table.tbl-stack > tfoot tr.stack-card > td.stack-title { display: block; font-weight: 500; }
+  table.tbl-stack > tfoot tr.stack-card > td:empty { display: none; }
+  table.tbl-stack .stack-only { display: inline; }
+
+  /* Hover de la tarjeta completa, no celda por celda (la regla de
+     .data-table pintaba cada celda de gris). */
+  table.tbl-stack > tbody > tr:hover > td { background: transparent; }
+  table.tbl-stack > tbody > tr {
+    transition: background-color var(--dur-short) var(--ease-standard),
+                border-color var(--dur-short) var(--ease-standard);
+  }
+  table.tbl-stack > tbody > tr:hover {
+    background: var(--md-sys-color-surface-container-low);
+    border-color: var(--md-sys-color-outline);
+  }
+
+  /* .stack-corner: la acción (p. ej. eliminar) va arriba a la derecha de la
+     tarjeta, a la altura del título. */
+  table.tbl-stack > tbody > tr { position: relative; }
+  table.tbl-stack td.stack-corner {
+    position: absolute; top: 2px; right: 2px;
+    width: auto; padding: 0 !important;
+  }
+  table.tbl-stack > tbody > tr:has(> td.stack-corner:not(:empty)) > td.stack-title { padding-right: 40px !important; }
+  table.tbl-stack td.stack-corner .icon-btn { width: 36px; height: 36px; }
+
+  /* .stack-amount: el monto principal va bajo el título, a la izquierda y
+     más grande, sin etiqueta. */
+  table.tbl-stack td.stack-amount {
+    display: block;
+    text-align: left !important;
+    font-size: 16px; line-height: 24px; font-weight: 500;
+    padding: 0 0 4px !important;
+  }
+  table.tbl-stack td.stack-amount::before { content: none; }
+}
+
+/* Cuotas del plan de pagos en el teléfono: tarjeta compacta de dos líneas.
+     Cuota 1                Q 14,560.00   ✕
+     2026-10-13                  Anticipo                                  */
+@media (max-width: 599px) {
+  table.plan-terms.tbl-stack > tbody > tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 36px;
+    column-gap: 8px; row-gap: 0;
+    align-items: center;
+    padding: 6px 4px 6px 12px;
+  }
+  table.plan-terms.tbl-stack > tbody > tr > td { display: block; width: auto; padding: 0 !important; }
+  table.plan-terms.tbl-stack > tbody > tr > td::before { content: none; }
+  table.plan-terms.tbl-stack > tbody > tr > td[colspan] { grid-column: 1 / -1; padding: 4px 0 !important; }
+  table.plan-terms.tbl-stack td.stack-title { grid-column: 1; grid-row: 1; padding-right: 0 !important; }
+  table.plan-terms.tbl-stack td.stack-amount { grid-column: 2; grid-row: 1; text-align: right !important; font-size: 14px; line-height: 20px; }
+  table.plan-terms.tbl-stack td.stack-corner { position: static; grid-column: 3; grid-row: 1 / span 2; justify-self: end; }
+  table.plan-terms.tbl-stack td.plan-term-due,
+  table.plan-terms.tbl-stack td.plan-term-notes {
+    grid-row: 2;
+    font-size: 12px; line-height: 16px;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+  table.plan-terms.tbl-stack td.plan-term-due { grid-column: 1; text-align: left !important; }
+  table.plan-terms.tbl-stack td.plan-term-notes { grid-column: 2; text-align: right !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 55vw; }
+}
+.stack-only { display: none; }
+
+/* Constructor de cotización: materiales | líneas. Una columna en tablet
+   vertical y teléfono. */
+.modal-body.quote-builder-body { flex: 1; overflow-y: auto; display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
+@media (max-width: 1024px) { .modal-body.quote-builder-body { grid-template-columns: minmax(0, 1fr); } }
+/* Alto × ancho × profundidad en una fila. */
+.dims-inputs { display: flex; gap: 4px; }
+.dims-inputs > input { min-width: 0; padding: 3px 4px; }
+@media (max-width: 599px) {
+  table.tbl-stack td.stack-wrap { flex-wrap: wrap; }
+  table.tbl-stack td.stack-wrap > .dims-inputs { flex: 1 1 100%; }
+}
+
+@media (max-width: 599px) {
+  /* Encabezados de sección con un control a la derecha: el control baja. */
+  .quote-subsection--plan .quote-subsection-heading { flex-wrap: wrap; row-gap: 8px; }
+  /* Campos con ancho fijo inline en una fila flex: cada uno toma al menos
+     140 px y la fila baja de línea en vez de aplastar el último. */
+  .content [style*="display: flex"] > .field-group { flex: 1 1 140px !important; width: auto !important; }
+}
+
+/* Columnas secundarias que no caben en tablet (DataTable hideOnTablet o a mano). */
+@media (max-width: 1024px) {
+  .hide-tablet { display: none !important; }
+}
+@media (max-width: 599px) {
+  /* El nombre de la línea y sus etiquetas bajan de renglón. */
+  table.tbl-stack td.stack-title, table.tbl-stack td.stack-title * { white-space: normal; }
+}
+
+/* Buscador que crece en la barra de filtros, hasta 320 px. */
+.filterbar-grow { flex: 1; max-width: 320px; }
+@media (max-width: 599px) { .filterbar-grow { max-width: none; flex-basis: 100%; } }
+
+/* CxC: totales por tramo de antigüedad. */
+.aging-buckets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; }
+@media (max-width: 1024px) { .aging-buckets { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 599px) { .aging-buckets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+@media (max-width: 599px) {
+  .toolbar { flex-wrap: wrap; }
+  /* Un DataTable en tarjetas no lleva el marco de su contenedor. */
+  .table-wrap:has(> .datatable.as-cards) { border: 0; background: transparent; overflow: visible; }
+}
+@media (max-width: 599px) { .hide-phone { display: none !important; } }
+
+.filterbar-grow { min-width: 180px; }
+@media (max-width: 1024px) {
+  .dash .grid-2, .dash .grid-2b { grid-template-columns: minmax(0, 1fr); }
+}
+/* Teléfono: aire al final de la página para que el lanzador de Tino no tape
+   el último botón. */
+.app[data-layout="phone"] .page { padding-bottom: 96px; }
+/* Tarjetas en tablet: dos por fila. */
+.app[data-layout="tablet"] .tbl-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.app[data-layout="tablet"] .tbl-cards-sort,
+.app[data-layout="tablet"] .tbl-card-totals { grid-column: 1 / -1; }
+.app[data-layout="tablet"] .tbl-cards-sort { justify-self: end; }
+
+/* ── POS en tablet y teléfono ──
+   Modo táctil con dos paneles cuando caben (≥ 900 px, tablet horizontal);
+   más angosto, una vista a la vez con la barra de pestañas de abajo. */
+.pos-touch-layout.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-rows: minmax(0, 1fr);
+}
+.pos-touch-layout.split .pos-touch-cart { min-height: 0; }
+.modal.modal-pay { width: min(520px, 100%); }
+.pay-methods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+@media (max-width: 599px) {
+  .pos-touch-layout { padding: 8px; }
+  .content[data-route="pos"] .pay-methods { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .pos-search-bar { flex-wrap: wrap; }
+  .pos-search-field { flex: 1 1 100%; }
+  .pos-touch-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 8px; }
+}
+/* En caja (tablet y teléfono) el lanzador de Tino taparía «Cobrar» y las
+   pestañas: no se muestra en el POS. */
+.app[data-layout="phone"]:has(.content[data-route="pos"]) :is(.assistant-launcher, .assistant),
+.app[data-layout="tablet"]:has(.content[data-route="pos"]) :is(.assistant-launcher, .assistant) { display: none; }
+/* Carrito táctil: el cliente en su renglón y el tipo + «Cambiar» debajo. */
+.pos-touch-cart .pos-cart-client { flex-wrap: wrap; row-gap: 6px; }
+.pos-touch-cart .pos-cart-client .who { flex: 1 1 calc(100% - 30px); }
+.pos-touch-cart .pos-cart-client .autocomplete { flex: 1 1 auto; }
+
+/* Caja y cortes: tarjetas de cajas abiertas. */
+.cash-registers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 16px; }
+
+/* Facturación: ticket y datos SAT lado a lado; en el teléfono, uno debajo del otro. */
+.billing-detail { display: flex; gap: 16px; }
+.billing-detail > :last-child { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+@media (max-width: 599px) { .billing-detail { flex-direction: column; align-items: center; } .billing-detail > :last-child { width: 100%; } }
+/* Pares etiqueta / valor en dos columnas (no se colapsa en el teléfono). */
+.kv-grid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; overflow-wrap: anywhere; }
+
+/* FEL: paneles a una columna en tablet y teléfono. */
+@media (max-width: 1024px) { .fel-grid { grid-template-columns: minmax(0, 1fr); } }
+/* Devoluciones: producto · cantidad · precio · agregar en una fila (cabe en el teléfono). */
+.return-line-input { display: grid; grid-template-columns: minmax(0, 1fr) 60px 90px auto; gap: 6px; margin-bottom: 6px; }
+/* Columnas que tampoco caben en laptops (< 1440 px, el mismo umbral con
+   el que el menú lateral arranca colapsado). */
+@media (max-width: 1439px) { .hide-laptop { display: none !important; } }
+
+/* Conteo físico en el teléfono: cada producto es una tarjeta y la cantidad
+   contada es un campo grande, fácil de tocar con el pulgar. */
+@media (max-width: 599px) {
+  .count-lines { border: 0 !important; overflow: visible !important; }
+  table.count-table td > .count-input {
+    width: 120px !important; max-width: 50%; height: 44px;
+    border-radius: var(--shape-sm) !important;
+  }
+  table.count-table td > .count-notes { max-width: 60%; height: 40px; }
+}
+@media (max-width: 599px) { .drawer-body:has(> .count-lines) { overflow-y: auto !important; } }
+/* Con un panel lateral o un modal abierto, en tablet y teléfono Tino no se
+   muestra: su lanzador tapa los botones del pie. */
+.app[data-layout="phone"]:has(.drawer, .modal-overlay, .modal-backdrop) :is(.assistant-launcher, .assistant),
+.app[data-layout="tablet"]:has(.drawer, .modal-overlay, .modal-backdrop) :is(.assistant-launcher, .assistant) { display: none; }
+.tbl-card-totals > .tbl-card-totals-head { font: 500 14px/20px var(--font-sans); letter-spacing: .1px; display: block; }
+
+/* Pie de paneles laterales y modales con muchos botones: en el teléfono,
+   dos por renglón y a lo ancho, sin cortar el texto. */
+@media (max-width: 599px) {
+  .drawer-foot { flex-wrap: wrap; gap: 8px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+  .drawer-foot > .btn, .modal-foot > .btn { flex: 1 1 calc(50% - 8px); min-width: 0; }
+  .drawer-foot > .btn > span, .modal-foot > .btn > span { overflow: hidden; text-overflow: ellipsis; }
+  /* Las acciones del estado van primero, en 2 columnas parejas; Cerrar y
+     las secundarias quedan abajo. Si sobra una, ocupa el renglón. */
+  .drawer-foot-actions {
+    order: -1;
+    flex: 1 1 100%;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .drawer-foot-actions > * { min-width: 0; }
+  .drawer-foot-actions > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .drawer-foot-actions > .btn > span { overflow: hidden; text-overflow: ellipsis; }
+}
+/* Tablet: tablas a mano (mtable) con menos relleno lateral para que quepan. */
+@media (max-width: 1024px) and (min-width: 600px) {
+  table.mtable th, table.mtable td { padding-left: 8px; padding-right: 8px; }
+}
+
+/* ── Menú ⋮ de la barra superior (solo teléfono) ──
+   Junta lo que en el teléfono no cabe en la barra: usuario, estado SAT,
+   idioma, tema, ayuda y cerrar sesión. */
+.topbar-more { display: none; position: relative; }
+.app[data-layout="phone"] .topbar-more { display: block; }
+.topbar-more-panel {
+  position: fixed;
+  top: 72px; right: 8px;
+  width: min(300px, calc(100vw - 16px));
+  background: var(--md-sys-color-surface-container-lowest);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--shape-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  padding: 8px 0;
+  display: flex; flex-direction: column;
+}
+.topbar-more-user {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 16px 12px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+.topbar-more-user-text { min-width: 0; }
+.topbar-more-user-text > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-more-status { padding: 10px 16px 6px; }
+/* body-large: opción de menú M3, 48 px de alto para el dedo. */
+.topbar-more-item {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 48px; padding: 0 16px;
+  border: 0; background: none; width: 100%; text-align: left;
+  font: 400 16px/24px var(--font-sans); letter-spacing: .5px;
+  color: var(--md-sys-color-on-surface);
+  cursor: pointer;
+}
+.topbar-more-item:active { background: var(--md-sys-color-surface-container); }
+.topbar-more-item > .msi { color: var(--md-sys-color-on-surface-variant); }
+.topbar-more-item.danger, .topbar-more-item.danger > .msi { color: var(--danger); }
+/* label-large a la derecha: el valor actual (Español, Claro…). */
+.topbar-more-value {
+  margin-left: auto;
+  font: 500 14px/20px var(--font-sans); letter-spacing: .1px;
+  color: var(--md-sys-color-on-surface-variant);
 }

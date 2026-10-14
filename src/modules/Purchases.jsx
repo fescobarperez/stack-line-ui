@@ -70,7 +70,7 @@ function ReceiveModal({ po, onSave, onClose }) {
         </div>
         <form onSubmit={handleSubmit}>
           <div className="modal-body" style={{ padding: 0 }}>
-            <table className="data-table">
+            <table className="data-table tbl-stack">
               <thead>
                 <tr>
                   <th>{t('common.product', 'Producto')}</th>
@@ -214,7 +214,7 @@ function NewPOModal({ suppliers, branches, products, onSave, onClose }) {
               )}
             </div>
 
-            <table className="data-table" style={{ marginBottom: 8 }}>
+            <table className="data-table tbl-stack" style={{ marginBottom: 8 }}>
               <thead>
                 <tr>
                   <th>{t('purchases.productSku', 'Producto (SKU)')}</th>
@@ -336,7 +336,7 @@ function PODetail({ po, onClose, onReceive, onCancel }) {
         )}
 
         {/* Tabla de ítems */}
-        <table className="data-table">
+        <table className="data-table tbl-stack">
           <thead>
             <tr>
               <th>{t('common.product', 'Producto')}</th>
@@ -416,16 +416,16 @@ export default function Purchases({ pushToast }) {
   const totalPending   = pendingOrders.reduce((s, o) => s + o.total, 0);
 
   // ── Columnas (estándar <DataTable>) ──────────────────────────────────────
-  const colOC = { key: 'id', header: t('purchases.headers.po', 'OC'), sortable: true, mono: true,
+  const colOC = { key: 'id', header: t('purchases.headers.po', 'OC'), sortable: true, mono: true, card: 'title',
     render: (oc) => <span className="nm">{oc.id}</span> };
-  const colDate = { key: 'date', header: t('purchases.headers.date', 'Fecha'), sortable: true, mono: true,
+  const colDate = { key: 'date', header: t('purchases.headers.date', 'Fecha'), sortable: true, mono: true, hideOnTablet: true,
     className: 'muted' };
-  const colSupplier = { key: 'supplier', header: t('purchases.headers.supplier', 'Proveedor'), sortable: true,
+  const colSupplier = { key: 'supplier', header: t('purchases.headers.supplier', 'Proveedor'), sortable: true, card: 'subtitle',
     render: (oc) => oc.supplier || <span className="muted">{t('purchases.unassigned', 'Sin asignar')}</span> };
-  const colBranch = { key: 'branch', header: t('common.branch', 'Sucursal'), sortable: true, className: 'muted' };
-  const colTotal = { key: 'total', header: t('purchases.headers.total', 'Total'), align: 'right', sortable: true,
+  const colBranch = { key: 'branch', header: t('common.branch', 'Sucursal'), sortable: true, className: 'muted', hideOnTablet: true };
+  const colTotal = { key: 'total', header: t('purchases.headers.total', 'Total'), align: 'right', sortable: true, card: 'amount',
     render: (oc) => fmt(oc.total) };
-  const colStatus = { key: 'status', header: t('purchases.headers.status', 'Estado'), sortable: true,
+  const colStatus = { key: 'status', header: t('purchases.headers.status', 'Estado'), sortable: true, card: 'badge',
     sortValue: (oc) => STATUS_LABEL[oc.status],
     render: (oc) => <span className={`badge-m3 ${STATUS_CLASS[oc.status]}`}>{STATUS_LABEL[oc.status]}</span> };
 
@@ -438,7 +438,7 @@ export default function Purchases({ pushToast }) {
 
   const listaColumns = [
     colOC, colDate, colSupplier, colBranch,
-    { key: 'items', header: t('purchases.headers.items', 'Ítems'), align: 'right', sortable: true,
+    { key: 'items', header: t('purchases.headers.items', 'Ítems'), align: 'right', sortable: true, hideOnTablet: true,
       sortValue: (oc) => oc.items.length, render: (oc) => oc.items.length },
     colTotal, colStatus,
     { key: 'reception', header: t('purchases.reception', 'Recepción'), sortable: true, sortValue: pctOf,
@@ -578,7 +578,7 @@ export default function Purchases({ pushToast }) {
 
       {/* Filtros */}
       <div className="toolbar">
-        <div className="search-wrap" style={{ flex: 1, maxWidth: 320 }}>
+        <div className="search-wrap filterbar-grow">
           <Icon name="search" className="icon" size={13} />
           <input className="search-input" placeholder={t('purchases.searchPlaceholder', 'Buscar por OC o proveedor…')}
             value={search} onChange={e => setSearch(e.target.value)} />

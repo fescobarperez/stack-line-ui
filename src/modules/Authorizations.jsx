@@ -105,15 +105,15 @@ export default function Authorizations({ pushToast }) {
   }, [pending]);
 
   const columns = [
-    { key: 'id', header: '#', mono: true, width: 70, sortable: true },
-    { key: 'typeName', header: t('authz.type', 'Tipo'), sortable: true },
-    { key: 'requestedByName', header: t('authz.requester', 'Solicitante'), sortable: true,
+    { key: 'id', header: '#', mono: true, width: 70, sortable: true, card: 'hide', hideOnTablet: true },
+    { key: 'typeName', header: t('authz.type', 'Tipo'), sortable: true, card: 'title' },
+    { key: 'requestedByName', header: t('authz.requester', 'Solicitante'), sortable: true, card: 'subtitle',
       render: (r) => r.requestedByName || '—' },
-    { key: 'value', header: t('authz.value', 'Valor'), align: 'right',
+    { key: 'value', header: t('authz.value', 'Valor'), align: 'right', card: 'amount',
       render: (r) => <span className="num">{fmtValue(r)}</span> },
-    { key: 'levelName', header: t('authz.level', 'Nivel requerido'),
+    { key: 'levelName', header: t('authz.level', 'Nivel requerido'), card: 'badge',
       render: (r) => <span className="badge-m3">{r.levelName || '—'}</span> },
-    { key: 'createdAt', header: t('authz.requested', 'Solicitada'),
+    { key: 'createdAt', header: t('authz.requested', 'Solicitada'), hideOnTablet: true,
       render: (r) => fmtDateTime(r.createdAt) },
   ];
 
@@ -142,6 +142,7 @@ export default function Authorizations({ pushToast }) {
       </div>
 
       <DataTable
+        cards="tablet"
         title={t('authz.queue', 'Bandeja')}
         columns={columns}
         rows={pending}

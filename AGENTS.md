@@ -94,6 +94,26 @@ de `global.css` (las variables CSS no funcionan dentro de `@media`):
   que nada se rompa mientras se migran los módulos, no para apoyarse en ella.
 - Lo que en escritorio aparece al pasar el mouse tiene que estar visible en
   pantallas táctiles (`@media (hover: none)`).
+- **Tablas con `DataTable`** (en el teléfono, cada fila es una tarjeta):
+  - `card` en cada columna dice su lugar: `title`, `subtitle`, `badge`
+    (estado), `amount` (monto al pie), `meta` (par etiqueta/valor, por
+    defecto) o `hide`;
+  - `hideOnTablet` y `hideOnLaptop` ocultan columnas secundarias por debajo
+    de 1024 y 1440 px; nunca montos ni estados. En tablas a mano, las clases
+    `hide-tablet` / `hide-laptop` en el `<th>` y en cada `<td>` de la columna;
+  - `cards="tablet"` usa tarjetas también en tablet, para tablas con
+    muchas columnas o con acciones que no caben.
+- **Tablas hechas a mano:** con la clase `tbl-stack` se apilan en el
+  teléfono. Las etiquetas salen solas de los `<th>` (lo hace
+  `lib/stackLabels.js`, que arranca `App.jsx`). `data-title-col` elige la
+  columna título si no es la primera.
+- **Clases de apoyo:**
+  - tamaños de modal `modal-sm` / `modal-md` / `modal-lg` / `modal-xl`;
+  - `filterbar-search` y `filterbar-grow` para buscadores;
+  - `form-grid` para formularios;
+  - `kv-grid` para pares etiqueta/valor.
+- Laptops de menos de 1440 px arrancan con el menú en riel; aun así, toda
+  tabla debe caber a 1280 px sin desplazar.
 - Al tocar una pantalla, revisarla a 375, 768 y 1280 px.
 
 ## Verificar antes de dar algo por hecho

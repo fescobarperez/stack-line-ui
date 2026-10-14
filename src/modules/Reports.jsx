@@ -200,7 +200,7 @@ function ReportsModule({ pushToast }) {
             <div className="card">
               <div className="card-head"><h3>Ventas por sucursal</h3></div>
               <div className="card-body flush">
-                <table className="mtable">
+                <table className="mtable tbl-stack">
                   <thead><tr><th>{t('common.branch', 'Sucursal')}</th><th className="num">Tickets</th><th className="num">Ventas</th><th className="num">Promedio</th><th className="num">% Total</th></tr></thead>
                   <tbody>
                     {rpt.byBranch.length === 0 && <tr><td colSpan={5}><div className="empty" style={{ padding: 20 }}>Sin ventas en el período</div></td></tr>}
@@ -237,7 +237,7 @@ function ReportsModule({ pushToast }) {
           <div className="card mt-12">
             <div className="card-head"><h3>{t('dashboard.charts.topProducts', 'Top productos vendidos')}</h3></div>
             <div className="card-body flush">
-              <table className="mtable">
+              <table className="mtable tbl-stack" data-title-col="1">
                 <thead><tr><th>#</th><th>{t('common.product', 'Producto')}</th><th className="num">{t('common.quantity', 'Unidades')}</th><th className="num">Ventas</th></tr></thead>
                 <tbody>
                   {rpt.topProducts.length === 0 && <tr><td colSpan={4}><div className="empty" style={{ padding: 20 }}>Sin ventas</div></td></tr>}
@@ -266,7 +266,7 @@ function ReportsModule({ pushToast }) {
           </div>
           <div className="card-body flush">
             <div style={{ maxHeight: 460, overflow: 'auto' }}>
-              <table className="mtable">
+              <table className="mtable tbl-stack">
                 <thead><tr>
                   <th>Documento</th>
                   <th>{t('common.date', 'Fecha')}</th>
@@ -346,7 +346,7 @@ function ReportsModule({ pushToast }) {
           <div className="card">
             <div className="card-head"><h3>Órdenes de compra</h3></div>
             <div className="card-body flush">
-              <table className="mtable">
+              <table className="mtable tbl-stack">
                 <thead><tr><th>No. OC</th><th>{t('common.date', 'Fecha')}</th><th>{t('common.supplier', 'Proveedor')}</th><th className="num">{t('common.total', 'Total')}</th><th>{t('common.status', 'Estado')}</th></tr></thead>
                 <tbody>
                   {purchaseOrders.length === 0 && <tr><td colSpan={5}><div className="empty" style={{ padding: 20 }}>Sin órdenes de compra</div></td></tr>}
@@ -367,7 +367,7 @@ function ReportsModule({ pushToast }) {
           <div className="card mt-12">
             <div className="card-head"><h3>Proveedores &amp; saldos</h3></div>
             <div className="card-body flush">
-              <table className="mtable">
+              <table className="mtable tbl-stack" data-title-col="1">
                 <thead><tr><th>#</th><th>{t('common.supplier', 'Proveedor')}</th><th>NIT</th><th className="num">Saldo</th></tr></thead>
                 <tbody>
                   {suppliers.length === 0 && <tr><td colSpan={4}><div className="empty" style={{ padding: 20 }}>Sin proveedores</div></td></tr>}
@@ -417,7 +417,7 @@ function ReportsModule({ pushToast }) {
           <div className="card">
             <div className="card-head"><h3>Análisis de margen por categoría</h3></div>
             <div className="card-body flush">
-              <table className="mtable">
+              <table className="mtable tbl-stack">
                 <thead><tr><th>{t('common.category', 'Categoría')}</th><th className="num">Ventas</th><th className="num">{t('common.cost', 'Costo')}</th><th className="num">Utilidad</th><th className="num">{t('common.margin', 'Margen')} %</th></tr></thead>
                 <tbody>
                   {rpt.byCategory.length === 0 && <tr><td colSpan={5}><div className="empty" style={{ padding: 20 }}>Sin ventas en el período</div></td></tr>}
@@ -441,7 +441,7 @@ function ReportsModule({ pushToast }) {
         <div className="card">
           <div className="card-head"><h3>Libro de Ventas (SAT)</h3><Button icon="download" size="sm" onClick={exportar}>Excel SAT</Button></div>
           <div className="card-body flush">
-            <table className="mtable">
+            <table className="mtable tbl-stack">
               <thead><tr><th>Día</th><th className="num">Facturas</th><th className="num">Gravable</th><th className="num">IVA {taxRate}%</th><th className="num">{t('common.total', 'Total')}</th></tr></thead>
               <tbody>
                 {rpt.salesBook.length === 0 && <tr><td colSpan={5}><div className="empty" style={{ padding: 20 }}>Sin ventas en el período</div></td></tr>}

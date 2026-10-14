@@ -38,6 +38,8 @@ export default function AssistantWidget({ cliente }) {
   const widget = useRef(null);
   const recienAbierto = useRef(false);
   const arrastre = useDraggableLauncher();
+  // Teléfono: no caben chat y panel lado a lado; se ve uno y se cambia con pestañas.
+  const [vistaMovil, setVistaMovil] = useState('chat');
 
   useEffect(() => guardarBandera(CLAVE_ABIERTO, abierto), [abierto]);
   useEffect(() => guardarBandera(CLAVE_PANEL, panelVisible), [panelVisible]);
@@ -48,8 +50,8 @@ export default function AssistantWidget({ cliente }) {
   const vista = vistaPanel(conversacion.state.panel);
   const vistaAnterior = useRef(vista);
   useEffect(() => {
-    if (vista !== vistaAnterior.current && vista !== 'vacio') setPanelVisible(true);
-    if (vista === 'vacio') setPanelVisible(false);
+    if (vista !== vistaAnterior.current && vista !== 'vacio') { setPanelVisible(true); setVistaMovil('panel'); }
+    if (vista === 'vacio') { setPanelVisible(false); setVistaMovil('chat'); }
     vistaAnterior.current = vista;
   }, [vista]);
 
@@ -136,23 +138,37 @@ export default function AssistantWidget({ cliente }) {
 
   if (!abierto) return lanzadorBoton;
 
+  const pestanas = arrastre.compacto && panelVisible;
+  const verVista = (v) => { setVistaMovil(v); if (v === 'panel') setPanelVisible(true); };
+
   return (
     <>
       <div
         ref={widget}
         className="assistant"
+        data-movil={pestanas ? vistaMovil : undefined}
         style={arrastre.compacto ? undefined : arrastre.estiloWidget}
         role="complementary"
         aria-label={t('assistant.title', 'Asistente comercial')}
         onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); colapsar(); } }}
       >
+        {pestanas && (
+          <div className="assistant-tabs" role="tablist">
+            {[['chat', t('assistant.tabChat', 'Chat')], ['panel', t('assistant.tabPanel', 'Trabajo')]].map(([v, etiqueta]) => (
+              <button key={v} type="button" role="tab" aria-selected={vistaMovil === v}
+                className={`assistant-tab${vistaMovil === v ? ' active' : ''}`} onClick={() => verVista(v)}>
+                {etiqueta}
+              </button>
+            ))}
+          </div>
+        )}
         <ChatColumn
           conversacion={conversacion}
           onNueva={nueva}
           panelVisible={panelVisible}
-          onMostrarPanel={vista !== 'vacio' ? () => setPanelVisible(true) : null}
+          onMostrarPanel={vista !== 'vacio' ? () => verVista('panel') : null}
         />
-        {panelVisible && <WorkPanel conversacion={conversacion} onColapsar={() => setPanelVisible(false)} />}
+        {panelVisible && <WorkPanel conversacion={conversacion} onColapsar={() => { setPanelVisible(false); setVistaMovil('chat'); }} />}
       </div>
       {lanzadorBoton}
     </>

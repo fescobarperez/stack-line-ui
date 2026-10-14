@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '../i18n/index.js';
@@ -113,5 +113,33 @@ describe('AssistantWidget · panel de trabajo', () => {
     expect(screen.queryByRole('complementary', { name: 'Panel de trabajo' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Mostrar panel de trabajo' }));
     expect(panel()).toBeInTheDocument();
+  });
+});
+
+/**
+ * Teléfono: chat y panel no caben lado a lado. Se ve uno a la vez y se
+ * cambia con las pestañas; al llegar resultados se pasa solo al panel.
+ */
+describe('AssistantWidget · teléfono', () => {
+  beforeEach(async () => {
+    sessionStorage.clear();
+    await i18n.changeLanguage('es');
+    window.innerWidth = 375;
+  });
+  afterEach(() => { window.innerWidth = 1024; });
+
+  it('muestra el panel al llegar resultados y vuelve al chat con la pestaña', async () => {
+    const user = userEvent.setup();
+    montar();
+    await abrirYPreguntar(user);
+
+    const widget = screen.getByRole('complementary', { name: 'Asistente comercial' });
+    expect(widget).toHaveAttribute('data-movil', 'panel');
+    expect(screen.getByRole('tab', { name: 'Trabajo' })).toHaveAttribute('aria-selected', 'true');
+
+    await user.click(screen.getByRole('tab', { name: 'Chat' }));
+    expect(widget).toHaveAttribute('data-movil', 'chat');
+    await user.click(screen.getByRole('tab', { name: 'Trabajo' }));
+    expect(widget).toHaveAttribute('data-movil', 'panel');
   });
 });

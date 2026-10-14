@@ -118,16 +118,16 @@ export default function FixedAssets({ pushToast }) {
   const activeAssets = assets.filter(a => a.status === 'active');
 
   const assetColumns = [
-    { key: 'id', header: t('common.code', 'Código'), render: (a) => <span className="sku">{a.id}</span> },
-    { key: 'name', header: t('fixedassets.asset', 'Activo'), sortable: true, render: (a) => (
+    { key: 'id', header: t('common.code', 'Código'), card: 'subtitle', hideOnTablet: true, render: (a) => <span className="sku">{a.id}</span> },
+    { key: 'name', header: t('fixedassets.asset', 'Activo'), sortable: true, card: 'title', render: (a) => (
       <div className="cell-stack"><span className="nm">{a.name}</span>{a.serial && <span className="sku">S/N {a.serial}</span>}</div>
     ) },
-    { key: 'cat', header: t('common.category', 'Categoría'), sortable: true, render: (a) => { const cat = CAT_MAP[a.cat]; return <span><span style={{ marginRight: 5 }}>{cat?.icon}</span>{cat?.name}</span>; } },
-    { key: 'branch', header: t('common.branch', 'Sucursal'), sortable: true, render: (a) => <span style={{ color: 'var(--muted)' }}>{a.branch}</span> },
-    { key: 'purchase', header: t('fixedassets.historicalCostShort', 'Costo histórico'), align: 'right', sortable: true, render: (a) => <span className="num">{Q(a.purchase)}</span> },
-    { key: 'deprAcum', header: t('fixedassets.accDeprShort', 'Dep. acumulada'), align: 'right', render: (a) => <span className="num" style={{ color: 'var(--danger)' }}>{a.status === 'active' ? Q(a.depr.deprAcum) : '—'}</span> },
-    { key: 'valorLibros', header: t('fixedassets.bookValue', 'Valor en libros'), align: 'right', sortable: true, sortValue: (a) => a.depr.valorLibros, render: (a) => <span className="num" style={{ fontWeight: 500, color: a.depr.fullyDepr ? 'var(--muted)' : undefined }}>{a.status === 'active' ? Q(a.depr.valorLibros) : '—'}</span> },
-    { key: 'pctDep', header: t('fixedassets.pctDepr', '% Dep.'), render: (a) => {
+    { key: 'cat', header: t('common.category', 'Categoría'), sortable: true, hideOnTablet: true, render: (a) => { const cat = CAT_MAP[a.cat]; return <span><span style={{ marginRight: 5 }}>{cat?.icon}</span>{cat?.name}</span>; } },
+    { key: 'branch', header: t('common.branch', 'Sucursal'), sortable: true, hideOnLaptop: true, hideOnTablet: true, render: (a) => <span style={{ color: 'var(--muted)' }}>{a.branch}</span> },
+    { key: 'purchase', header: t('fixedassets.historicalCostShort', 'Costo histórico'), align: 'right', sortable: true, hideOnTablet: true, render: (a) => <span className="num">{Q(a.purchase)}</span> },
+    { key: 'deprAcum', header: t('fixedassets.accDeprShort', 'Dep. acumulada'), align: 'right', hideOnTablet: true, render: (a) => <span className="num" style={{ color: 'var(--danger)' }}>{a.status === 'active' ? Q(a.depr.deprAcum) : '—'}</span> },
+    { key: 'valorLibros', header: t('fixedassets.bookValue', 'Valor en libros'), align: 'right', sortable: true, card: 'amount', sortValue: (a) => a.depr.valorLibros, render: (a) => <span className="num" style={{ fontWeight: 500, color: a.depr.fullyDepr ? 'var(--muted)' : undefined }}>{a.status === 'active' ? Q(a.depr.valorLibros) : '—'}</span> },
+    { key: 'pctDep', header: t('fixedassets.pctDepr', '% Dep.'), hideOnLaptop: true, render: (a) => {
       if (a.status !== 'active') return null;
       const barW = Math.round(a.depr.pctDepAcum * 100);
       return (
@@ -137,7 +137,7 @@ export default function FixedAssets({ pushToast }) {
         </div>
       );
     } },
-    { key: 'status', header: t('common.status', 'Estado'), sortable: true, render: (a) => <span className={`badge-m3 ${a.status === 'active' ? 'success' : a.status === 'baja' ? 'error' : 'warning'}`}>{STATUS_LABELS[a.status]}</span> },
+    { key: 'status', header: t('common.status', 'Estado'), sortable: true, card: 'badge', render: (a) => <span className={`badge-m3 ${a.status === 'active' ? 'success' : a.status === 'baja' ? 'error' : 'warning'}`}>{STATUS_LABELS[a.status]}</span> },
   ];
 
   const summary = useMemo(() => ({
@@ -321,7 +321,7 @@ export default function FixedAssets({ pushToast }) {
               </div>
             </div>
             <div className="tbl-wrap">
-              <table className="mtable">
+              <table className="mtable tbl-stack">
                 <thead>
                   <tr>
                     <th>{t('common.code', 'Código')}</th>
@@ -381,7 +381,7 @@ export default function FixedAssets({ pushToast }) {
               <span className="meta">{`${String(CUR_MONTH).padStart(2,'0')}/${CUR_YEAR}`}</span>
             </div>
             <div className="card-body">
-              <table className="mtable">
+              <table className="mtable tbl-stack">
                 <thead>
                   <tr><th>{t('fixedassets.account', 'Cuenta')}</th><th>{t('common.description', 'Descripción')}</th><th className="num">{t('fixedassets.debit', 'Débito')}</th><th className="num">{t('fixedassets.credit', 'Crédito')}</th></tr>
                 </thead>
@@ -505,7 +505,7 @@ export default function FixedAssets({ pushToast }) {
       {/* ── TAB: BAJAS ── */}
       {tab === 'bajas' && (
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table tbl-stack">
             <thead>
               <tr>
                 <th>{t('common.code', 'Código')}</th><th>{t('fixedassets.asset', 'Activo')}</th><th>{t('common.category', 'Categoría')}</th>
@@ -597,7 +597,7 @@ export default function FixedAssets({ pushToast }) {
                     </div>
                     <div className="card" style={{marginBottom:16}}>
                       <div className="card-body" style={{padding:0}}>
-                        <table className="mtable">
+                        <table className="mtable tbl-stack">
                           <tbody>
                             <tr><td>{t('fixedassets.deprRate', 'Tasa de depreciación')}</td><td className="num">{pct(d.rate)}/{t('fixedassets.year', 'año')}</td></tr>
                             <tr><td>{t('fixedassets.annualDepr', 'Depreciación anual')}</td><td className="num">{Q(d.deprAnual)}</td></tr>

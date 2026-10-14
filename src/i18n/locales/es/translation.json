@@ -130,7 +130,11 @@
     "accessDenied": "Sin acceso",
     "accessDeniedDesc": "Tu rol no tiene permiso para ver este módulo.",
     "openMenu": "Menú",
-    "closeMenu": "Cerrar menú"
+    "closeMenu": "Cerrar menú",
+    "moreOptions": "Más opciones",
+    "satOffline": "SAT-FEL sin conexión",
+    "themeDark": "Oscuro",
+    "themeLight": "Claro"
   },
   "search": {
     "placeholder": "Buscar módulos, productos, clientes…",
@@ -643,7 +647,15 @@
     "calcRounding": "Redondeo del total",
     "sizePriced": "Precio por medida",
     "sizeReview": "Por cotizar",
-    "sizeReviewHint": "La medida se sale de la tolerancia: ponle precio a la línea"
+    "sizeReviewHint": "La medida se sale de la tolerancia: ponle precio a la línea",
+    "dimensionsShort": "Medidas",
+    "termN": "Cuota",
+    "clientData": "Datos del cliente",
+    "products": "Productos",
+    "productsHint": "Líneas cotizadas al cliente",
+    "summary": "Resumen",
+    "summaryHint": "Ganancia, IVA y total de la cotización",
+    "planSummary": "Resumen del plan"
   },
   "promotions": {
     "title": "Promociones",
@@ -949,7 +961,9 @@
     "sentPanel": "Enviada el {{date}} · {{channels}} · estado",
     "name": "Tino",
     "close": "Cerrar asistente",
-    "dragHint": "Arrastre para moverlo"
+    "dragHint": "Arrastre para moverlo",
+    "tabChat": "Chat",
+    "tabPanel": "Trabajo"
   },
   "changeRequests": {
     "missing": {

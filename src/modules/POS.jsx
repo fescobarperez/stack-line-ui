@@ -14,6 +14,7 @@ import { createSale } from '../api/pos.js';
 import React, { useState as useStatePOS, useMemo as useMemoPOS, useEffect as useEffectPOS } from 'react';
 import { useTranslation } from 'react-i18next';
 import { hoyISO } from '../lib/fechas.js';
+import { useLayout, useMediaQuery } from '../hooks/useLayout.js';
 
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const EMPTY_PROMOS = { promotions: [], lines: [], totalDiscount: 0 };
@@ -50,7 +51,14 @@ function POSModule({ pushToast }) {
   const [client, setClient]         = useStatePOS({ name: 'CF', nit: 'CF', type: 'Consumidor final' });
 
   // ── Modo táctil ──────────────────────────────────────────────────────────
-  const [touchMode, setTouchMode]   = useStatePOS(false);
+  // Tablet y teléfono arrancan en modo táctil; en el teléfono no hay otro.
+  const layout = useLayout();
+  const [modoTactil, setTouchMode]  = useStatePOS(() => layout !== 'desktop');
+  const touchMode = modoTactil || layout === 'phone';
+  // Con 900 px o más (tablet horizontal) caben productos y carrito juntos;
+  // más angosto se ve uno a la vez con las pestañas de abajo.
+  const dosPaneles = useMediaQuery('(min-width: 900px)', true);
+  const unaVista = touchMode && !dosPaneles;
   const [touchView, setTouchView]   = useStatePOS('products'); // 'products' | 'cart'
 
   const filtered = useMemoPOS(() => {
@@ -69,7 +77,7 @@ function POSModule({ pushToast }) {
       if (found) return c.map(i => i.sku === p.sku ? { ...i, qty: i.qty + 1 } : i);
       return [...c, { sku: p.sku, name: p.name, price: p.price, cat: p.cat, qty: 1, unit: p.unit }];
     });
-    if (touchMode) setTouchView('cart');
+    if (unaVista) setTouchView('cart');
   };
   const changeQty = (sku, delta) =>
     setCart(c => c.map(i => i.sku === sku ? { ...i, qty: Math.max(0, i.qty + delta) } : i).filter(i => i.qty > 0));
@@ -207,7 +215,7 @@ function POSModule({ pushToast }) {
       setCart([]);
       setDiscount(0);
       setCashGiven('');
-      if (touchMode) setTouchView('products');
+      if (unaVista) setTouchView('products');
       await reloadProducts();
       pushToast && pushToast(t('pos.saleRegistered', { id: sale.docNumber || sale.id }), 'success');
     } catch (err) {
@@ -222,12 +230,12 @@ function POSModule({ pushToast }) {
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className={touchMode ? 'pos-touch-layout' : 'pos-layout'}>
+    <div className={touchMode ? `pos-touch-layout${unaVista ? '' : ' split'}` : 'pos-layout'}>
 
       {/* ── Panel de productos ── */}
       <div
         className="pos-products"
-        style={touchMode && touchView !== 'products' ? { display: 'none' } : {}}
+        style={unaVista && touchView !== 'products' ? { display: 'none' } : {}}
       >
         <div className="pos-search-bar">
           <div className="pos-search-field">
@@ -241,14 +249,14 @@ function POSModule({ pushToast }) {
             />
           </div>
           <Button icon="barcode">{t('pos.scan', 'Escanear')}</Button>
-          <Button
+          {layout !== 'phone' && <Button
             icon="pos"
             variant={touchMode ? 'accent' : 'outlined'}
             title={touchMode ? t('pos.desktopMode', 'Modo escritorio') : t('pos.touchMode', 'Modo táctil')}
             onClick={toggleTouchMode}
           >
             {touchMode ? t('pos.desktopMode', 'Escritorio') : t('pos.touchMode', 'Táctil')}
-          </Button>
+          </Button>}
         </div>
 
         <div className="pos-cats">
@@ -283,7 +291,7 @@ function POSModule({ pushToast }) {
       {/* ── Carrito ── */}
       <div
         className={touchMode ? 'pos-touch-cart' : 'pos-cart'}
-        style={touchMode && touchView !== 'cart' ? { display: 'none' } : {}}
+        style={unaVista && touchView !== 'cart' ? { display: 'none' } : {}}
       >
         <div className="pos-cart-head">
           <div>
@@ -427,8 +435,8 @@ function POSModule({ pushToast }) {
         </button>
       </div>
 
-      {/* ── Tab bar (solo touch mode) ── */}
-      {touchMode && (
+      {/* ── Tab bar (modo táctil con una vista a la vez) ── */}
+      {unaVista && (
         <div className="pos-touch-tab-bar">
           <button
             className={`pos-touch-tab ${touchView === 'products' ? 'active' : ''}`}
@@ -455,7 +463,7 @@ function POSModule({ pushToast }) {
       {/* ── Modal: Cobro ── */}
       {showCharge && (
         <div className="modal-overlay" onClick={() => setShowCharge(false)}>
-          <div className="modal" style={{ width: touchMode ? 420 : 520 }} onClick={e => e.stopPropagation()}>
+          <div className={`modal ${touchMode ? 'modal-sm' : 'modal-pay'}`} onClick={e => e.stopPropagation()}>
             <div className="modal-head">
               <h3>{t('pos.paymentTitle', { amount: Q(total) })}</h3>
               <button className="icon-btn" onClick={() => setShowCharge(false)}><Icon name="x" /></button>
@@ -464,7 +472,7 @@ function POSModule({ pushToast }) {
               <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, fontFamily: 'var(--font-mono)' }}>
                 {t('pos.paymentMethod', 'Método de pago')}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+              <div className="pay-methods">
                 {[
                   { id: 'efectivo',      label: t('pos.paymentMethods.cash', 'Efectivo'),       icon: 'cash' },
                   { id: 'tarjeta',       label: t('pos.paymentMethods.card', 'Tarjeta'),         icon: 'card' },

@@ -109,7 +109,7 @@ export default function Login({ onLogin }) {
                 <span className="login-feature-dot" />
                 <span>
                   <strong>{title}</strong>
-                  <span className="login-feature-desc"> · {desc}</span>
+                  <span className="login-feature-desc"><span className="login-feature-sep"> · </span>{desc}</span>
                 </span>
               </li>
             ))}
@@ -246,6 +246,11 @@ export default function Login({ onLogin }) {
             </button>
           </form>
         </div>
+      </div>
+
+      {/* Teléfono y tablet vertical: la leyenda va al pie de la página (ver global.css). */}
+      <div className="login-page-legal">
+        © 2026 Stackline · Guatemala · Todos los derechos reservados
       </div>
     </div>
   );

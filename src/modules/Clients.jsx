@@ -266,13 +266,13 @@ function ClientDetail({ client, payments, onClose, onEdit, onPayment }) {
         <div className="drawer-body" style={{ overflowY: 'auto', padding: 0 }}>
           <DataTable
             columns={[
-              { key: 'date', header: t('clients.drawer.paymentHeaders.date', 'Fecha'), mono: true, sortable: true },
-              { key: 'paymentMethod', header: t('clients.drawer.paymentHeaders.method', 'Forma de pago'),
+              { key: 'date', header: t('clients.drawer.paymentHeaders.date', 'Fecha'), mono: true, sortable: true, card: 'title' },
+              { key: 'paymentMethod', header: t('clients.drawer.paymentHeaders.method', 'Forma de pago'), card: 'subtitle',
                 render: (p) => METHOD_LABEL[p.paymentMethod] || p.paymentMethod },
               { key: 'reference', header: t('clients.drawer.paymentHeaders.reference', 'Referencia'), mono: true,
                 render: (p) => p.reference || '—' },
               { key: 'amount', header: t('clients.drawer.paymentHeaders.amount', 'Monto'),
-                align: 'right', sortable: true,
+                align: 'right', sortable: true, card: 'amount',
                 render: (p) => <span className="num" style={{ color: 'var(--success)' }}>+{fmt(p.amount)}</span> },
             ]}
             rows={clientPayments}
@@ -459,7 +459,7 @@ export default function Clients({ pushToast }) {
         <>
           {/* Filtros */}
           <div className="toolbar">
-            <div className="search-wrap" style={{ flex: 1, maxWidth: 320 }}>
+            <div className="search-wrap filterbar-grow">
               <Icon name="search" className="icon" size={13} />
               <input
                 className="search-input"
@@ -486,7 +486,7 @@ export default function Clients({ pushToast }) {
           <div className="table-wrap">
             <DataTable
               columns={[
-                { key: 'name', header: t('common.client', 'Cliente'), sortable: true,
+                { key: 'name', header: t('common.client', 'Cliente'), sortable: true, card: 'title',
                   render: (c) => (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div className="avatar" style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }}>
@@ -495,21 +495,21 @@ export default function Clients({ pushToast }) {
                       <span style={{ fontWeight: 500 }}>{c.name}</span>
                     </div>
                   ) },
-                { key: 'nit', header: 'NIT', mono: true, sortable: true },
-                { key: 'clientType', header: t('common.type', 'Tipo'), sortable: true,
+                { key: 'nit', header: 'NIT', mono: true, sortable: true, card: 'subtitle' },
+                { key: 'clientType', header: t('common.type', 'Tipo'), sortable: true, hideOnTablet: true,
                   render: (c) => <span className="badge-m3 neutral">{TYPE_LABEL[c.clientType]}</span> },
-                { key: 'contact', header: 'Contacto',
+                { key: 'contact', header: 'Contacto', hideOnTablet: true,
                   render: (c) => <span className="muted">{c.phone || c.email || '—'}</span> },
-                { key: 'creditLimit', header: 'Límite crédito', align: 'right', sortable: true,
+                { key: 'creditLimit', header: 'Límite crédito', align: 'right', sortable: true, hideOnTablet: true,
                   render: (c) => <span className="num">{c.creditLimit > 0 ? fmt(c.creditLimit) : '—'}</span> },
                 { key: 'balance', header: t('clients.drawer.labels.pendingBalance', 'Saldo pendiente'),
-                  align: 'right', sortable: true,
+                  align: 'right', sortable: true, card: 'amount',
                   render: (c) => (
                     <span className="num" style={{ color: c.balance > 0 ? 'var(--danger)' : 'var(--muted)' }}>
                       {fmt(c.balance)}
                     </span>
                   ) },
-                { key: 'status', header: t('common.status', 'Estado'), sortable: true,
+                { key: 'status', header: t('common.status', 'Estado'), sortable: true, card: 'badge',
                   render: (c) => <span className={`badge-m3 ${STATUS_CLASS[c.status]}`}>{STATUS_LABEL[c.status]}</span> },
               ]}
               rows={filtered}
@@ -532,7 +532,7 @@ export default function Clients({ pushToast }) {
       {tab === 'cxc' && (
         <DataTable
           columns={[
-            { key: 'name', header: t('common.client', 'Cliente'), sortable: true,
+            { key: 'name', header: t('common.client', 'Cliente'), sortable: true, card: 'title',
               render: (c) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div className="avatar" style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }}>
@@ -541,14 +541,15 @@ export default function Clients({ pushToast }) {
                   <span style={{ fontWeight: 500 }}>{c.name}</span>
                 </div>
               ) },
-            { key: 'clientType', header: t('common.type', 'Tipo'), sortable: true,
+            { key: 'clientType', header: t('common.type', 'Tipo'), sortable: true, hideOnTablet: true,
               render: (c) => <span className="badge-m3 neutral">{TYPE_LABEL[c.clientType]}</span> },
             { key: 'creditLimit', header: 'Límite crédito', align: 'right', sortable: true,
               render: (c) => <span className="num">{c.creditLimit > 0 ? fmt(c.creditLimit) : '—'}</span> },
             { key: 'balance', header: t('clients.drawer.labels.pendingBalance', 'Saldo pendiente'),
               align: 'right', sortable: true,
+              card: 'amount',
               render: (c) => <span className="num" style={{ color: 'var(--danger)' }}>{fmt(c.balance)}</span> },
-            { key: 'pct', header: '% utilizado', align: 'right',
+            { key: 'pct', header: '% utilizado', align: 'right', card: 'badge',
               sortValue: (c) => (c.creditLimit > 0 ? c.balance / c.creditLimit : 0),
               render: (c) => {
                 const pct = c.creditLimit > 0 ? (c.balance / c.creditLimit * 100) : 0;
@@ -558,7 +559,7 @@ export default function Clients({ pushToast }) {
                   </span>
                 );
               } },
-            { key: 'paymentTerms', header: 'Plazo', sortable: true,
+            { key: 'paymentTerms', header: 'Plazo', sortable: true, hideOnTablet: true,
               render: (c) => <span className="muted">{c.paymentTerms > 0 ? `${c.paymentTerms} días` : 'Contado'}</span> },
           ]}
           rows={cxcClients}

@@ -270,7 +270,7 @@ function DashboardModule() {
             <Button icon="filter" variant="tonal">Filtrar</Button>
           </div>
           <div className="card-body flush">
-            <table>
+            <table className="tbl-stack">
               <thead>
                 <tr>
                   <th style={{width:'44%'}}>{t('dashboard.headers.product', 'Producto')}</th>
@@ -286,11 +286,11 @@ function DashboardModule() {
                   const pctBar = Math.round((p.qty / maxQty) * 100);
                   return (
                     <tr key={p.sku}>
-                      <td><div className="cell-stack"><span className="nm">{p.name}</span><span className="sku">{p.sku}</span></div></td>
-                      <td className="r num">{p.qty}</td>
-                      <td className="r num">{Q(p.total)}</td>
-                      <td className="r num" style={{color: p.trend.startsWith('+') ? 'var(--md-success)' : 'var(--md-error)'}}>{p.trend}</td>
-                      <td><div className="prog"><i style={{width:`${pctBar}%`}}/></div></td>
+                      <td className="stack-title"><div className="cell-stack"><span className="nm">{p.name}</span><span className="sku">{p.sku}</span></div></td>
+                      <td className="r num" data-label="Unid.">{p.qty}</td>
+                      <td className="r num" data-label={t('common.total', 'Total')}>{Q(p.total)}</td>
+                      <td className="r num" data-label="∆" style={{color: p.trend.startsWith('+') ? 'var(--md-success)' : 'var(--md-error)'}}>{p.trend}</td>
+                      <td className="hide-phone"><div className="prog"><i style={{width:`${pctBar}%`}}/></div></td>
                     </tr>
                   );
                 })}
@@ -362,7 +362,7 @@ function DashboardModule() {
             <Button variant="ghost">Ver todos</Button>
           </div>
           <div className="card-body flush">
-            <table>
+            <table className="tbl-stack">
               <thead>
                 <tr>
                   <th>{t('dashboard.headers.ticket', 'Ticket')}</th>
@@ -375,11 +375,11 @@ function DashboardModule() {
               <tbody>
                 {recentTickets.slice(0,6).map(tk => (
                   <tr key={tk.id}>
-                    <td className="num">{tk.id.slice(-6)}</td>
-                    <td className="num">{tk.date.slice(11,16)}</td>
-                    <td>{tk.pay}</td>
-                    <td className="r num">{Q(tk.total)}</td>
-                    <td><span className="badge ok">Certificado</span></td>
+                    <td className="num stack-title">{tk.id.slice(-6)}</td>
+                    <td className="num" data-label={t('dashboard.headers.time', 'Hora')}>{tk.date.slice(11,16)}</td>
+                    <td data-label={t('dashboard.headers.payment', 'Pago')}>{tk.pay}</td>
+                    <td className="r num" data-label={t('common.total', 'Total')}>{Q(tk.total)}</td>
+                    <td data-label={t('common.status', 'Estado')}><span className="badge ok">Certificado</span></td>
                   </tr>
                 ))}
               </tbody>
