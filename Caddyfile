@@ -14,6 +14,12 @@
 		reverse_proxy {$API_UPSTREAM:backend:8080}
 	}
 
+	# Webhook de WhatsApp (Meta) hacia agents-services. Es lo ÚNICO del agente
+	# que se publica: /v1/agent/* queda en la red interna, solo para el ERP.
+	handle /webhooks/whatsapp* {
+		reverse_proxy {$AGENT_UPSTREAM:agents:8081}
+	}
+
 	handle {
 		root * /srv
 		# La aplicación es una SPA con rutas del lado del cliente: cualquier
