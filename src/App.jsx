@@ -27,6 +27,7 @@ import Billing from './modules/Billing.jsx';
 import Inventory from './modules/Inventory.jsx';
 import Catalog from './modules/Catalog.jsx';
 import AssistantWidget from './assistant/AssistantWidget.jsx';
+import { screenEnabled, moduleEnabled } from './lib/modules.js';
 import Reports from './modules/Reports.jsx';
 import Maintenance from './modules/Maintenance.jsx';
 import Clients from './modules/Clients.jsx';
@@ -243,7 +244,7 @@ export default function App({ session, onLogout }) {
 
   const visibleNav = NAV.map(sec => ({
     ...sec,
-    items: sec.items.filter(it => canView(it.id, perms)),
+    items: sec.items.filter(it => canView(it.id, perms) && screenEnabled(it.id, session.enabledModules)),
   })).filter(sec => sec.items.length > 0);
 
   const pushToast = (msg, kind = '') => {
@@ -255,6 +256,8 @@ export default function App({ session, onLogout }) {
   const ModuleComponent = MODULE_MAP[route];
   const module = !ModuleComponent
     ? <div className="page">{t('shell.underConstruction')}</div>
+    : !screenEnabled(route, session.enabledModules)
+    ? <NotInPlan />
     : !canView(route, perms)
     ? <AccessDenied />
     : <ModuleComponent pushToast={pushToast} />;
@@ -457,7 +460,7 @@ export default function App({ session, onLogout }) {
       )}
 
       {/* Asistente comercial: flota sobre cualquier módulo */}
-      <AssistantWidget />
+      {moduleEnabled('ai', session.enabledModules) && <AssistantWidget />}
 
       {/* Toasts */}
       <div className="toast-stack">
@@ -503,6 +506,19 @@ export default function App({ session, onLogout }) {
           </TweakSection>
         </TweaksPanel>
       )}
+    </div>
+  );
+}
+
+/** La pantalla existe pero el plan de la empresa no la incluye. */
+function NotInPlan() {
+  const { t } = useTranslation();
+  return (
+    <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+      <div style={{ textAlign: 'center', maxWidth: 420 }}>
+        <div className="title-medium" style={{ marginBottom: 6 }}>{t('shell.notInPlan', 'Tu plan no incluye este módulo')}</div>
+        <div className="muted body-medium">{t('shell.notInPlanDesc', 'Para activarlo, contacta a Stackline.')}</div>
+      </div>
     </div>
   );
 }

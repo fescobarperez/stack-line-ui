@@ -134,7 +134,9 @@
     "moreOptions": "More options",
     "satOffline": "SAT-FEL offline",
     "themeDark": "Dark",
-    "themeLight": "Light"
+    "themeLight": "Light",
+    "notInPlan": "Your plan does not include this module",
+    "notInPlanDesc": "To enable it, contact Stackline."
   },
   "search": {
     "placeholder": "Search modules, products, clients…",
@@ -1053,5 +1055,19 @@
   "projects": {
     "profit": "Profit",
     "empty": "No projects"
+  },
+  "activate": {
+    "invalid": "This link is no longer valid. Ask the Stackline administrator for a new one.",
+    "passRule": "At least 8 characters, with letters and numbers.",
+    "mismatch": "The passwords do not match.",
+    "loading": "Checking the link…",
+    "title": "Activate your account",
+    "toLogin": "Go to sign in",
+    "desc": "Hi, {{name}}. Set your password to access {{company}}.",
+    "password": "Password",
+    "password2": "Repeat the password",
+    "saving": "Activating…",
+    "submit": "Activate and continue",
+    "done": "Account activated. Sign in with your new password."
   }
 }

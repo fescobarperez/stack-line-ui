@@ -6,11 +6,12 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { agentClient, armarTurno } from '../api/agent.js';
+import { uuid } from '../lib/uuid.js';
 import { agentReducer, estadoInicial, hayBorradorSinEnviar } from './agentReducer.js';
 
 export const CLAVE_CONVERSACION = 'maya_assistant_conversation';
 
-const nuevaClave = () => crypto.randomUUID();
+const nuevaClave = () => uuid();
 
 function leerGuardado() {
   try {

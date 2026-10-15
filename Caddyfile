@@ -8,6 +8,12 @@
 {$SITE_ADDRESS::80} {
 	encode gzip zstd
 
+	# Servicio a servicio (agents-services → ERP): solo por la red interna
+	# (backend:8080). Desde afuera no existe.
+	handle /api/internal/* {
+		respond 404
+	}
+
 	# La API va al backend. Debe ir ANTES del handler del estático: si no, la
 	# regla de SPA se tragaría /api/... y devolvería el index.html.
 	handle /api/* {

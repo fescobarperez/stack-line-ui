@@ -5,6 +5,7 @@
 // backend del ERP, que valida el JWT de la sesión, agrega la credencial y el
 // usuario, y reenvía a POST /v1/agent/turn.
 import { api } from './client.js';
+import { uuid } from '../lib/uuid.js';
 
 export const RUTA_TURNO = '/api/agent/turn';
 export const TIEMPO_LIMITE_MS = 50000;
@@ -40,7 +41,7 @@ export function crearAgentClient({ http = api, tiempoLimiteMs = TIEMPO_LIMITE_MS
  * conversationKey identifica la conversación en este navegador; el ERP le
  * antepone el usuario de la sesión antes de reenviarla al agente.
  */
-export function armarTurno({ conversationKey, input, nuevaLlave = () => crypto.randomUUID() }) {
+export function armarTurno({ conversationKey, input, nuevaLlave = uuid }) {
   return {
     channel: 'erp',
     conversation_ref: { external_id: conversationKey ?? null },

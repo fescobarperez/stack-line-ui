@@ -134,7 +134,9 @@
     "moreOptions": "Más opciones",
     "satOffline": "SAT-FEL sin conexión",
     "themeDark": "Oscuro",
-    "themeLight": "Claro"
+    "themeLight": "Claro",
+    "notInPlan": "Tu plan no incluye este módulo",
+    "notInPlanDesc": "Para activarlo, contacta a Stackline."
   },
   "search": {
     "placeholder": "Buscar módulos, productos, clientes…",
@@ -1053,5 +1055,19 @@
   "projects": {
     "profit": "Ganancia",
     "empty": "Sin proyectos"
+  },
+  "activate": {
+    "invalid": "El enlace ya no es válido. Pide uno nuevo al administrador de Stackline.",
+    "passRule": "Mínimo 8 caracteres, con letras y números.",
+    "mismatch": "Las contraseñas no coinciden.",
+    "loading": "Revisando el enlace…",
+    "title": "Activa tu cuenta",
+    "toLogin": "Ir al inicio de sesión",
+    "desc": "Hola, {{name}}. Define tu contraseña para entrar a {{company}}.",
+    "password": "Contraseña",
+    "password2": "Repite la contraseña",
+    "saving": "Activando…",
+    "submit": "Activar y continuar",
+    "done": "Cuenta activada. Ingresa con tu nueva contraseña."
   }
 }

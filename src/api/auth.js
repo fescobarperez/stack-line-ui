@@ -15,9 +15,11 @@ function initialsFrom(name) {
 }
 
 // Traduce la respuesta del backend al shape de sesión que espera la UI.
-function toSession({ token, user }, companyCode) {
+function toSession({ token, user, enabledModules }, companyCode) {
   return {
     token,
+    // Módulos del plan de la empresa (ver lib/modules.js).
+    enabledModules: Array.isArray(enabledModules) ? enabledModules : null,
     user: {
       id: user.id,
       name: user.name,
