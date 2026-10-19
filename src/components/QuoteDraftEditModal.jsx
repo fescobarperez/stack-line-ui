@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Autocomplete from './Autocomplete.jsx';
 import DatePicker from './DatePicker.jsx';
 import Button from './Button.jsx';
 import Icon from './Icon.jsx';
-import { updateQuote } from '../api/wave2.js';
+import { updateQuote, getQuoteConditionValues, saveQuoteConditionValues } from '../api/wave2.js';
 import { useTranslation } from 'react-i18next';
 import { formatDimensions } from '../hooks/useQuotes.js';
 
@@ -37,6 +37,15 @@ export function isCustomSize(item) {
   });
 }
 
+/**
+ * Condiciones que define el asesor (p. ej. tiempo de entrega): solo las que
+ * cambiaron, para no reescribir las demás. null = nada que guardar.
+ */
+export function changedConditions(conds) {
+  const cambiadas = (conds || []).filter((c) => c.value.trim() !== c.saved.trim());
+  return cambiadas.length ? cambiadas.map((c) => ({ conditionId: c.conditionId, value: c.value.trim() })) : null;
+}
+
 export default function QuoteDraftEditModal({ quote, onClose, onSaved, pushToast }) {
   const { t } = useTranslation();
   const [validUntil, setValidUntil] = useState(quote.validUntil || '');
@@ -60,13 +69,24 @@ export default function QuoteDraftEditModal({ quote, onClose, onSaved, pushToast
     showToClient: item.showToClient !== false,
   })));
   const [busy, setBusy] = useState(false);
+  // Condiciones comerciales que define el asesor en esta cotización.
+  const [conds, setConds] = useState([]);
+  useEffect(() => {
+    let vigente = true;
+    getQuoteConditionValues(quote.backendId)
+      .then((list) => { if (vigente) setConds((list || []).map((c) => ({ ...c, value: c.value || '', saved: c.value || '' }))); })
+      .catch(() => { /* sin condiciones del asesor: el bloque no aparece */ });
+    return () => { vigente = false; };
+  }, [quote.backendId]);
+  const setCond = (id, value) => setConds((cur) => cur.map((c) => (c.conditionId === id ? { ...c, value } : c)));
   const today = useMemo(localToday, []);
   const setItem = (id, key, value) => setItems((current) => current.map((item) => item.id === id ? { ...item, [key]: value } : item));
   const removeItem = (id) => setItems((current) => current.length > 1 ? current.filter((item) => item.id !== id) : current);
   const valid = Boolean(validUntil)
     && validUntil >= (quote.date || today)
     && items.length > 0
-    && items.every((item) => Number(item.quantity) > 0 && Number(item.unitPrice) >= 0 && Number(item.discount) >= 0 && Number(item.discount) <= 100);
+    && items.every((item) => Number(item.quantity) > 0 && Number(item.unitPrice) >= 0 && Number(item.discount) >= 0 && Number(item.discount) <= 100)
+    && conds.every((c) => c.value.trim());
 
   const save = async () => {
     if (!valid || busy) return;
@@ -91,6 +111,8 @@ export default function QuoteDraftEditModal({ quote, onClose, onSaved, pushToast
           showToClient: item.showToClient,
         })),
       });
+      const cambiadas = changedConditions(conds);
+      if (cambiadas) await saveQuoteConditionValues(quote.backendId, cambiadas);
       onSaved?.(updated);
       pushToast?.(t('quotes.draftUpdated', 'Borrador actualizado'), 'success');
     } catch (err) {
@@ -199,6 +221,26 @@ export default function QuoteDraftEditModal({ quote, onClose, onSaved, pushToast
               </tbody>
             </table>
           </div>
+
+          {conds.length > 0 && (
+            <div className="draft-conditions">
+              <div className="quote-subsection-title">{t('quotes.conditionsTitle', 'Condiciones comerciales')}</div>
+              <div className="cfg-hint">{t('quotes.conditionsHint', 'Las define el asesor en cada cotización; salen así en el PDF. Las demás condiciones son fijas (Configuración › Cotizaciones).')}</div>
+              {conds.map((c) => (
+                <div className="field-group" key={c.conditionId}>
+                  <label className="field-label">{c.title} *</label>
+                  <textarea className={`field-input ${c.value.trim() ? '' : 'is-invalid'}`} rows={2} maxLength={1000}
+                    style={{ resize: 'vertical' }} value={c.value} aria-label={c.title}
+                    onChange={(e) => setCond(c.conditionId, e.target.value)} />
+                  {c.value.trim() !== c.defaultValue.trim() && (
+                    <button type="button" className="tpl-link" onClick={() => setCond(c.conditionId, c.defaultValue)}>
+                      {t('quotes.conditionReset', 'Usar el valor por defecto: «{{v}}»', { v: c.defaultValue })}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="field-group">
             <label className="field-label">{t('quotes.deliveryAddress', 'Dirección de entrega / instalación')}</label>

@@ -6,6 +6,8 @@ import QuoteConditionsEditor from '../components/QuoteConditionsEditor.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import { useTranslation } from 'react-i18next';
+import DefaultChargesEditor from '../components/DefaultChargesEditor.jsx';
+import { parseDefaultCharges, serializeDefaultCharges, validateDefaultCharges, emptyProfit } from '../lib/defaultCharges.js';
 import { listSettings, putSetting, uploadCompanyLogo, getMailSettings, saveMailSettings, testMailSettings } from '../api/wave2.js';
 
 // Clave en company_settings de cada campo. Lo que no esté aquí no se persiste.
@@ -17,6 +19,8 @@ const SETTING_KEYS = {
   priceDisplay: 'quotes.price_display',
   profitBase: 'quotes.profit_base',
   defaultProfitPct: 'quotes.default_profit_pct',
+  // JSON con la lista; el editor la maneja aparte (defaultChargeRows).
+  defaultCharges: 'quotes.default_charges',
   validityDays: 'quotes.validity_days',
   roundingStep: 'quotes.rounding_step', roundingMode: 'quotes.rounding_mode',
   sizeFixedPct: 'quotes.size_fixed_pct', sizeTolerancePct: 'quotes.size_tolerance_pct',
@@ -44,6 +48,7 @@ const MOCK_CONFIG = {
   priceDisplay: 'detailed',
   profitBase: 'total_cost',
   defaultProfitPct: '',
+  defaultCharges: '[]',
   validityDays: '15',
   roundingStep: '0',
   sizeFixedPct: '30',
@@ -125,6 +130,10 @@ export default function Config({ pushToast }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState('empresa');
   const [config, setConfig] = useState(MOCK_CONFIG);
+  // Cargos por defecto: filas del editor; se guardan como JSON en config.defaultCharges.
+  const [cargosDefecto, setCargosDefecto] = useState([]);
+  const [cargosErrores, setCargosErrores] = useState({});
+  const [gananciaDefecto, setGananciaDefecto] = useState(emptyProfit());
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
@@ -143,6 +152,10 @@ export default function Config({ pushToast }) {
           });
           return next;
         });
+        // La ganancia sugerida anterior (quotes.default_profit_pct) pasa a la fila de ganancia.
+        const cargos = parseDefaultCharges(byKey['quotes.default_charges'], byKey['quotes.default_profit_pct'] ?? '');
+        setCargosDefecto(cargos.rows);
+        setGananciaDefecto(cargos.profit);
       })
       .catch(() => { /* sin conexión se queda con los valores por defecto */ });
     return () => { cancelled = true; };
@@ -242,10 +255,20 @@ export default function Config({ pushToast }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    const erroresCargos = validateDefaultCharges(cargosDefecto, gananciaDefecto);
+    setCargosErrores(erroresCargos);
+    if (Object.keys(erroresCargos).length) {
+      setTab('cotizaciones');
+      pushToast?.(t('config.quotes.dcFix', 'Revisa los cargos por defecto marcados'), 'danger');
+      return;
+    }
+    // La ganancia vive ahora en los cargos por defecto: la clave anterior se
+    // vacía para que no reviva una ganancia que se quitó de la lista.
+    const valores = { ...config, defaultCharges: serializeDefaultCharges(cargosDefecto, gananciaDefecto), defaultProfitPct: '' };
     setSaving(true);
     try {
       await Promise.all(Object.entries(SETTING_KEYS).map(([field, key]) =>
-        putSetting(key, { settingValue: String(config[field] ?? ''), category: CATEGORY_OF(key) })));
+        putSetting(key, { settingValue: String(valores[field] ?? ''), category: CATEGORY_OF(key) })));
       // La contraseña en blanco conserva la guardada: el backend solo la
       // reemplaza si viene con algo.
       const guardado = await saveMailSettings({
@@ -409,7 +432,10 @@ export default function Config({ pushToast }) {
           )}
 
           {tab === 'cotizaciones' && (
-            <div className="card cfg-card">
+            // Una tarjeta por sección: presentación, precio, firma y condiciones
+            // son decisiones distintas y juntas se leían como un solo formulario.
+            <div className="cfg-cards">
+              <div className="card cfg-card">
               <Section title={t('config.quotes.presentation', 'Presentación al cliente')} icon="receipt">
                 <Field label={t('config.quotes.validityDays', 'Vigencia por defecto (días)')}
                   hint={t('config.quotes.validityDaysHint', 'Cada cotización nueva vence estos días después de emitida (también las del asistente). En el PDF sale como «3 días · hasta el …». Se puede cambiar la fecha en cada una.')}>
@@ -425,6 +451,8 @@ export default function Config({ pushToast }) {
                     aria-label={t('config.quotes.priceDisplay', 'Presentación de precios')} />
                 </Field>
               </Section>
+              </div>
+              <div className="card cfg-card">
               <Section title={t('config.quotes.pricing', 'Cálculo del precio')} icon="cash">
                 <Field label={t('config.quotes.profitBase', 'La ganancia (%) se calcula sobre')} span={2}
                   hint={t('config.quotes.profitBaseHint', 'Costo total: líneas + gastos operativos + cargos. Costo directo: solo las líneas (mano de obra y materiales); los cargos porcentuales y la ganancia se calculan sobre el mismo costo, sin encadenarse.')}>
@@ -470,13 +498,20 @@ export default function Config({ pushToast }) {
                     value={config.sizeTolerancePct} placeholder="25"
                     onChange={(e) => set('sizeTolerancePct', e.target.value)} />
                 </Field>
-                <Field label={t('config.quotes.defaultProfitPct', 'Ganancia sugerida (%)')}
-                  hint={t('config.quotes.defaultProfitPctHint', 'Cada cotización nueva (también las del asistente) nace con este porcentaje; el vendedor puede cambiarlo en cada una. Vacío = sin ganancia sugerida.')}>
-                  <input className="field-input mono" type="number" min="0" max="1000" step="0.01"
-                    value={config.defaultProfitPct} placeholder="30"
-                    onChange={(e) => set('defaultProfitPct', e.target.value)} />
+              </Section>
+              </div>
+              <div className="card cfg-card">
+              <Section title={t('config.quotes.defaultCharges', 'Cargos por defecto')} icon="tag">
+                <Field span={2}
+                  hint={t('config.quotes.defaultChargesHint', 'Cada cotización nueva (también las del asistente y las que salen de un proyecto) nace con esta ganancia y estos cargos. El asesor los puede cambiar o quitar en cada una, y cambiarlos aquí no toca las que ya existen. Los cargos en % se calculan sobre el total de los productos, sin sumarse entre sí; la ganancia, sobre la base de «Cálculo del precio».')}>
+                  <DefaultChargesEditor rows={cargosDefecto} errors={cargosErrores}
+                    profit={gananciaDefecto} profitBase={config.profitBase === 'direct_cost' ? 'direct_cost' : 'total_cost'}
+                    onProfitChange={(g) => { setGananciaDefecto(g); setCargosErrores({}); }}
+                    onChange={(rows) => { setCargosDefecto(rows); setCargosErrores({}); }} />
                 </Field>
               </Section>
+              </div>
+              <div className="card cfg-card">
               <Section title={t('config.quotes.signature', 'Firma')} icon="edit">
                 <Field label={t('config.quotes.signatureEnabled', 'Firma al final del PDF')}>
                   <Autocomplete value={config.signatureEnabled === 'true' ? 'true' : 'false'} allowClear={false}
@@ -504,12 +539,15 @@ export default function Config({ pushToast }) {
                   </>
                 )}
               </Section>
+              </div>
+              <div className="card cfg-card">
               <Section title={t('config.quotes.conditions', 'Condiciones comerciales')} icon="tag">
                 <Field span={2}
                   hint={t('config.quotes.conditionsHint', 'Salen en orden en la sección «Condiciones comerciales» de cada PDF, después de la forma de pago y el tiempo de entrega de la cotización. Cada condición se guarda por separado.')}>
                   <QuoteConditionsEditor pushToast={pushToast} />
                 </Field>
               </Section>
+              </div>
             </div>
           )}
 

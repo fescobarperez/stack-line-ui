@@ -17,6 +17,11 @@ import QuoteBuilderModal from '../components/QuoteBuilderModal.jsx';
 import QuoteDraftEditModal from '../components/QuoteDraftEditModal.jsx';
 import QuoteChargesPanel from '../components/QuoteChargesPanel.jsx';
 import QuotePlanPanel from '../components/QuotePlanPanel.jsx';
+import QuoteDesignPanel from '../components/QuoteDesignPanel.jsx';
+import TemplateQuoteDialog from '../components/TemplateQuoteDialog.jsx';
+
+// Estados en los que la cotización todavía se arma (los mismos que el backend).
+const EDITABLES = new Set(['borrador', 'draft', 'prospecto', 'abierta']);
 
 const Q       = v  => `Q ${Number(v).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtDate = d  => d
@@ -76,6 +81,11 @@ function QuoteLineName({ line, global = false }) {
           <span className="badge-m3" style={{ marginLeft: 6, color: 'var(--warning, #b26b00)' }}
             title={base ? t('quotes.catalogSizeHint', 'Medida del catálogo: {{size}}', { size: base }) : undefined}>
             {t('quotes.customSize', 'Medida especial')}
+          </span>
+        )}
+        {line.sizePricing === 'template' && (
+          <span className="badge-m3" style={{ marginLeft: 6 }} title={t('templates.calculatedHint', 'Calculada con plantilla: materia prima')}>
+            {t('templates.calculated', 'Calculada')}
           </span>
         )}
         {line.sizePricing === 'calculated' && (
@@ -288,6 +298,8 @@ export default function Quotes({ pushToast }) {
   // Proyecto elegido para el constructor de cotización desde materiales.
   const [builderProject, setBuilderProject] = useState(null);
   const [showDraftEdit, setShowDraftEdit] = useState(false);
+  // Agregar o recalcular una línea con plantilla: null | { item } (item null = nueva).
+  const [tplDialog, setTplDialog] = useState(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
   // Limpia el estado de la ruta tras abrir: si no, recargar o volver atrás
@@ -782,12 +794,19 @@ export default function Quotes({ pushToast }) {
                         </div>
                       </div>
 
+                      <QuoteDesignPanel quoteId={selQuote.backendId} />
+
                       <div className="quote-subsection">
                         <div className="quote-subsection-heading">
                           <div>
                             <div className="quote-subsection-title">{t('quotes.products', 'Productos')}</div>
                             <div className="quote-subsection-description">{t('quotes.productsHint', 'Líneas cotizadas al cliente')}</div>
                           </div>
+                          {EDITABLES.has(selQuote.status) && (
+                            <Button size="sm" variant="ghost" icon="plus" onClick={() => setTplDialog({ item: null })}>
+                              {t('templates.fromTemplate', 'Agregar desde plantilla')}
+                            </Button>
+                          )}
                         </div>
                         <div className="quote-subsection-card">
                     <table className="data-table tbl-stack quote-table">
@@ -804,7 +823,14 @@ export default function Quotes({ pushToast }) {
                       <tbody>
                         {lines.map(l => (
                           <tr key={l.id}>
-                            <td className="stack-title"><QuoteLineName line={l} global={selQuote.priceDisplay === 'global'} /></td>
+                            <td className="stack-title">
+                              <QuoteLineName line={l} global={selQuote.priceDisplay === 'global'} />
+                              {l.templateId && EDITABLES.has(selQuote.status) && (
+                                <button type="button" className="tpl-link" onClick={() => setTplDialog({ item: l })}>
+                                  {t('templates.recalc', 'Recalcular')}
+                                </button>
+                              )}
+                            </td>
                             <td data-label={t('quotes.qty', 'Cant.')} style={{ textAlign: 'center' }}>{l.qty}</td>
                             <td data-label="UOM" className="hide-tablet" style={{ textAlign: 'center' }}><span className="badge-m3">{l.uom}</span></td>
                             <td data-label={t('quotes.unitPriceShort', 'P. Unit.')} className="num">{Q(l.unitPrice)}</td>
@@ -1006,6 +1032,22 @@ export default function Quotes({ pushToast }) {
             </div>
           </div>
         </>
+      )}
+
+      {tplDialog && selQuote && (
+        <TemplateQuoteDialog
+          quoteId={selQuote.backendId}
+          item={tplDialog.item}
+          pushToast={pushToast}
+          onClose={() => setTplDialog(null)}
+          onSaved={(full) => {
+            setSelected(mapQuote(full));
+            setTplDialog(null);
+            setSelectedPlanBalanced(null);
+            setChargesVersion((version) => version + 1);
+            reloadQuotes();
+          }}
+        />
       )}
 
       {showDraftEdit && selQuote && selQuote.status === 'borrador' && (

@@ -6,11 +6,13 @@ import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 // Stackline — Inventory module
-import React, { useState as useStateInv, useMemo as useMemoInv } from 'react';
+import React, { useState as useStateInv, useMemo as useMemoInv, useEffect as useEffectInv, useCallback as useCallbackInv } from 'react';
 import { useTranslation } from 'react-i18next';
 import { dimensionsPayload, useProducts, useCategories } from '../hooks/useCatalog.js';
 import DimensionsFields from '../components/DimensionsFields.jsx';
 import SupplierPriceModal from '../components/SupplierPriceModal.jsx';
+import ProductReviewPanel from '../components/ProductReviewPanel.jsx';
+import { productReviewCount } from '../api/catalog.js';
 import { useSuppliers, useBranches } from '../hooks/useMasters.js';
 import { useStockMovements } from '../hooks/useOperations.js';
 import { fechaISO } from '../lib/fechas.js';
@@ -62,6 +64,12 @@ function InventoryModule({ pushToast }) {
   const [form, setForm] = useStateInv(EMPTY_FORM);
   const [editingId, setEditingId] = useStateInv(null);
   const [saving, setSaving] = useStateInv(false);
+  // Productos que propuso el asistente y esperan precio (no están en PRODUCTS).
+  const [porRevisar, setPorRevisar] = useStateInv(0);
+  const cargarPorRevisar = useCallbackInv(() => {
+    productReviewCount().then((r) => setPorRevisar(Number(r?.pending) || 0)).catch(() => setPorRevisar(0));
+  }, []);
+  useEffectInv(() => { cargarPorRevisar(); }, [cargarPorRevisar]);
 
   const filtered = useMemoInv(() => {
     let p = PRODUCTS;
@@ -262,6 +270,9 @@ function InventoryModule({ pushToast }) {
         <div className={`tab ${tab==='productos'?'active':''}`} onClick={() => setTab('productos')}>
           {t('inventory.tabs.products', 'Productos')} <span className="count">{PRODUCTS.length}</span>
         </div>
+        <div className={`tab ${tab==='revision'?'active':''}`} onClick={() => setTab('revision')}>
+          {t('productReview.tab', 'Por revisar')} <span className="count" style={porRevisar ? { color: 'var(--warning)' } : undefined}>{porRevisar}</span>
+        </div>
         <div className={`tab ${tab==='kardex'?'active':''}`} onClick={() => setTab('kardex')}>
           {t('inventory.tabs.movements', 'Kárdex / Movimientos')} <span className="count">{STOCK_MOVEMENTS.length}</span>
         </div>
@@ -324,6 +335,14 @@ function InventoryModule({ pushToast }) {
             emptyIcon="box"
           />
         </>
+      )}
+
+      {tab === 'revision' && (
+        <ProductReviewPanel
+          categories={CATEGORIES.filter((c) => c.id !== 'todos')}
+          pushToast={pushToast}
+          onChanged={() => { cargarPorRevisar(); reloadProducts(); }}
+        />
       )}
 
       {tab === 'kardex' && (

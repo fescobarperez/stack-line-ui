@@ -28,6 +28,8 @@ import Inventory from './modules/Inventory.jsx';
 import Catalog from './modules/Catalog.jsx';
 import AssistantWidget from './assistant/AssistantWidget.jsx';
 import { screenEnabled, moduleEnabled } from './lib/modules.js';
+import { navCounter } from './lib/navCounters.js';
+import { useNavCounters } from './hooks/useNavCounters.js';
 import Reports from './modules/Reports.jsx';
 import Maintenance from './modules/Maintenance.jsx';
 import Clients from './modules/Clients.jsx';
@@ -65,29 +67,29 @@ const NAV = [
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
       { id: 'pos', label: 'Punto de venta', icon: 'pos', kbd: '⌘P' },
-      { id: 'billing',  label: 'Facturación',          icon: 'receipt', badge: 142 },
+      { id: 'billing',  label: 'Facturación',          icon: 'receipt' },
       { id: 'fel',      label: 'FEL · SAT',            icon: 'check'              },
-      { id: 'returns',  label: 'Devoluciones',          icon: 'return',  badge: 1   },
+      { id: 'returns',  label: 'Devoluciones',          icon: 'return'  },
       { id: 'cash', label: 'Caja y Cortes', icon: 'cash' },
     ],
   },
   {
     section: 'INVENTARIO',
     items: [
-      { id: 'inventory',  label: 'Productos y stock', icon: 'box',      alert: 5 },
+      { id: 'inventory',  label: 'Productos y stock', icon: 'box'      },
       { id: 'rawmaterials', label: 'Materia prima', icon: 'folder' },
       { id: 'variants',    label: 'Variantes',              icon: 'settings'          },
       { id: 'stockcount', label: 'Conteo físico',          icon: 'check'             },
       { id: 'uom',        label: 'Unidades de Medida',     icon: 'settings'          },
-      { id: 'purchases',  label: 'Compras y OCs',          icon: 'truck',    badge: 2 },
-      { id: 'transfers',  label: 'Transferencias',        icon: 'transfer', badge: 1 },
+      { id: 'purchases',  label: 'Compras y OCs',          icon: 'truck'    },
+      { id: 'transfers',  label: 'Transferencias',        icon: 'transfer' },
     ],
   },
   {
     section: 'ANÁLISIS',
     items: [
       { id: 'reports', label: 'Reportería',  icon: 'chart'    },
-      { id: 'quotes',      label: 'Cotizaciones', icon: 'receipt', badge: 2 },
+      { id: 'quotes',      label: 'Cotizaciones', icon: 'receipt' },
       { id: 'projects',    label: 'Proyectos',    icon: 'box'              },
       { id: 'promotions',  label: 'Promociones',  icon: 'tag'              },
     ],
@@ -97,8 +99,8 @@ const NAV = [
     items: [
       { id: 'clients', label: 'Clientes',     icon: 'user' },
       { id: 'loyalty', label: 'Fidelización', icon: 'tag'  },
-      { id: 'cxc',     label: 'Cuentas por Cobrar', icon: 'card', alert: 3 },
-      { id: 'cxp',     label: 'Cuentas por Pagar',  icon: 'receipt', alert: 2 },
+      { id: 'cxc',     label: 'Cuentas por Cobrar', icon: 'card' },
+      { id: 'cxp',     label: 'Cuentas por Pagar',  icon: 'receipt' },
     ],
   },
   {
@@ -181,6 +183,8 @@ export default function App({ session, onLogout }) {
   const location = useLocation();
   const { t, i18n } = useTranslation();
   const route = location.pathname.slice(1) || 'dashboard';
+  // Pendientes reales por opción del menú (GET /api/nav/counters).
+  const { counters: navCounters } = useNavCounters(route);
 
   const [toasts, setToasts] = useState([]);
   const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
@@ -329,8 +333,10 @@ export default function App({ session, onLogout }) {
                   >
                     <Icon name={it.icon} size={24} fill={route === it.id} className="icon" />
                     <span className="nav-item-label">{t(`nav.${it.id}`, it.label)}</span>
-                    {it.alert && <span className="badge alert">{it.alert}</span>}
-                    {it.badge && !it.alert && <span className="badge">{it.badge}</span>}
+                    {(() => {
+                      const c = navCounter(it.id, navCounters);
+                      return c && <span className={`badge${c.alert ? ' alert' : ''}`}>{c.text}</span>;
+                    })()}
                     {it.kbd && route !== it.id && <span className="badge mono">{it.kbd}</span>}
                   </div>
                 ))}

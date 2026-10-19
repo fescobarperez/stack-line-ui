@@ -1,7 +1,9 @@
 // Mantenimiento de condiciones comerciales: textos fijos de la empresa que
 // salen, en orden, en la sección «Condiciones comerciales» de cada PDF de
 // cotización (métodos de pago, garantía, modificaciones…). Cada fila se guarda
-// sola: no depende del botón «Guardar cambios» de Configuración.
+// sola: no depende del botón «Guardar cambios» de Configuración. Una condición
+// «la define el asesor» (p. ej. tiempo de entrega) usa este texto como valor
+// por defecto y el asesor lo cambia en cada cotización, en «Editar borrador».
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Button from './Button.jsx';
@@ -12,7 +14,7 @@ import {
 
 let secuencia = 0;
 // `key` estable para React: el id no existe hasta guardar y el índice cambia al reordenar.
-const nueva = () => ({ id: null, key: `n${++secuencia}`, title: '', body: '', active: true, dirty: true });
+const nueva = () => ({ id: null, key: `n${++secuencia}`, title: '', body: '', active: true, perQuote: false, dirty: true });
 const conClave = (c) => ({ ...c, key: c.key ?? `c${c.id}` });
 
 /** Fila válida para guardar: título y texto con contenido. */
@@ -53,7 +55,7 @@ export default function QuoteConditionsEditor({ pushToast }) {
     }
     setBusy(true);
     try {
-      const body = { title: c.title.trim(), body: c.body.trim(), active: c.active, sortOrder: i + 1 };
+      const body = { title: c.title.trim(), body: c.body.trim(), active: c.active, perQuote: Boolean(c.perQuote), sortOrder: i + 1 };
       const saved = c.id ? await updateQuoteCondition(c.id, body) : await createQuoteCondition(body);
       setRows((cur) => cur.map((r, k) => (k === i ? { ...saved, key: r.key, dirty: false } : r)));
       pushToast?.(t('quoteConditions.saved', 'Condición guardada'), 'success');
@@ -86,7 +88,7 @@ export default function QuoteConditionsEditor({ pushToast }) {
     setBusy(true);
     try {
       await Promise.all(next.map((c, k) => (c.id && !c.dirty
-        ? updateQuoteCondition(c.id, { title: c.title, body: c.body, active: c.active, sortOrder: k + 1 })
+        ? updateQuoteCondition(c.id, { title: c.title, body: c.body, active: c.active, perQuote: Boolean(c.perQuote), sortOrder: k + 1 })
         : null)));
     } catch (err) {
       pushToast?.(t('quoteConditions.orderFailed', 'No se pudo guardar el orden: ') + err.message, 'danger');
@@ -114,6 +116,7 @@ export default function QuoteConditionsEditor({ pushToast }) {
                 <span className="quote-condition-order">{i + 1}.</span>
                 <span className="quote-condition-title">{c.title?.trim() || t('quoteConditions.new', 'Nueva condición')}</span>
                 {!c.active && <span className="badge-m3">{t('quoteConditions.inactive', 'Inactiva')}</span>}
+                {c.perQuote && <span className="badge-m3 accent">{t('quoteConditions.perQuoteBadge', 'Por cotización')}</span>}
                 {c.dirty && <span className="quote-condition-dirty" title={t('quoteConditions.unsaved', 'Cambios sin guardar')}>●</span>}
               </button>
               <div className="quote-condition-actions">
@@ -134,12 +137,19 @@ export default function QuoteConditionsEditor({ pushToast }) {
                 <input className="field-input" placeholder={t('quoteConditions.titlePlaceholder', 'Título (p. ej. Garantía)')} maxLength={80}
                   value={c.title} onChange={(e) => set(i, 'title', e.target.value)} />
                 <textarea className="field-input" rows={3} maxLength={1000}
-                  placeholder={t('quoteConditions.bodyPlaceholder', 'Texto que sale en el PDF')}
+                  placeholder={c.perQuote
+                    ? t('quoteConditions.defaultPlaceholder', 'Valor por defecto (el asesor lo cambia en cada cotización)')
+                    : t('quoteConditions.bodyPlaceholder', 'Texto que sale en el PDF')}
                   value={c.body} onChange={(e) => set(i, 'body', e.target.value)} />
                 <div className="quote-condition-foot">
                   <label className="body-small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <input type="checkbox" checked={c.active} onChange={(e) => set(i, 'active', e.target.checked)} />
                     {t('quoteConditions.active', 'Activa (sale en el PDF)')}
+                  </label>
+                  <label className="body-small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                    title={t('quoteConditions.perQuoteHint', 'Cada cotización nace con este texto y el asesor lo cambia en «Editar borrador».')}>
+                    <input type="checkbox" checked={Boolean(c.perQuote)} onChange={(e) => set(i, 'perQuote', e.target.checked)} />
+                    {t('quoteConditions.perQuote', 'La define el asesor en cada cotización')}
                   </label>
                   <Button type="button" size="sm" variant={c.dirty ? 'accent' : 'outlined'} disabled={busy || !c.dirty}
                     onClick={() => guardar(i)}>

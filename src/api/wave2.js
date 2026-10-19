@@ -117,9 +117,15 @@ export const listQuoteConditions = () => api.get('/api/quote-conditions');
 export const createQuoteCondition = (data) => api.post('/api/quote-conditions', data);
 export const updateQuoteCondition = (id, data) => api.put(`/api/quote-conditions/${id}`, data);
 export const deleteQuoteCondition = (id) => api.del(`/api/quote-conditions/${id}`);
+// Las que define el asesor en una cotización: [{ conditionId, title, value, defaultValue }].
+export const getQuoteConditionValues = (quoteId) => api.get(`/api/quotes/${quoteId}/conditions`);
+export const saveQuoteConditionValues = (quoteId, values) => api.put(`/api/quotes/${quoteId}/conditions`, { values });
 
 /** El PDF de la cotización (generado en el backend) como Blob. */
 export const getQuotePdf = (id) => api.get(`/api/quotes/${id}/pdf`, { blob: true });
+// Diseño que el cliente aprobó con el asistente (ficha + render). 404 si no tiene.
+export const getQuoteDesign = (id) => api.get(`/api/quotes/${id}/design`, { silent: true });
+export const getQuoteDesignImage = (id) => api.get(`/api/quotes/${id}/design/image`, { blob: true, silent: true });
 /** Reenvía por WhatsApp la cotización enviada (solo las que nacieron por WhatsApp). */
 export const resendQuoteWhatsapp = (id) => api.post(`/api/quotes/${id}/send-whatsapp`, {});
 export const deleteSetting = (key) => api.del(`/api/settings/${encodeURIComponent(key)}`);

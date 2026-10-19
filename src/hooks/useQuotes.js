@@ -1,5 +1,6 @@
 // Hooks de cotizaciones a cliente y RFQ a proveedor. 100% backend (sin mock).
 import { useState, useEffect, useCallback } from 'react';
+import { parseConfig } from '../lib/templates.js';
 import { listQuotes } from '../api/wave2.js';
 
 function mapItems(items) {
@@ -18,7 +19,12 @@ function mapItems(items) {
     customSize: Boolean(i.customSize),
     showToClient: i.showToClient !== false,
     sizePricing: i.sizePricing || null,
-  }));
+    // Línea calculada con plantilla: su nombre es la descripción completa
+    // («Pérgola 3 × 4.5 m · Techo: Shingle») y guarda con qué se calculó.
+    description: i.description || null,
+    templateId: i.templateId ?? null,
+    templateConfig: parseConfig(i.templateConfig),
+  })).map((l) => (l.templateId && l.description ? { ...l, name: l.description } : l));
 }
 
 /** «2 × 1.5 × 0.6 m», o '' si la línea no tiene medidas. */

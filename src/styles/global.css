@@ -5808,3 +5808,116 @@ table.tbl tfoot td {
   font: 500 14px/20px var(--font-sans); letter-spacing: .1px;
   color: var(--md-sys-color-on-surface-variant);
 }
+
+/* ── Productos por revisar (los propone el asistente de WhatsApp) ── */
+.review-intro { margin: 0 0 12px; }
+.review-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.review-card { display: flex; flex-direction: column; }
+.review-card .card-head h3 { margin: 0; }
+.review-body { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+.review-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; }
+.review-notes p { margin: 4px 0 0; white-space: pre-wrap; }
+.review-actions {
+  display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+.review-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 32px 16px; }
+.review-modal { width: min(440px, calc(100vw - 32px)); }
+.review-form { display: flex; flex-direction: column; gap: 12px; }
+.review-form .field-error { color: var(--md-sys-color-error); font: 400 12px/16px var(--font-sans); }
+@media (max-width: 600px) { .review-facts { grid-template-columns: 1fr 1fr; } }
+
+/* ── Diseño del cliente en la cotización (render aprobado por WhatsApp) ── */
+.quote-design { display: grid; grid-template-columns: minmax(0, 260px) 1fr; gap: 16px; align-items: start; }
+.quote-design-image {
+  position: relative; padding: 0; border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 12px; overflow: hidden; background: none; cursor: zoom-in;
+}
+.quote-design-image img { display: block; width: 100%; height: auto; }
+.quote-design-tag {
+  position: absolute; left: 8px; bottom: 8px; padding: 2px 8px; border-radius: 8px;
+  background: var(--md-sys-color-inverse-surface); color: var(--md-sys-color-inverse-on-surface);
+  font: 500 11px/16px var(--font-sans);
+}
+.quote-design-modal { width: min(900px, calc(100vw - 32px)); }
+.quote-design-full { display: block; width: 100%; height: auto; border-radius: 8px; }
+@media (max-width: 720px) { .quote-design { grid-template-columns: 1fr; } }
+
+/* ── Plantillas de cálculo: editor (Mantenimientos) y cálculo en la cotización ── */
+.modal.tpl-editor { width: min(1100px, calc(100vw - 32px)); max-height: calc(100vh - 48px); display: flex; flex-direction: column; }
+.modal.tpl-quote { width: min(820px, calc(100vw - 32px)); max-height: calc(100vh - 48px); display: flex; flex-direction: column; }
+.tpl-body { display: flex; flex-direction: column; gap: 20px; }
+.tpl-section { display: flex; flex-direction: column; gap: 8px; }
+.tpl-section + .tpl-section { border-top: 1px solid var(--md-sys-color-outline-variant); padding-top: 16px; }
+.tpl-section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.tpl-section-head h4 { margin: 0; font: 500 16px/24px var(--font-sans); }
+.tpl-section-head .cfg-hint { margin: 2px 0 0; }
+.tpl-table { display: flex; flex-direction: column; gap: 6px; }
+.tpl-row { display: grid; gap: 8px; align-items: start; }
+.tpl-head { font: 500 12px/16px var(--font-sans); color: var(--muted); }
+.tpl-params { grid-template-columns: 1.4fr 1.1fr 0.6fr 0.6fr 0.6fr 0.7fr 40px; }
+.tpl-components { grid-template-columns: 1.6fr 1.6fr 0.6fr 0.9fr 1.2fr 40px; }
+.tpl-charges { grid-template-columns: 1.3fr 1.5fr 1fr 1.2fr 40px; }
+.tpl-option-head { grid-template-columns: 1.3fr 1fr auto 40px; align-items: center; }
+.tpl-choice { grid-template-columns: 1fr 0.9fr 1.6fr 1.3fr auto 40px; align-items: center; padding-left: 16px; }
+.tpl-option { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid var(--md-sys-color-outline-variant); border-radius: 12px; }
+.tpl-preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px 12px; }
+.tpl-presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.tpl-check { display: inline-flex; align-items: center; gap: 6px; font: 400 14px/20px var(--font-sans); white-space: nowrap; }
+.tpl-check.tpl-small { font: 400 12px/16px var(--font-sans); margin-top: 4px; color: var(--muted); }
+.tpl-err { font: 400 12px/16px var(--font-sans); color: var(--danger); margin-top: 2px; }
+.field-input.is-invalid { border-color: var(--danger); }
+.tpl-calc { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.tpl-calc-desc { font: 500 14px/20px var(--font-sans); }
+.tpl-calc-charge td { color: var(--muted); }
+.tpl-calc-totals { display: flex; flex-wrap: wrap; gap: 16px; justify-content: flex-end; font: 400 14px/20px var(--font-sans); }
+.tpl-warn { color: var(--warning); }
+.tpl-preview { background: var(--surface-2); border-radius: 12px; padding: 16px; }
+.tpl-link {
+  display: inline-block; margin-top: 2px; padding: 0; border: 0; background: none; cursor: pointer;
+  color: var(--accent); font: 500 12px/16px var(--font-sans);
+}
+.tpl-link:hover { text-decoration: underline; }
+@media (max-width: 900px) {
+  .tpl-head { display: none; }
+  .tpl-params, .tpl-components, .tpl-charges, .tpl-choice, .tpl-option-head { grid-template-columns: 1fr 1fr; padding-left: 0; }
+}
+.tpl-cell-label { display: none; }
+.tpl-section-head { flex-wrap: wrap; }
+.tpl-section-head > .btn { flex: none; }
+@media (max-width: 900px) {
+  .tpl-cell-label { display: block; font: 500 12px/16px var(--font-sans); color: var(--muted); margin-bottom: 2px; }
+  .tpl-row { padding-bottom: 8px; border-bottom: 1px solid var(--md-sys-color-outline-variant); }
+}
+.modal.tpl-raw { width: min(560px, calc(100vw - 32px)); }
+/* Va encima del editor de plantillas, que ya es un modal. */
+.modal-overlay.tpl-raw-overlay { z-index: 1100; }
+.tpl-section-head > div { flex: 1 1 280px; min-width: 0; }
+.tpl-head-actions { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+
+/* Configuración › Cotizaciones: una tarjeta por sección. */
+.cfg-cards { display: flex; flex-direction: column; gap: 16px; }
+.cfg-cards .cfg-section { margin-bottom: 0; }
+
+/* Configuración › Cotizaciones › Cargos por defecto */
+.dc-editor { display: flex; flex-direction: column; gap: 8px; }
+.dc-row { display: grid; grid-template-columns: 1.5fr 1.4fr 1fr 0.7fr 150px; gap: 8px; align-items: start; }
+.dc-head > span { text-align: left; }
+.dc-head > .dc-amount-head { text-align: right; padding-right: 44px; }
+.dc-head { font: 500 12px/16px var(--font-sans); color: var(--muted); }
+.dc-label { display: none; }
+.dc-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-height: var(--control-h, 40px); }
+.dc-amount { min-width: 96px; text-align: right; color: var(--muted); font: 400 12px/16px var(--font-mono); }
+.dc-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+@media (max-width: 900px) {
+  .dc-head { display: none; }
+  .dc-row { grid-template-columns: 1fr 1fr; padding-bottom: 8px; border-bottom: 1px solid var(--md-sys-color-outline-variant); }
+  .dc-label { display: block; font: 500 12px/16px var(--font-sans); color: var(--muted); margin-bottom: 2px; }
+}
+.dc-profit { padding: 8px 0; border-bottom: 1px dashed var(--md-sys-color-outline-variant); }
+.dc-profit-name { display: flex; align-items: center; min-height: var(--control-h, 40px); font: 500 14px/20px var(--font-sans); }
+.dc-profit-hint { display: flex; align-items: center; min-height: var(--control-h, 40px); font: 400 12px/16px var(--font-sans); color: var(--muted); }
+.dc-spacer { width: 40px; }
+
+/* Editar borrador: condiciones comerciales que define el asesor */
+.draft-conditions { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 8px; padding: 12px 16px; border: 1px solid var(--md-sys-color-outline-variant); border-radius: 12px; }
