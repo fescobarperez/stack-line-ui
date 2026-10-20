@@ -131,6 +131,7 @@
     "accessDeniedDesc": "Tu rol no tiene permiso para ver este módulo.",
     "openMenu": "Menú",
     "closeMenu": "Cerrar menú",
+    "expandMenu": "Expandir menú",
     "moreOptions": "Más opciones",
     "satOffline": "SAT-FEL sin conexión",
     "themeDark": "Oscuro",
@@ -384,7 +385,9 @@
     },
     "generalData": "Datos generales",
     "editProduct": "Editar producto",
-    "newAdjustment": "Nuevo ajuste"
+    "newAdjustment": "Nuevo ajuste",
+    "stockByBranch": "Stock por sucursal",
+    "stockError": "No se pudieron cargar las existencias."
   },
   "clients": {
     "title": "Clientes",

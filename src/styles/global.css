@@ -13,6 +13,11 @@
   --md-sys-color-on-primary: #FFFFFF;
   --md-sys-color-primary-container: #FFD9DF;
   --md-sys-color-on-primary-container: #380013;
+  /* Fixed — mismos tonos de la paleta vino en claro y oscuro (no se
+     redefinen en [data-theme="dark"]): 90 / 10 / 30. */
+  --md-sys-color-primary-fixed: #FFD9DF;
+  --md-sys-color-on-primary-fixed: #380013;
+  --md-sys-color-on-primary-fixed-variant: #731C37;
 
   /* Secondary — gris con sesgo vino. Tono 86 en el container. */
   --md-sys-color-secondary: #695B5D;
@@ -355,6 +360,16 @@ html, body {
   flex: none;
   display: block;
 }
+/* Riel: el logo expande el menú. Mismo cuadro que el logo, sin fondo propio. */
+.drawer-mark-btn {
+  display: block; padding: 0; margin: 0;
+  background: none; border: none; color: inherit;
+  border-radius: var(--shape-sm);
+  cursor: pointer;
+  transition: opacity var(--dur-short) var(--ease-standard);
+}
+.drawer-mark-btn:hover { opacity: .8; }
+.drawer-mark-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 /* Wordmark del drawer — excepción declarada a la escala (cara de marca).
    Antes se llamaba .drawer-title y lo anulaba el título de drawer de más abajo. */
 .drawer-wordmark {
@@ -372,48 +387,60 @@ html, body {
   margin-top: 1px;
 }
 
-.sidebar-org {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
-}
-/* Selector de organización/sucursal — campo outlined M3 (shape-md) */
-.sidebar-org-btn {
-  width: 100%;
-  background: transparent;
-  border: 1px solid var(--md-sys-color-outline);
-  border-radius: var(--shape-md);
-  padding: 8px 12px;
-  display: flex; align-items: center; gap: 10px;
-  cursor: pointer;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  transition: background var(--dur-short) var(--ease-standard);
-}
-.sidebar-org-btn:hover { background: var(--surface-2); }
-.sidebar-org-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--success);
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--success) 20%, transparent);
-}
-/* title-small — nombre de sucursal */
-.sidebar-org-name { font: 500 14px/20px var(--font-sans); letter-spacing: 0.1px; flex: 1; }
-.sidebar-org-arrow { color: var(--muted); font-size: 11px; }
-
 .sidebar-nav {
   padding: 8px 12px;
   flex: 1;
   overflow-y: auto;
+  /* Se desplaza con rueda, touch o teclado, pero sin barra visible. */
+  scrollbar-width: none;
 }
-/* Section header M3 — label-medium, sentence case. Las etiquetas venían en
-   mayúsculas desde i18n; ahora el texto va tal cual y el CSS no lo transforma. */
+.sidebar-nav::-webkit-scrollbar { display: none; }
+/* Encabezado de sección — label-small en mayúsculas con tracking: se lee como
+   categoría y no compite con las opciones. Es un botón (pliega la sección). */
+.nav-group + .nav-group {
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  margin-top: 8px;
+  padding-top: 4px;
+}
 .nav-section {
-  padding: 16px 16px 8px;
-  font: 500 12px/16px var(--font-sans);
-  letter-spacing: 0.5px;
-  text-transform: none;
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  padding: 12px 8px 8px 16px;
+  margin: 0;
+  background: none; border: none;
+  font: 500 11px/16px var(--font-sans);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  text-align: left;
   color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  user-select: none;
 }
+.nav-section .nav-section-label { flex: 1; min-width: 0; }
+.nav-section.current { color: var(--md-sys-color-on-surface); }
+.nav-section:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; border-radius: var(--shape-sm); }
+/* Suma de pendientes de la sección plegada: mismo estilo que el contador de la opción. */
+.nav-section-count {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .5px;
+  text-transform: none;
+}
+.nav-section-count.alert { color: var(--md-sys-color-error); }
+.nav-section-chevron {
+  width: 32px; height: 32px; flex: none;
+  display: grid; place-items: center;
+  border-radius: var(--shape-full);
+  position: relative; overflow: hidden; isolation: isolate;
+  transition: transform var(--dur-short) var(--ease-standard);
+}
+.nav-section-chevron.closed { transform: rotate(-90deg); }
+.nav-section-chevron::after {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: currentColor; opacity: 0;
+  transition: opacity var(--dur-short) var(--ease-standard);
+}
+.nav-section:hover .nav-section-chevron::after { opacity: .08; }
+
 /* Nav item M3 — pill 56px, active indicator = secondary-container, state layer */
 .nav-item {
   display: flex;
@@ -2838,7 +2865,6 @@ textarea.field-input { height: auto; min-height: var(--control-h); }
   padding-right: 8px;
 }
 .app[data-sidebar="collapsed"] .sidebar-brand-text,
-.app[data-sidebar="collapsed"] .sidebar-org,
 .app[data-sidebar="collapsed"] .nav-item-label,
 .app[data-sidebar="collapsed"] .nav-item .badge,
 .app[data-sidebar="collapsed"] .sidebar-footer .user-info,
@@ -2846,7 +2872,10 @@ textarea.field-input { height: auto; min-height: var(--control-h); }
 .app[data-sidebar="collapsed"] .nav-section-label {
   display: none;
 }
+.app[data-sidebar="collapsed"] .nav-group + .nav-group { border-top: none; margin-top: 0; padding-top: 0; }
+.app[data-sidebar="collapsed"] .nav-section > * { display: none; }
 .app[data-sidebar="collapsed"] .nav-section {
+  width: calc(100% - 16px); /* descuenta el margen lateral: si no, se sale a la derecha */
   height: 1px;
   padding: 0;
   margin: 6px 8px;
@@ -5921,3 +5950,99 @@ table.tbl tfoot td {
 
 /* Editar borrador: condiciones comerciales que define el asesor */
 .draft-conditions { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 8px; padding: 12px 16px; border: 1px solid var(--md-sys-color-outline-variant); border-radius: 12px; }
+
+/* ═════ EXPERIMENTO: drawer y top bar en vino ═════
+   Solo tonos de la paleta vino (roles M3 fixed, iguales en claro y oscuro).
+   Para revertir, borrar el bloque.
+   Los paneles que se abren desde la barra (notificaciones, menú «más») quedan
+   con sus colores de superficie: se excluyen con :not(… *). */
+.sidebar, .topbar {
+  /* Vino tono 30 (fixed): igual en claro y oscuro. El encabezado del drawer
+     baja hacia el tono 10 para separar la marca del menú. */
+  --chrome-bg: var(--md-sys-color-on-primary-fixed-variant);
+  --chrome-head: color-mix(in oklab, var(--md-sys-color-on-primary-fixed-variant) 72%, var(--md-sys-color-on-primary-fixed));
+  --chrome-fg: var(--md-sys-color-on-primary);
+  --chrome-fg-2: var(--md-sys-color-primary-fixed);
+  --chrome-active-bg: var(--md-sys-color-primary-fixed);
+  --chrome-active-fg: var(--md-sys-color-on-primary-fixed);
+  --chrome-line: color-mix(in oklab, var(--md-sys-color-primary-fixed) 14%, transparent);
+  /* Zona de opciones del drawer: ~2 tonos más clara que encabezado y pie. */
+  --chrome-nav: color-mix(in oklab, var(--md-sys-color-on-primary-fixed-variant) 92%, var(--md-sys-color-primary-fixed));
+  --chrome-card: color-mix(in oklab, var(--md-sys-color-on-primary-fixed-variant) 65%, var(--md-sys-color-primary-fixed));
+}
+/* En oscuro on-primary es vino: el texto pasa al rosa fixed. */
+[data-theme="dark"] .sidebar, [data-theme="dark"] .topbar {
+  --chrome-fg: var(--md-sys-color-primary-fixed);
+}
+
+.sidebar, .topbar {
+  background: var(--chrome-bg);
+  border-color: var(--chrome-bg);
+  color: var(--chrome-fg);
+}
+
+/* Drawer */
+.sidebar .sidebar-brand { border-bottom-color: var(--chrome-line); background: var(--chrome-head); }
+.sidebar .sidebar-footer { border-top-color: var(--chrome-line); }
+.sidebar .sidebar-nav { background: var(--chrome-nav); }
+.sidebar .drawer-mark,
+.sidebar .drawer-wordmark { color: var(--chrome-fg); }
+.sidebar .wm-l { color: var(--chrome-fg-2); }
+.sidebar .sidebar-brand .tier,
+.sidebar .user-info .rl { color: var(--chrome-fg-2); }
+.sidebar .nav-section { color: color-mix(in oklab, var(--chrome-fg-2) 72%, transparent); }
+.sidebar .nav-section.current { color: var(--chrome-fg); }
+.sidebar .nav-group + .nav-group { border-top-color: var(--chrome-line); }
+/* Opciones de la sección abierta dentro de un card ~3 tonos más claro.
+   En el riel no aplica: ahí se ven todos los íconos sin agrupar. */
+.sidebar .nav-group-items {
+  background: var(--chrome-card);
+  border-radius: var(--shape-xl);
+  padding: 4px;
+  margin: 0 0 8px;
+}
+.app[data-sidebar="collapsed"] .sidebar .nav-group-items { background: none; padding: 0; margin: 0; }
+.sidebar .nav-section-count.alert {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  border-radius: var(--shape-full);
+  padding: 0 6px; min-width: 20px; text-align: center;
+}
+.sidebar .nav-item,
+.sidebar .nav-item .icon,
+.sidebar .nav-item .badge,
+.sidebar .nav-item .badge.mono { color: var(--chrome-fg); }
+.sidebar .nav-item::after { background: var(--chrome-fg); }
+.sidebar .nav-item.active,
+.sidebar .nav-item.active .icon,
+.sidebar .nav-item.active .badge { background: var(--chrome-active-bg); color: var(--chrome-active-fg); }
+/* Alertas (stock bajo, vencidas): píldora error-container; el texto rojo
+   solo no se distingue sobre el vinotinto. */
+.sidebar .nav-item .badge.alert {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  border-radius: var(--shape-full);
+  padding: 0 6px; min-width: 20px; text-align: center;
+}
+.sidebar .nav-item.active .badge.alert {
+  background: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
+}
+.sidebar .avatar { background: var(--chrome-active-bg); color: var(--chrome-active-fg); }
+.sidebar .icon-btn,
+.sidebar .icon-btn:hover { color: var(--chrome-fg); }
+
+/* Top bar */
+.topbar .icon-btn:not(.notif-panel *):not(.topbar-more-panel *),
+.topbar .icon-btn:not(.notif-panel *):not(.topbar-more-panel *):hover { color: var(--chrome-fg); }
+.topbar .icon-btn-badge { box-shadow: 0 0 0 2px var(--chrome-bg); }
+.topbar .topbar-lang { color: var(--chrome-fg); }
+.topbar .topbar-lang:hover { background: color-mix(in oklab, var(--chrome-fg) 8%, transparent); }
+.topbar .topbar-divider { background: var(--chrome-line); }
+.topbar > .avatar,
+.topbar-actions > .avatar { background: var(--chrome-active-bg); color: var(--chrome-active-fg); }
+.topbar .crumbs { color: var(--chrome-fg-2); }
+.topbar .crumbs .cur { color: var(--chrome-fg); }
+/* La búsqueda sigue siendo un campo: superficie clara sobre el color. */
+.topbar .topbar-search { background: var(--md-sys-color-surface-container-lowest); }
+.topbar .topbar-search:hover { background: var(--md-sys-color-surface-container-high); }

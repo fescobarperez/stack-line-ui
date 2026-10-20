@@ -16,6 +16,8 @@ import { productReviewCount } from '../api/catalog.js';
 import { useSuppliers, useBranches } from '../hooks/useMasters.js';
 import { useStockMovements } from '../hooks/useOperations.js';
 import { fechaISO } from '../lib/fechas.js';
+import { listStock } from '../api/inventory.js';
+import { stockPorSucursal } from '../lib/branchStock.js';
 
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const Qs = Q;
@@ -59,6 +61,8 @@ function InventoryModule({ pushToast }) {
   const [search, setSearch] = useStateInv('');
   const [stockFilter, setStockFilter] = useStateInv('all'); // all, low, ok, out
   const [selected, setSelected] = useStateInv(null);
+  // Existencias reales del producto abierto, por sucursal (GET /api/stock?productId=).
+  const [stockSucursal, setStockSucursal] = useStateInv({ rows: [], loading: false, error: null });
   const [selRows, setSelRows] = useStateInv([]);
   const [showNew, setShowNew] = useStateInv(false);
   const [form, setForm] = useStateInv(EMPTY_FORM);
@@ -70,6 +74,15 @@ function InventoryModule({ pushToast }) {
     productReviewCount().then((r) => setPorRevisar(Number(r?.pending) || 0)).catch(() => setPorRevisar(0));
   }, []);
   useEffectInv(() => { cargarPorRevisar(); }, [cargarPorRevisar]);
+  useEffectInv(() => {
+    if (!selected?.id) return undefined;
+    let vivo = true;
+    setStockSucursal({ rows: [], loading: true, error: null });
+    listStock({ productId: selected.id })
+      .then((filas) => { if (vivo) setStockSucursal({ rows: Array.isArray(filas) ? filas : [], loading: false, error: null }); })
+      .catch((e) => { if (vivo) setStockSucursal({ rows: [], loading: false, error: e }); });
+    return () => { vivo = false; };
+  }, [selected?.id]);
 
   const filtered = useMemoInv(() => {
     let p = PRODUCTS;
@@ -230,8 +243,6 @@ function InventoryModule({ pushToast }) {
           <div className="page-subtitle">{PRODUCTS.length} SKUs activos · {CATEGORIES.length - 1} categorías · Valor cost. <span className="mono">{Qs(totalValueCost)}</span></div>
         </div>
         <div className="page-head-actions">
-          <Button icon="upload">{t('common.import', 'Importar')}</Button>
-          <Button icon="download">{t('common.export', 'Exportar')}</Button>
           <Button icon="plus" variant="accent" onClick={openNew}>{t('inventory.newProduct', 'Nuevo producto')}</Button>
         </div>
       </div>
@@ -362,7 +373,6 @@ function InventoryModule({ pushToast }) {
             </select>
             <div className="grow"></div>
             <Button icon="calendar" size="sm">Mayo 2026</Button>
-            <Button icon="download" size="sm">{t('inventory.exportMovements', 'Exportar')}</Button>
           </div>
           <div className="card card-outlined">
             <table className="mtable tbl-stack" data-title-col="3">
@@ -695,26 +705,26 @@ function InventoryModule({ pushToast }) {
               </div>
 
               <div className="card">
-                <div className="card-head"><h3>Stock por sucursal</h3></div>
+                <div className="card-head"><h3>{t('inventory.stockByBranch', 'Stock por sucursal')}</h3></div>
                 <div className="card-body flush">
-                  <table className="tbl tbl-stack" data-title-col="0">
-                    <thead><tr><th>{t('inventory.headers.branch', 'Sucursal')}</th><th className="num">{t('inventory.headers.stock', 'Stock')}</th><th className="num">{t('inventory.headers.min', 'Mín')}</th><th>{t('inventory.headers.status', 'Estado')}</th></tr></thead>
-                    <tbody>
-                      {BRANCHES.map((b, i) => {
-                        const s = Math.max(0, Math.floor(selected.stock * (0.1 + 0.25 * Math.random() + i*0.05)));
-                        return (
-                          <tr key={b.id}>
-                            <td>{b.name}</td>
-                            <td className="num">{s}</td>
-                            <td className="num muted">{Math.floor(selected.min/3)}</td>
-                            <td>
-                              {s < selected.min/3 ? <span className="badge-m3 warning"><span className="dot"/>Bajo</span> : <span className="badge-m3 success"><span className="dot"/>OK</span>}
-                            </td>
+                  {stockSucursal.loading ? (
+                    <p className="muted" style={{ padding: 14 }}>{t('common.loading', 'Cargando…')}</p>
+                  ) : stockSucursal.error ? (
+                    <p className="muted" style={{ padding: 14 }}>{t('inventory.stockError', 'No se pudieron cargar las existencias.')}</p>
+                  ) : (
+                    <table className="tbl tbl-stack" data-title-col="0">
+                      <thead><tr><th>{t('inventory.headers.branch', 'Sucursal')}</th><th className="num">{t('inventory.headers.stock', 'Stock')}</th><th>{t('inventory.headers.lot', 'Lote')}</th></tr></thead>
+                      <tbody>
+                        {stockPorSucursal(stockSucursal.rows, BRANCHES).map((b) => (
+                          <tr key={b.branchId ?? b.branchName}>
+                            <td>{b.branchName}</td>
+                            <td className={`num ${b.quantity > 0 ? '' : 'muted'}`}>{b.quantity.toLocaleString('es-GT', { maximumFractionDigits: 3 })} {selected.unit}</td>
+                            <td className="muted">{b.lots.length ? b.lots.map((l) => (l.expiry ? `${l.batch} · ${t('inventory.headers.expires', 'Vence')} ${l.expiry}` : l.batch)).join(', ') : '—'}</td>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
             </div>

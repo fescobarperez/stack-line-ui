@@ -28,7 +28,7 @@ import Inventory from './modules/Inventory.jsx';
 import Catalog from './modules/Catalog.jsx';
 import AssistantWidget from './assistant/AssistantWidget.jsx';
 import { screenEnabled, moduleEnabled } from './lib/modules.js';
-import { navCounter } from './lib/navCounters.js';
+import { navCounter, sectionCounter } from './lib/navCounters.js';
 import { useNavCounters } from './hooks/useNavCounters.js';
 import Reports from './modules/Reports.jsx';
 import Maintenance from './modules/Maintenance.jsx';
@@ -188,7 +188,8 @@ export default function App({ session, onLogout }) {
 
   const [toasts, setToasts] = useState([]);
   const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const [collapsed, setCollapsed] = useState({});
+  // Acordeón: una sola sección abierta a la vez (null = todas plegadas).
+  const [openSection, setOpenSection] = useState(() => NAV.find(s => s.items.some(i => i.id === route))?.section ?? null);
   // Laptops de menos de 1440 px arrancan con el menú en riel: con el menú
   // expandido (320 px) las tablas anchas no caben. El usuario lo puede abrir.
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1440);
@@ -240,7 +241,7 @@ export default function App({ session, onLogout }) {
   // Auto-expandir la sección que contiene la ruta activa
   useEffect(() => {
     const sec = NAV.find(s => s.items.some(i => i.id === route));
-    if (sec) setCollapsed(prev => ({ ...prev, [sec.section]: false }));
+    if (sec) setOpenSection(sec.section);
   }, [route]);
 
   const branch = session.user.branch;
@@ -273,7 +274,20 @@ export default function App({ session, onLogout }) {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <Logo size={40} className="drawer-mark" />
+          {/* En riel el logo es el botón para expandir: la flecha se oculta ahí. */}
+          {enRiel ? (
+            <button
+              type="button"
+              className="drawer-mark-btn"
+              title={t('shell.expandMenu', 'Expandir menú')}
+              aria-label={t('shell.expandMenu', 'Expandir menú')}
+              onClick={alternarMenu}
+            >
+              <Logo size={40} className="drawer-mark" />
+            </button>
+          ) : (
+            <Logo size={40} className="drawer-mark" />
+          )}
           <div className="sidebar-brand-text">
             <div className="drawer-wordmark">Stack<span className="wm-l">line</span></div>
             <div className="tier">STACKLINE · RETAIL v4.0</div>
@@ -289,38 +303,34 @@ export default function App({ session, onLogout }) {
           </button>
         </div>
 
-        <div className="sidebar-org">
-          <button className="sidebar-org-btn">
-            <span className="sidebar-org-dot"></span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="sidebar-org-name">{session.company.name}</div>
-              <div className="muted mono" style={{ fontSize: 11, marginTop: 1 }}>
-                {session.company.code} · {session.company.tier}
-              </div>
-            </div>
-            <Icon name="chevronDown" size={11} className="sidebar-org-arrow" />
-          </button>
-        </div>
-
         <div className="sidebar-nav">
           {visibleNav.map((sec) => {
-            const isCollapsed = !!collapsed[sec.section];
+            const isCollapsed = openSection !== sec.section;
+            const ids = sec.items.map((it) => it.id);
+            // Plegada: la suma de sus pendientes, para que no se escapen.
+            const resumen = isCollapsed ? sectionCounter(ids, navCounters) : null;
+            const actual = ids.includes(route);
             return (
-              <div key={sec.section}>
-                <div
-                  className="nav-section"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
-                  onClick={() => setCollapsed(prev => ({ ...prev, [sec.section]: !prev[sec.section] }))}
+              <div key={sec.section} className="nav-group">
+                <button
+                  type="button"
+                  className={`nav-section${actual ? ' current' : ''}`}
+                  aria-expanded={!isCollapsed}
+                  onClick={() => setOpenSection(prev => (prev === sec.section ? null : sec.section))}
                 >
                   <span className="nav-section-label">{t(`nav.sections.${sec.section}`, sec.section)}</span>
-                  <Icon
-                    name="chevronDown"
-                    size={10}
-                    className="nav-section-label"
-                    style={{ marginRight: 4, transition: 'transform 0.2s', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
-                  />
-                </div>
-                {!isCollapsed && sec.items.map((it) => (
+                  {resumen && (
+                    <span className={`nav-section-count${resumen.alert ? ' alert' : ''}`}>{resumen.text}</span>
+                  )}
+                  <span className={`nav-section-chevron${isCollapsed ? ' closed' : ''}`} aria-hidden="true">
+                    <Icon name="chevronDown" size={20} />
+                  </span>
+                </button>
+                {/* En el riel no hay títulos para desplegar: se muestran todas las
+                    opciones aunque la sección esté plegada en el menú abierto. */}
+                {(!isCollapsed || enRiel) && (
+                <div className="nav-group-items">
+                {sec.items.map((it) => (
                   <div
                     key={it.id}
                     className={`nav-item ${route === it.id ? 'active' : ''}`}
@@ -340,6 +350,8 @@ export default function App({ session, onLogout }) {
                     {it.kbd && route !== it.id && <span className="badge mono">{it.kbd}</span>}
                   </div>
                 ))}
+                </div>
+                )}
               </div>
             );
           })}
@@ -361,10 +373,14 @@ export default function App({ session, onLogout }) {
       {/* Main */}
       <main className="main">
         <header className="topbar">
-          <button className="icon-btn" title={t('shell.openMenu', 'Menú')} aria-label={t('shell.openMenu', 'Menú')}
-            aria-expanded={compacto ? drawerOpen : !sidebarCollapsed} onClick={alternarMenu}>
-            <Icon name="menu" size={24} />
-          </button>
+          {/* Escritorio y tablet abren el menú desde el propio drawer (logo en el
+              riel). En el teléfono el drawer está oculto: este es su único acceso. */}
+          {layout === 'phone' && (
+            <button className="icon-btn" title={t('shell.openMenu', 'Menú')} aria-label={t('shell.openMenu', 'Menú')}
+              aria-expanded={drawerOpen} onClick={alternarMenu}>
+              <Icon name="menu" size={24} />
+            </button>
+          )}
           <div className="topbar-search" role="button" tabIndex={0} onClick={() => setShowSearch(true)} onKeyDown={e => e.key === 'Enter' && setShowSearch(true)}>
             <Icon name="search" className="icon" size={24} />
             <span style={{ flex: 1, color: 'var(--md-sys-color-on-surface-variant)' }}>{t('shell.searchPlaceholder')}</span>

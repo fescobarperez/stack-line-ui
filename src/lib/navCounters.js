@@ -23,3 +23,22 @@ export function navCounter(id, counters) {
   if (!Number.isFinite(n) || n <= 0) return null;
   return { text: n > 99 ? '99+' : String(Math.trunc(n)), alert: def.alert };
 }
+
+/**
+ * Resumen de una sección plegada: suma de los contadores de sus opciones.
+ * Es alerta si alguna opción de alerta tiene pendientes. null si no hay nada.
+ */
+export function sectionCounter(ids, counters) {
+  if (!counters) return null;
+  let total = 0;
+  let alert = false;
+  for (const id of ids) {
+    const def = NAV_COUNTERS[id];
+    const n = Number(counters[id]);
+    if (!def || !Number.isFinite(n) || n <= 0) continue;
+    total += Math.trunc(n);
+    if (def.alert) alert = true;
+  }
+  if (total <= 0) return null;
+  return { text: total > 99 ? '99+' : String(total), alert };
+}

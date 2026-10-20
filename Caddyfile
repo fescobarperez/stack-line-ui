@@ -20,9 +20,17 @@
 		reverse_proxy {$API_UPSTREAM:backend:8080}
 	}
 
-	# Webhook de WhatsApp (Meta) hacia agents-services. Es lo ÚNICO del agente
-	# que se publica: /v1/agent/* queda en la red interna, solo para el ERP.
+	# Webhook de WhatsApp (Meta) hacia agents-services. Con el canal web, es lo
+	# único del agente que se publica: /v1/agent/* y /v1/admin/* quedan en la
+	# red interna, solo para el ERP.
 	handle /webhooks/whatsapp* {
+		reverse_proxy {$AGENT_UPSTREAM:agents:8081}
+	}
+
+	# Canal web: el widget de chat que las empresas pegan en su página. Es
+	# público a propósito; agents-services valida el dominio de cada widget y
+	# limita los mensajes (la IP real le llega en X-Forwarded-For).
+	handle /v1/web/* {
 		reverse_proxy {$AGENT_UPSTREAM:agents:8081}
 	}
 

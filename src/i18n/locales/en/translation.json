@@ -131,6 +131,7 @@
     "accessDeniedDesc": "Your role does not have permission to view this module.",
     "openMenu": "Menu",
     "closeMenu": "Close menu",
+    "expandMenu": "Expand menu",
     "moreOptions": "More options",
     "satOffline": "SAT-FEL offline",
     "themeDark": "Dark",
@@ -384,7 +385,9 @@
     },
     "generalData": "General data",
     "editProduct": "Edit product",
-    "newAdjustment": "New adjustment"
+    "newAdjustment": "New adjustment",
+    "stockByBranch": "Stock by branch",
+    "stockError": "Stock could not be loaded."
   },
   "clients": {
     "title": "Clients",
