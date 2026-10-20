@@ -6,12 +6,16 @@ import Autocomplete from '../components/Autocomplete.jsx';
 import Button from '../components/Button.jsx';
 import { applyPromotions } from '../api/marketing.js';
 import { useProducts, useCategories } from '../hooks/useCatalog.js';
+import ProductThumb from '../components/ProductThumb.jsx';
 import { useCashRegisters } from '../hooks/useOperations.js';
 import { sessionUser } from '../api/auth.js';
 import useAuthorization from '../hooks/useAuthorization.js';
 import AuthorizationDialog from '../components/AuthorizationDialog.jsx';
 import { createSale } from '../api/pos.js';
-import React, { useState as useStatePOS, useMemo as useMemoPOS, useEffect as useEffectPOS } from 'react';
+import { listClients } from '../api/partners.js';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
+import React, { useState as useStatePOS, useMemo as useMemoPOS, useEffect as useEffectPOS, useRef as useRefPOS } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { hoyISO } from '../lib/fechas.js';
 import { useLayout, useMediaQuery } from '../hooks/useLayout.js';
@@ -48,7 +52,13 @@ function POSModule({ pushToast }) {
   const [showReceipt, setShowReceipt] = useStatePOS(null);
   const [pay, setPay]               = useStatePOS('efectivo');
   const [cashGiven, setCashGiven]   = useStatePOS('');
-  const [client, setClient]         = useStatePOS({ name: 'CF', nit: 'CF', type: 'Consumidor final' });
+  // id = cliente del catálogo (va en la venta); sin id es consumidor final.
+  const [client, setClient]         = useStatePOS(() => clienteCF(t));
+  const [showClient, setShowClient] = useStatePOS(false);
+  const [showDiscount, setShowDiscount] = useStatePOS(false);
+  const searchRef = useRefPOS(null);
+  const navigate = useNavigate();
+  const confirm = useConfirm();
 
   // ── Modo táctil ──────────────────────────────────────────────────────────
   // Tablet y teléfono arrancan en modo táctil; en el teléfono no hay otro.
@@ -200,6 +210,7 @@ function POSModule({ pushToast }) {
         branchId: openRegister.branchId,
         cashRegisterId: openRegister.id,
         paymentMethod: PAY_METHOD_MAP[pay] || pay,
+        clientId: client.id ?? null,
         discountTotal: descManual,
         authorizationId: authId,
         items,
@@ -214,6 +225,8 @@ function POSModule({ pushToast }) {
       setShowCharge(false);
       setCart([]);
       setDiscount(0);
+      setShowDiscount(false);
+      setClient(clienteCF(t));
       setCashGiven('');
       if (unaVista) setTouchView('products');
       await reloadProducts();
@@ -228,9 +241,51 @@ function POSModule({ pushToast }) {
     setTouchView('products');
   };
 
+  // Lector de códigos: escribe el SKU en el buscador y manda Enter. Con Enter
+  // se agrega el producto exacto (o el único resultado) y el buscador se limpia.
+  const agregarDesdeBusqueda = () => {
+    const q = query.trim();
+    if (!q) return;
+    const exacto = products.find((p) => p.sku?.toLowerCase() === q.toLowerCase());
+    const elegido = exacto || (filtered.length === 1 ? filtered[0] : null);
+    if (!elegido) {
+      pushToast && pushToast(t('pos.noExactMatch', 'Hay varios productos: elige uno de la lista'), 'danger');
+      return;
+    }
+    addToCart(elegido);
+    setQuery('');
+  };
+
+  const puedeCobrar = cart.length > 0 && !!openRegister;
+  const abrirCobro = () => {
+    if (!cart.length) return;
+    if (!openRegister) { navigate('/cash'); return; }
+    setShowCharge(true);
+  };
+  const vaciar = async () => {
+    if (!cart.length) return;
+    const ok = await confirm({
+      title: t('pos.clearTitle', 'Vaciar la venta'),
+      message: t('pos.clearMsg', 'Se quitan todos los productos del carrito.'),
+      confirmLabel: t('pos.clear', 'Vaciar'), danger: true,
+    });
+    if (ok) { setCart([]); setDiscount(0); setShowDiscount(false); }
+  };
+
+  // Atajos de escritorio: F2 buscar, F9 cobrar.
+  useEffectPOS(() => {
+    if (touchMode) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'F2') { e.preventDefault(); searchRef.current?.focus(); }
+      if (e.key === 'F9') { e.preventDefault(); if (!showCharge) abrirCobro(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className={touchMode ? `pos-touch-layout${unaVista ? '' : ' split'}` : 'pos-layout'}>
+    <div className={`pos-v2 ${touchMode ? `pos-touch-layout${unaVista ? '' : ' split'}` : 'pos-layout'}`}>
 
       {/* ── Panel de productos ── */}
       <div
@@ -241,51 +296,58 @@ function POSModule({ pushToast }) {
           <div className="pos-search-field">
             <Icon name="search" size={20} className="icon" />
             <input
+              ref={searchRef}
               type="text"
-              placeholder={t('pos.searchPlaceholder', 'Buscar por nombre o código de barras…')}
+              placeholder={t('pos.searchOrScan', 'Busca un producto o escanea su código')}
               value={query}
               onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); agregarDesdeBusqueda(); } }}
+              aria-label={t('pos.searchOrScan', 'Busca un producto o escanea su código')}
               autoFocus={!touchMode}
             />
+            {!touchMode && <kbd className="pos-kbd">F2</kbd>}
           </div>
-          <Button icon="barcode">{t('pos.scan', 'Escanear')}</Button>
-          {layout !== 'phone' && <Button
-            icon="pos"
-            variant={touchMode ? 'accent' : 'outlined'}
-            title={touchMode ? t('pos.desktopMode', 'Modo escritorio') : t('pos.touchMode', 'Modo táctil')}
-            onClick={toggleTouchMode}
-          >
-            {touchMode ? t('pos.desktopMode', 'Escritorio') : t('pos.touchMode', 'Táctil')}
-          </Button>}
+          {layout !== 'phone' && (
+            <button type="button" className={`pos-mode${touchMode ? ' on' : ''}`} onClick={toggleTouchMode}
+              title={touchMode ? t('pos.desktopMode', 'Modo escritorio') : t('pos.touchMode', 'Modo táctil')}>
+              <Icon name={touchMode ? 'desktop_windows' : 'touch_app'} size={20} />
+              <span>{touchMode ? t('pos.desktopModeShort', 'Escritorio') : t('pos.touchModeShort', 'Táctil')}</span>
+            </button>
+          )}
         </div>
 
         <div className="pos-cats">
           {CATEGORIES.map(c => (
-            <button
-              key={c.id}
-              className={`pos-cat ${cat === c.id ? 'active' : ''}`}
-              onClick={() => setCat(c.id)}
-            >
-              {c.icon && <span>{c.icon}</span>}
+            <button key={c.id} className={`pos-cat ${cat === c.id ? 'active' : ''}`} onClick={() => setCat(c.id)}>
               {c.name}
-              {c.count != null && <span className="n">{c.count}</span>}
             </button>
           ))}
         </div>
 
-        <div className={touchMode ? 'pos-touch-grid' : 'pos-grid'}>
-          {filtered.slice(0, 80).map(p => (
-            <button key={p.sku} className="pos-prod" onClick={() => addToCart(p)}>
-              <div className="img">{p.initials || (p.name || '').slice(0, 2).toUpperCase()}</div>
-              <div>
-                <div className="nm">{p.name}</div>
-                {!touchMode && <div className="sk">{p.sku.slice(-6)}</div>}
-              </div>
-              <div className="pr">{Q(p.price)}</div>
-              {p.stock < p.min && <span className="stock-low">{p.stock}u</span>}
-            </button>
-          ))}
-        </div>
+        {filtered.length === 0 ? (
+          <div className="pos-noresults">
+            <Icon name="search_off" size={32} />
+            <div>{t('pos.noResults', 'Ningún producto coincide')}</div>
+          </div>
+        ) : (
+          <div className={touchMode ? 'pos-touch-grid' : 'pos-grid'}>
+            {filtered.slice(0, 120).map(p => {
+              const enCarrito = cart.find((i) => i.sku === p.sku)?.qty;
+              const bajo = p.tracksStock !== false && p.stock < p.min;
+              return (
+                <button key={p.sku} className={`pos-prod${enCarrito ? ' in-cart' : ''}`} onClick={() => addToCart(p)}>
+                  <div className="pos-prod-top">
+                    <ProductThumb product={p} className="pos-prod-ini" />
+                    {enCarrito ? <span className="pos-prod-qty">×{enCarrito}</span>
+                      : bajo ? <span className="pos-prod-low">{t('pos.lowStock', 'Quedan {{n}}', { n: p.stock })}</span> : null}
+                  </div>
+                  <div className="nm">{p.name}</div>
+                  <div className="pr">{Q(p.price)}</div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── Carrito ── */}
@@ -294,97 +356,69 @@ function POSModule({ pushToast }) {
         style={unaVista && touchView !== 'cart' ? { display: 'none' } : {}}
       >
         <div className="pos-cart-head">
-          <div>
-            <div className="pos-cart-title">{t('pos.currentSale', 'Venta actual')}</div>
-            <div className={`pos-cart-sub${openRegister ? '' : ' alert'}`}>
-              {openRegister ? `${openRegister.branchName || 'Caja'} · #${openRegister.id}` : 'Sin caja abierta'}
-            </div>
+          <div className="pos-cart-title">
+            {t('pos.currentSale', 'Venta actual')}
+            {totalItems > 0 && <span className="pos-cart-count">{t('pos.itemsCount', '{{n}} artículos', { n: totalItems })}</span>}
           </div>
-          <div className="row gap-6">
-            <button className="icon-btn" title={t('common.delete', 'Eliminar')} onClick={() => setCart([])}><Icon name="trash" /></button>
-            <button className="icon-btn" title={t('common.client', 'Cliente')}><Icon name="user" /></button>
-          </div>
+          {cart.length > 0 && (
+            <button type="button" className="pos-link danger" onClick={vaciar}>
+              <Icon name="trash" size={16} /> {t('pos.clear', 'Vaciar')}
+            </button>
+          )}
         </div>
 
-        {/* Cliente */}
-        <div className="pos-cart-client">
-          <Icon name="user" size={14} style={{ color: 'var(--muted)' }} />
-          <div className="who">
-            <span className="lbl">{t('common.client', 'Cliente')}:</span>{' '}
-            <span className="nm">{client.name}</span>
-            <span className="nit mono">NIT {client.nit}</span>
+        {openRegister ? (
+          <div className="pos-register ok">
+            <Icon name="cash" size={16} />
+            {t('pos.registerOpen', 'Caja {{name}} · turno #{{id}}', { name: openRegister.branchName || '', id: openRegister.id })}
           </div>
-          <Autocomplete value={client.type}
-            onChange={(id) => setClient((c) => ({ ...c, type: id == null ? '' : String(id) }))}
-            options={[
-              { id: t('pos.clientTypes.cf', 'Consumidor final'), name: t('pos.clientTypes.cf', 'Consumidor final') },
-              { id: t('pos.clientTypes.retail', 'Minorista'), name: t('pos.clientTypes.retail', 'Minorista') },
-              { id: t('pos.clientTypes.wholesale', 'Mayorista'), name: t('pos.clientTypes.wholesale', 'Mayorista') },
-              { id: t('pos.clientTypes.exempt', 'Exento'), name: t('pos.clientTypes.exempt', 'Exento') },
-            ]}
-            allowClear={false}
-            emptyText="Sin coincidencias"
-            aria-label="Tipo de cliente" />
-          <Button variant="ghost" size="sm">{t('pos.changeClient', 'Cambiar')}</Button>
-        </div>
+        ) : (
+          <div className="pos-register warn" role="status">
+            <Icon name="alert" size={16} />
+            <span className="txt">{t('pos.noRegister', 'Sin caja abierta: arma la venta y ábrela para cobrar.')}</span>
+            <button type="button" className="pos-link" onClick={() => navigate('/cash')}>{t('pos.openRegister', 'Abrir caja')}</button>
+          </div>
+        )}
+
+        {/* Cliente */}
+        <button type="button" className="pos-client" onClick={() => setShowClient(true)}>
+          <span className="pos-client-av" aria-hidden="true"><Icon name="user" size={18} /></span>
+          <span className="pos-client-txt">
+            <span className="nm">{client.name}</span>
+            <span className="sub">NIT {client.nit} · {client.type}</span>
+          </span>
+          <span className="pos-link">{t('pos.changeClient', 'Cambiar')}</span>
+        </button>
 
         {/* Items */}
         {cart.length === 0 ? (
           <div className="pos-cart-empty">
-            <div className="big">∅</div>
+            <Icon name="shopping_cart" size={36} />
             <div>{t('pos.emptyCart', 'Sin productos en el carrito')}</div>
-            <div className="hint">{t('pos.emptyCartHint', 'Toca un producto o escanea')}</div>
+            <div className="hint">{touchMode ? t('pos.emptyCartTouch', 'Toca un producto para agregarlo') : t('pos.emptyCartDesk', 'Haz clic en un producto o escanea su código')}</div>
           </div>
         ) : (
           <div className="pos-cart-items">
             {cartWithPromos.map(i => {
               const hasPromo  = i.promoTag !== null;
               const effPrice  = i.promoPrice ?? i.price;
-              const lineTotal = effPrice * (i.qty - (i.freeQty || 0));
+              const lineTotal = effPrice * i.qty;
               return (
-                <div
-                  key={i.sku}
-                  className={`pos-cart-item${touchMode ? ' pos-touch-item' : ''}`}
-                  style={hasPromo ? { background: 'var(--success-soft)' } : {}}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="nm">
-                      {i.name}
-                      {hasPromo && <span className="pos-tag">PROMO</span>}
-                    </div>
-                    <div className="meta">
-                      {i.promoPrice !== null ? (
-                        <>
-                          <span style={{ textDecoration: 'line-through', color: 'var(--muted)' }}>{Q(i.price)}</span>
-                          <span style={{ color: 'var(--success)', fontWeight: 600 }}>{Q(i.promoPrice)}</span>
-                        </>
-                      ) : (
-                        <span>{Q(i.price)}</span>
-                      )}
-                      <span style={{ color: 'var(--muted)' }}>· {i.unit}</span>
-                      {i.freeQty > 0 && <span className="pos-tag">+{i.freeQty} GRATIS</span>}
-                    </div>
+                <div key={i.sku} className={`pos-line${hasPromo ? ' promo' : ''}`}>
+                  <div className="pos-line-name" title={i.name}>{i.name}</div>
+                  <div className="pos-line-meta">
+                    {hasPromo ? (
+                      <><s>{Q(i.price)}</s> <span className="promo-price">{Q(i.promoPrice)}</span> <span className="pos-tag">{t('pos.promo', 'Promo')}</span></>
+                    ) : <>{Q(i.price)} {t('pos.each', 'c/u')}</>}
                   </div>
-
-                  <div className="pr" style={hasPromo ? { color: 'var(--success)' } : {}}>{Q(lineTotal)}</div>
-
-                  {touchMode ? (
-                    <div className="pos-touch-qty">
-                      <button className="pos-touch-qty-btn" onClick={() => changeQty(i.sku, -1)}>−</button>
-                      <span className="n">{i.qty}</span>
-                      <button className="pos-touch-qty-btn" onClick={() => changeQty(i.sku, +1)}>+</button>
-                    </div>
-                  ) : (
-                    <div className="qty">
-                      <button onClick={() => changeQty(i.sku, -1)}>−</button>
-                      <span className="n">{i.qty}</span>
-                      <button onClick={() => changeQty(i.sku, +1)}>+</button>
-                    </div>
-                  )}
-
-                  <button className="remove" onClick={() => removeItem(i.sku)}>
-                    ✕
-                  </button>
+                  <div className="pos-stepper" role="group" aria-label={t('pos.qtyOf', 'Cantidad de {{name}}', { name: i.name })}>
+                    <button type="button" onClick={() => changeQty(i.sku, -1)} aria-label={i.qty === 1 ? t('pos.remove', 'Quitar') : t('pos.less', 'Uno menos')}>
+                      {i.qty === 1 ? <Icon name="trash" size={16} /> : '−'}
+                    </button>
+                    <span className="n">{i.qty}</span>
+                    <button type="button" onClick={() => changeQty(i.sku, +1)} aria-label={t('pos.more', 'Uno más')}>+</button>
+                  </div>
+                  <div className="pos-line-total">{Q(lineTotal)}</div>
                 </div>
               );
             })}
@@ -393,71 +427,75 @@ function POSModule({ pushToast }) {
 
         {/* Totales */}
         <div className="pos-totals">
-          <div className="row"><span>{t('common.subtotal', 'Subtotal')} ({totalItems} items)</span><span className="v">{Q(subtotal)}</span></div>
+          <div className="row"><span>{t('common.subtotal', 'Subtotal')}</span><span className="v">{Q(subtotal)}</span></div>
           {appliedPromos.map((ap, idx) => (
-            <div key={idx} className="row promo">
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span className="pos-tag">PROMO</span>
-                {ap.label}
-              </span>
-              <span className="v">−{Q(ap.discount)}</span>
-            </div>
+            <div key={idx} className="row promo"><span>{ap.label}</span><span className="v">−{Q(ap.discount)}</span></div>
           ))}
-          <div className="row">
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {t('pos.manualDiscount', 'Descuento manual')}
-              <Autocomplete value={discountType}
-                onChange={(id) => setDiscountType(id == null ? '' : String(id))}
-                options={[{ id: '%', name: '%' }, { id: 'Q', name: 'Q' }]}
-                allowClear={false}
-                emptyText="Sin coincidencias"
-                aria-label="Tipo de descuento" />
-              <input
-                type="number" min="0" step="0.01"
-                max={discountType === '%' ? 100 : subtotal}
-                value={discount}
-                onChange={e => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
-              />
-            </span>
-            <span className="v" style={{ color: 'var(--danger)' }}>−{Q(descManual)}</span>
-          </div>
-          <div className="row muted"><span>{t('pos.ivaIncluded', 'IVA incluido (12%)')}</span><span className="v">{Q(iva)}</span></div>
-          <div className="row total"><span>{t('common.total', 'TOTAL')}</span><span className="v">{Q(total)}</span></div>
+          {showDiscount || descManual > 0 ? (
+            <div className="row pos-discount">
+              <span className="pos-discount-ctl">
+                {t('pos.discount', 'Descuento')}
+                <span className="pos-seg" role="radiogroup" aria-label={t('pos.discountType', 'Tipo de descuento')}>
+                  {['%', 'Q'].map((k) => (
+                    <button key={k} type="button" role="radio" aria-checked={discountType === k} className={discountType === k ? 'on' : ''} onClick={() => setDiscountType(k)}>{k}</button>
+                  ))}
+                </span>
+                <input type="number" min="0" step="0.01" inputMode="decimal" autoFocus={showDiscount && !descManual}
+                  max={discountType === '%' ? 100 : subtotal} value={discount || ''} placeholder="0"
+                  aria-label={t('pos.discount', 'Descuento')}
+                  onChange={e => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))} />
+                <button type="button" className="icon-btn sm" aria-label={t('pos.removeDiscount', 'Quitar descuento')}
+                  onClick={() => { setDiscount(0); setShowDiscount(false); }}><Icon name="x" size={16} /></button>
+              </span>
+              <span className="v neg">−{Q(descManual)}</span>
+            </div>
+          ) : (
+            cart.length > 0 && (
+              <button type="button" className="pos-link pos-add-discount" onClick={() => setShowDiscount(true)}>
+                <Icon name="plus" size={16} /> {t('pos.addDiscount', 'Agregar descuento')}
+              </button>
+            )
+          )}
+          <div className="row total"><span>{t('common.total', 'Total')}</span><span className="v">{Q(total)}</span></div>
+          <div className="row tax"><span>{t('pos.ivaIncluded', 'IVA incluido (12%)')}</span><span className="v">{Q(iva)}</span></div>
         </div>
 
         <button
-          className={`pos-charge${touchMode ? ' pos-touch-charge' : ''}`}
+          className={`pos-charge${touchMode ? ' pos-touch-charge' : ''}${cart.length && !openRegister ? ' needs-register' : ''}`}
           disabled={!cart.length}
-          onClick={() => setShowCharge(true)}
+          onClick={abrirCobro}
         >
-          <span>{t('pos.charge', 'Cobrar')}</span>
-          <span className="amt">{Q(total)}</span>
+          {cart.length && !openRegister ? (
+            <span className="pos-charge-reg"><Icon name="cash" size={20} />{t('pos.openRegisterToCharge', 'Abre una caja para cobrar')}</span>
+          ) : (
+            <>
+              <span>{t('pos.charge', 'Cobrar')}{!touchMode && <kbd className="pos-kbd on-accent">F9</kbd>}</span>
+              <span className="amt">{Q(total)}</span>
+            </>
+          )}
         </button>
       </div>
 
       {/* ── Tab bar (modo táctil con una vista a la vez) ── */}
       {unaVista && (
         <div className="pos-touch-tab-bar">
-          <button
-            className={`pos-touch-tab ${touchView === 'products' ? 'active' : ''}`}
-            onClick={() => setTouchView('products')}
-          >
+          <button className={`pos-touch-tab ${touchView === 'products' ? 'active' : ''}`} onClick={() => setTouchView('products')}>
             <Icon name="box" size={20} />
             <span>{t('pos.products', 'Productos')}</span>
           </button>
-          <button
-            className={`pos-touch-tab ${touchView === 'cart' ? 'active' : ''}`}
-            onClick={() => setTouchView('cart')}
-          >
+          <button className={`pos-touch-tab ${touchView === 'cart' ? 'active' : ''}`} onClick={() => setTouchView('cart')}>
             <Icon name="receipt" size={20} />
             <span>
               {t('pos.cart', 'Carrito')}
-              {totalItems > 0 && (
-                <span className="pos-touch-cart-badge">{totalItems}</span>
-              )}
+              {totalItems > 0 && <span className="pos-touch-cart-badge">{totalItems}</span>}
             </span>
           </button>
         </div>
+      )}
+
+      {showClient && (
+        <ClientDialog current={client} touchMode={touchMode} onClose={() => setShowClient(false)}
+          onSelect={(c) => { setClient(c); setShowClient(false); }} />
       )}
 
       {/* ── Modal: Cobro ── */}
@@ -582,6 +620,87 @@ function POSModule({ pushToast }) {
       {/* Diálogo de autorización en sitio. Se monta una vez; el hook decide
           cuándo aparece y qué nivel exige. */}
       <AuthorizationDialog prompt={authPrompt} />
+    </div>
+  );
+}
+
+/** Consumidor final: sin cliente del catálogo. */
+function clienteCF(t) {
+  return { id: null, name: t('pos.clientTypes.cf', 'Consumidor final'), nit: 'CF', type: t('pos.clientTypes.cf', 'Consumidor final') };
+}
+
+// ── Elegir cliente ───────────────────────────────────────────────────────────
+// Busca en el catálogo de clientes (por nombre o NIT) o vuelve a consumidor
+// final. El tipo de cliente decide qué promociones aplican.
+function ClientDialog({ current, touchMode, onClose, onSelect }) {
+  const { t } = useTranslation();
+  const [q, setQ] = useStatePOS('');
+  const [rows, setRows] = useStatePOS([]);
+  const [loading, setLoading] = useStatePOS(false);
+  const [tipo, setTipo] = useStatePOS(current.type);
+  const tipos = [
+    t('pos.clientTypes.cf', 'Consumidor final'), t('pos.clientTypes.retail', 'Minorista'),
+    t('pos.clientTypes.wholesale', 'Mayorista'), t('pos.clientTypes.exempt', 'Exento'),
+  ];
+
+  useEffectPOS(() => {
+    const texto = q.trim();
+    if (texto.length < 2) { setRows([]); return undefined; }
+    let vivo = true;
+    setLoading(true);
+    const h = setTimeout(() => {
+      listClients({ search: texto, size: 8 })
+        .then((r) => { if (vivo) setRows(Array.isArray(r) ? r : (r?.content ?? [])); })
+        .catch(() => { if (vivo) setRows([]); })
+        .finally(() => { if (vivo) setLoading(false); });
+    }, 250);
+    return () => { vivo = false; clearTimeout(h); };
+  }, [q]);
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className={`modal ${touchMode ? 'modal-sm' : ''} pos-client-modal`} onClick={(e) => e.stopPropagation()} role="dialog" aria-label={t('pos.clientTitle', 'Cliente de la venta')}>
+        <div className="modal-head">
+          <h3>{t('pos.clientTitle', 'Cliente de la venta')}</h3>
+          <button className="icon-btn" onClick={onClose} aria-label={t('common.close', 'Cerrar')}><Icon name="x" /></button>
+        </div>
+        <div className="modal-body">
+          <button type="button" className={`pos-client-opt${current.id == null ? ' on' : ''}`} onClick={() => onSelect({ ...clienteCF(t), type: tipo })}>
+            <Icon name="user" size={18} />
+            <span><strong>{t('pos.clientTypes.cf', 'Consumidor final')}</strong><span className="sub">NIT CF</span></span>
+          </button>
+          <div className="pos-search-field pos-client-search">
+            <Icon name="search" size={18} className="icon" />
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('pos.clientSearch', 'Buscar cliente por nombre o NIT')}
+              aria-label={t('pos.clientSearch', 'Buscar cliente por nombre o NIT')} />
+          </div>
+          <div className="pos-client-list">
+            {loading && <div className="muted pos-client-hint">{t('common.loading', 'Cargando…')}</div>}
+            {!loading && q.trim().length >= 2 && rows.length === 0 && (
+              <div className="muted pos-client-hint">{t('pos.clientNone', 'Sin clientes con ese nombre o NIT')}</div>
+            )}
+            {rows.map((c) => (
+              <button key={c.id} type="button" className={`pos-client-opt${current.id === c.id ? ' on' : ''}`}
+                onClick={() => onSelect({ id: c.id, name: c.name, nit: c.nit || 'CF', type: tipo })}>
+                <Icon name="user" size={18} />
+                <span><strong>{c.name}</strong><span className="sub">NIT {c.nit || 'CF'}</span></span>
+              </button>
+            ))}
+          </div>
+          <div className="field pos-client-type">
+            <label>{t('pos.clientType', 'Tipo de cliente (para promociones)')}</label>
+            <div className="pos-seg wide">
+              {tipos.map((x) => (
+                <button key={x} type="button" className={tipo === x ? 'on' : ''} onClick={() => setTipo(x)}>{x}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="modal-foot">
+          <Button onClick={onClose}>{t('common.cancel', 'Cancelar')}</Button>
+          <Button variant="accent" onClick={() => onSelect({ ...current, type: tipo })}>{t('pos.keepClient', 'Usar este tipo')}</Button>
+        </div>
+      </div>
     </div>
   );
 }

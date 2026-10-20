@@ -46,3 +46,12 @@ export const createProduct = (data) => api.post('/api/products', data);
 export const updateProduct = (id, data) => api.put(`/api/products/${id}`, data);
 export const moveProduct = (id, categoryId) => api.put(`/api/products/${id}/category`, { categoryId });
 export const deleteProduct = (id) => api.del(`/api/products/${id}`);
+
+// Foto del producto (una por producto). data: { imageBase64, imageMime, thumbBase64, thumbMime }
+// ya reducida en el navegador (lib/productImage.js). Devuelve { productId, imageVersion }.
+export const uploadProductImage = (id, data) => api.put(`/api/products/${id}/image`, data);
+export const deleteProductImage = (id) => api.del(`/api/products/${id}/image`);
+// size: 'thumb' (240 px, listados y POS) | 'full'. v = imageVersion: con ella el
+// navegador la cachea sin volver a pedirla hasta que cambie la foto.
+export const getProductImage = (id, { size = 'thumb', v } = {}) =>
+  api.get(`/api/products/${id}/image?size=${size}${v != null ? `&v=${v}` : ''}`, { blob: true, silent: true });

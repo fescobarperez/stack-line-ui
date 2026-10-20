@@ -10,24 +10,87 @@
 
 .cost {
   margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
   white-space: nowrap;
+  text-align: right;
 }
 
+.cost strong {
+  font: 500 14px/20px var(--font-mono);
+  color: var(--text);
+}
+
+.cost small {
+  font: 400 11px/16px var(--font-sans);
+  color: var(--muted);
+}
+
+.noSupplier {
+  font: 500 11px/16px var(--font-sans);
+  padding: 2px 8px;
+  border-radius: var(--shape-full, 99px);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+/* Foto del producto (o iniciales) en lugar del ícono genérico. */
+.thumb {
+  width: 32px;
+  height: 32px;
+  font: 600 11px/16px var(--font-mono);
+}
+
+.folderIcon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--shape-sm, 8px);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.rootIcon {
+  background: var(--surface-3);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Número de productos de la carpeta, al final de la fila. */
+.count {
+  min-width: 28px;
+  height: 22px;
+  padding: 0 8px;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: var(--shape-full, 99px);
+  background: var(--surface-3);
+  color: var(--md-sys-color-on-surface-variant);
+  font: 500 12px/16px var(--font-mono);
+}
+
+/* Acciones de carpeta: íconos que aparecen al pasar el mouse o al elegirla;
+   en pantallas táctiles quedan siempre visibles. */
 .actions {
   display: flex;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
   flex: none;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity .12s ease;
 }
 
-.rootActions {
-  gap: 6px;
-  margin-left: 8px;
+.row:hover .actions,
+.row:focus-within .actions,
+.rowSelected .actions {
+  opacity: 1;
 }
 
-.rootActions :global(.btn) {
-  width: auto;
-  min-width: auto;
-  padding-left: 9px;
-  padding-right: 9px;
+@media (hover: none) {
+  .actions { opacity: 1; }
 }

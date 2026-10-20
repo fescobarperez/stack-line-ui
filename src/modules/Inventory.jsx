@@ -12,7 +12,9 @@ import { dimensionsPayload, useProducts, useCategories } from '../hooks/useCatal
 import DimensionsFields from '../components/DimensionsFields.jsx';
 import SupplierPriceModal from '../components/SupplierPriceModal.jsx';
 import ProductReviewPanel from '../components/ProductReviewPanel.jsx';
-import { productReviewCount } from '../api/catalog.js';
+import { productReviewCount, uploadProductImage, deleteProductImage } from '../api/catalog.js';
+import ProductImagePicker from '../components/ProductImagePicker.jsx';
+import ProductThumb from '../components/ProductThumb.jsx';
 import { useSuppliers, useBranches } from '../hooks/useMasters.js';
 import { useStockMovements } from '../hooks/useOperations.js';
 import { fechaISO } from '../lib/fechas.js';
@@ -68,6 +70,8 @@ function InventoryModule({ pushToast }) {
   const [form, setForm] = useStateInv(EMPTY_FORM);
   const [editingId, setEditingId] = useStateInv(null);
   const [saving, setSaving] = useStateInv(false);
+  // Foto elegida en el formulario; se aplica al guardar (ver ProductImagePicker).
+  const [imageChange, setImageChange] = useStateInv(null);
   // Productos que propuso el asistente y esperan precio (no están en PRODUCTS).
   const [porRevisar, setPorRevisar] = useStateInv(0);
   const cargarPorRevisar = useCallbackInv(() => {
@@ -107,6 +111,7 @@ function InventoryModule({ pushToast }) {
   const openNew = () => {
     setEditingId(null);
     setForm({ ...EMPTY_FORM, cat: firstCatId() });
+    setImageChange(null);
     setShowNew(true);
   };
   const viewProduct = (p) => setSelected(p);
@@ -125,6 +130,7 @@ function InventoryModule({ pushToast }) {
       height: p.height ?? '', width: p.width ?? '', depth: p.depth ?? '', dimensionUnit: p.dimensionUnit ?? null,
       madeToOrder: p.tracksStock === false,
     });
+    setImageChange(null);
     setShowNew(true);
   };
   const saveProduct = async () => {
@@ -155,13 +161,28 @@ function InventoryModule({ pushToast }) {
     };
     setSaving(true);
     try {
+      let id = editingId;
       if (editingId != null) {
         await updateProductApi(editingId, payload);
-        if (pushToast) pushToast(`"${payload.name}" actualizado`, 'success');
       } else {
-        await createProductApi(payload);
-        if (pushToast) pushToast(`"${payload.name}" creado`, 'success');
+        id = (await createProductApi(payload))?.id;
       }
+      // La foto va aparte: al crear hace falta el id. Si falla, el producto ya
+      // quedó guardado y se avisa solo lo de la foto.
+      let fotoError = null;
+      if (imageChange && id != null) {
+        try {
+          if (imageChange.kind === 'set') await uploadProductImage(id, imageChange.upload);
+          else if (imageChange.kind === 'remove') await deleteProductImage(id);
+          await reloadProducts();
+        } catch (e) {
+          fotoError = e?.message || t('productImage.err.upload', 'No se pudo subir la foto');
+        }
+      }
+      if (imageChange?.kind === 'set') URL.revokeObjectURL(imageChange.previewUrl);
+      setImageChange(null);
+      if (pushToast) pushToast(editingId != null ? `"${payload.name}" actualizado` : `"${payload.name}" creado`, 'success');
+      if (fotoError && pushToast) pushToast(t('productImage.err.saved', 'El producto se guardó, pero la foto no: {{msg}}', { msg: fotoError }), 'danger');
       setShowNew(false);
     } catch (err) {
       if (pushToast) pushToast(err?.message || 'No se pudo guardar el producto', 'danger');
@@ -214,7 +235,12 @@ function InventoryModule({ pushToast }) {
   const productColumns = [
     { key: 'sku', header: t('inventory.headers.sku', 'SKU / Código'), sortable: true, mono: true, card: 'subtitle', hideOnTablet: true },
     { key: 'name', header: t('inventory.headers.product', 'Producto'), sortable: true, card: 'title',
-      render: (p) => (<><div style={{ fontWeight: 500 }}>{p.name}</div><div className="muted" style={{ fontSize: 11 }}>{p.unit}</div></>) },
+      render: (p) => (
+        <div className="inv-prod-cell">
+          <ProductThumb product={p} className="inv-prod-thumb" />
+          <div><div style={{ fontWeight: 500 }}>{p.name}</div><div className="muted" style={{ fontSize: 11 }}>{p.unit}</div></div>
+        </div>
+      ) },
     { key: 'cat', header: t('inventory.headers.category', 'Categoría'), sortable: true, hideOnTablet: true,
       sortValue: (p) => catName(p.cat), render: (p) => catName(p.cat) },
     { key: 'itemType', header: t('inventory.headers.itemType', 'Tipo'), sortable: true, card: 'badge', hideOnTablet: true,
@@ -677,6 +703,11 @@ function InventoryModule({ pushToast }) {
               <button className="icon-btn" onClick={() => setSelected(null)}><Icon name="x"/></button>
             </div>
             <div className="drawer-body">
+              {selected.imageVersion != null && (
+                <div className="inv-drawer-photo">
+                  <ProductThumb product={selected} size="full" />
+                </div>
+              )}
               <div className="stat-grid" style={{gridTemplateColumns:'1fr 1fr', marginBottom:12}}>
                 <StatCard
                   tone="pri"
@@ -745,6 +776,11 @@ function InventoryModule({ pushToast }) {
               <button className="icon-btn" onClick={() => setShowNew(false)}><Icon name="x"/></button>
             </div>
             <div className="modal-body" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 14px'}}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <ProductImagePicker
+                  product={editingId != null ? PRODUCTS.find((x) => x.id === editingId) : null}
+                  value={imageChange} onChange={setImageChange} disabled={saving} />
+              </div>
               <div className="field" style={{gridColumn:'1 / -1'}}><label>Nombre del producto</label>
                 <input placeholder="Ej. Coca-Cola 600ml" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}/></div>
               <div className="field"><label>Código de barras / SKU</label>

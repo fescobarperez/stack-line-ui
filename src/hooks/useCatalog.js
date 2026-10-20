@@ -47,6 +47,8 @@ function mapProduct(p) {
     itemType: p.itemType ?? 'sellable',
     tracksStock: p.tracksStock ?? true,
     status: p.status,
+    // Versión de la foto (null = sin foto). Ver components/ProductThumb.jsx.
+    imageVersion: p.imageVersion ?? null,
     suppliers: (p.suppliers ?? []).map((supplier) => ({
       supplierId: supplier.supplierId,
       supplierName: supplier.supplierName,

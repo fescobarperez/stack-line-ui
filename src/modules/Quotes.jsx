@@ -746,19 +746,25 @@ export default function Quotes({ pushToast }) {
                 const tasa = resumen ? num(resumen.taxRate) : taxRate;
                 return (
                   <>
-                    <section className="quote-section quote-section--detail">
+                    {/* Tres grupos, en el orden en que se trabaja: a quién se
+                        cotiza, qué se cotiza y a cuánto, y cómo se cobra
+                        (QuotePlanPanel, su propia sección). */}
+                    <section className="quote-section quote-section--client">
                       <div className="quote-section-heading">
                         <div>
-                          <div className="quote-section-title">{t('quotes.detailSection', 'Detalle de la cotización')}</div>
-                          <div className="quote-section-description">{t('quotes.detailSectionHint', 'Productos, cargos y resumen fiscal')}</div>
+                          <div className="quote-section-title">{t('quotes.clientSection', 'Cliente')}</div>
+                          <div className="quote-section-description">{t('quotes.clientSectionHint', 'Contacto, entrega y notas de la cotización')}</div>
                         </div>
+                        {selQuote.projectId && (
+                          <Button size="sm" variant="ghost" icon="folder"
+                            onClick={() => navigate('/projects', { state: { openProjectId: selQuote.projectId } })}>
+                            {t('quotes.goToProject', 'Ir al proyecto')}
+                          </Button>
+                        )}
                       </div>
                       <div className="quote-subsection">
-                        <div className="quote-subsection-heading">
-                          <div className="quote-subsection-title">{t('quotes.clientData', 'Datos del cliente')}</div>
-                        </div>
                         <div className="quote-subsection-card">
-                        <div className="detail-grid">
+                        <div className="quote-client-grid">
                       {[
                         [t('common.client', 'Cliente'),      selQuote.client.name],
                         ['NIT',          selQuote.client.nit || '—'],
@@ -766,28 +772,24 @@ export default function Quotes({ pushToast }) {
                         [t('quotes.email', 'Correo'),       selQuote.client.email || '—'],
                         [t('quotes.validUntil', 'Válida hasta'), fmtDate(selQuote.validUntil)],
                         [t('quotes.createdBy', 'Creado por'),   selQuote.createdBy],
-                        ...(selQuote.deliveryAddress ? [[t('quotes.deliveryAddress', 'Dirección de entrega / instalación'), selQuote.deliveryAddress]] : []),
+                        ...(selQuote.deliveryAddress ? [[t('quotes.deliveryAddress', 'Dirección de entrega / instalación'), selQuote.deliveryAddress, true]] : []),
                         ...(selQuote.sentVersion > 0 ? [[t('quotes.sentVersion', 'Versión enviada'), `v${selQuote.sentVersion}`]] : []),
                         ...(selQuote.clientReasonCode || selQuote.clientReasonNote ? [[
                           t('quotes.clientReason', 'Motivo del cliente'),
                           [CLIENT_REASONS[selQuote.clientReasonCode] || selQuote.clientReasonCode, selQuote.clientReasonNote]
                             .filter(Boolean).join(' — '),
+                          true,
                         ]] : []),
-                      ].map(([l, v]) => (
-                        <div className="detail-row" key={l}>
-                          <span className="detail-label">{l}</span>
-                          <span className="detail-value">{v}</span>
+                      ].map(([l, v, ancho]) => (
+                        <div className={`quote-client-item${ancho ? ' wide' : ''}`} key={l}>
+                          <span className="quote-client-label">{l}</span>
+                          <span className="quote-client-value">{v}</span>
                         </div>
                       ))}
-                      {selQuote.projectId && (
-                        <div className="detail-row">
-                          <span className="detail-label">{t('quotes.project', 'Proyecto')}</span>
-                          <span className="detail-value">
-                            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/projects', { state: { openProjectId: selQuote.projectId } }); }}
-                              style={{ color: 'var(--accent)', textDecoration: 'none' }}>
-                              {t('quotes.goToProject', 'Ir al proyecto')} <Icon name="chevronRight" size={13} />
-                            </a>
-                          </span>
+                      {selQuote.notes && (
+                        <div className="quote-client-item wide">
+                          <span className="quote-client-label">{t('common.notes', 'Notas')}</span>
+                          <span className="quote-client-value quote-notes">{selQuote.notes}</span>
                         </div>
                       )}
                     </div>
@@ -795,6 +797,15 @@ export default function Quotes({ pushToast }) {
                       </div>
 
                       <QuoteDesignPanel quoteId={selQuote.backendId} />
+                    </section>
+
+                    <section className="quote-section quote-section--detail">
+                      <div className="quote-section-heading">
+                        <div>
+                          <div className="quote-section-title">{t('quotes.priceSection', 'Productos y precio')}</div>
+                          <div className="quote-section-description">{t('quotes.priceSectionHint', 'Lo que se cotiza, sus gastos y el total')}</div>
+                        </div>
+                      </div>
 
                       <div className="quote-subsection">
                         <div className="quote-subsection-heading">
@@ -844,15 +855,6 @@ export default function Quotes({ pushToast }) {
                     </table>
                         </div>
                       </div>
-
-                    {selQuote.notes && (
-                      <div className="quote-subsection">
-                        <div className="quote-subsection-heading">
-                          <div className="quote-subsection-title">{t('common.notes', 'Notas')}</div>
-                        </div>
-                        <div className="quote-subsection-card quote-notes">{selQuote.notes}</div>
-                      </div>
-                    )}
 
                     <QuoteChargesPanel
                       quoteId={selQuote.backendId}

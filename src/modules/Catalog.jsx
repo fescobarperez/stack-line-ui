@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLayout } from '../hooks/useLayout.js';
+import ProductThumb from '../components/ProductThumb.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import Autocomplete from '../components/Autocomplete.jsx';
@@ -49,7 +51,7 @@ function categoryPath(categories, categoryId) {
   return path.join(' / ');
 }
 
-function buildCatalogTree(categories, products, search) {
+function buildCatalogTree(categories, products, search, rootLabel = 'Raíz', prune = false) {
   const query = search.trim().toLowerCase();
   const matchesProduct = (product) => !query || `${product.name} ${product.sku}`.toLowerCase().includes(query);
   const visibleProducts = products.filter(matchesProduct);
@@ -63,12 +65,11 @@ function buildCatalogTree(categories, products, search) {
       current = current.parentId == null ? null : categories.find((category) => String(category.id) === String(current.parentId));
     }
   };
-  if (query) {
-    visibleProducts.forEach((product) => addCategoryPath(product.cat));
-    categories.filter((category) => category.name.toLowerCase().includes(query)).forEach((category) => addCategoryPath(category.id));
-  }
-  const visibleCategories = query ? categories.filter((category) => visibleCategoryIds.has(String(category.id))) : categories;
-  const rows = [{ id: 'catalog-root', parent: 0, text: 'Raíz de materia prima', droppable: true, data: { kind: 'root' } }];
+  // Con búsqueda o con un filtro (prune) solo quedan las carpetas que llevan a algo visible.
+  if (query || prune) visibleProducts.forEach((product) => addCategoryPath(product.cat));
+  if (query) categories.filter((category) => category.name.toLowerCase().includes(query)).forEach((category) => addCategoryPath(category.id));
+  const visibleCategories = query || prune ? categories.filter((category) => visibleCategoryIds.has(String(category.id))) : categories;
+  const rows = [{ id: 'catalog-root', parent: 0, text: rootLabel, droppable: true, data: { kind: 'root' } }];
   const sortedCategories = [...visibleCategories].sort((left, right) => left.name.localeCompare(right.name, 'es'));
   sortedCategories.forEach((category) => rows.push({
     id: `category:${category.id}`,
@@ -256,8 +257,18 @@ function CategoryModal({ category, initialParentId, categories, onClose, onSave 
   return <div className="modal-overlay" onClick={onClose}><div className="modal catalog-category-modal" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><h3>{category ? 'Renombrar carpeta' : 'Nueva carpeta'}</h3><div className="body-small muted">Las carpetas pueden anidarse y moverse con drag-and-drop.</div></div><Button type="button" variant="ghost" iconOnly icon="x" onClick={onClose} /></div><div className="modal-body"><div className="field"><label>Nombre *</label><input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Ej. Herrajes" /></div><div className="field" style={{ marginTop: 12 }}><label>Carpeta padre</label><Autocomplete value={parentId} onChange={setParentId} options={categories.filter((item) => !blocked.has(String(item.id))).map((item) => ({ id: item.id, name: categoryPath(categories, item.id) }))} placeholder="Sin padre · Raíz" emptyText="Ninguna carpeta disponible" aria-label="Carpeta padre" /></div></div><div className="modal-foot"><Button type="button" onClick={onClose}>Cancelar</Button><Button type="button" variant="accent" icon="check" onClick={submit} disabled={!name.trim() || saving}>{saving ? 'Guardando…' : 'Guardar carpeta'}</Button></div></div></div>;
 }
 
-function UnifiedCatalogTree({ categories, products, search, selectedProductIds, selectedCategoryId, onSelectProducts, onSelectCategory, onCopyCategory, onEditCategory, onCreateSubcategory, onCreateProduct, onDrop, canDrop, canEdit, busy }) {
-  const tree = useMemo(() => buildCatalogTree(categories, products, search), [categories, products, search]);
+/** «3 productos · 1 subcarpeta»; sin subcarpetas no se menciona. */
+function folderMeta(t, productos, subcarpetas) {
+  const p = productos === 1 ? t('rawMaterials.oneProduct', '1 producto') : t('rawMaterials.nProducts', '{{n}} productos', { n: productos });
+  if (!subcarpetas) return p;
+  const c = subcarpetas === 1 ? t('rawMaterials.oneSubfolder', '1 subcarpeta') : t('rawMaterials.nSubfolders', '{{n}} subcarpetas', { n: subcarpetas });
+  return `${p} · ${c}`;
+}
+
+function UnifiedCatalogTree({ categories, products, search, prune, selectedProductIds, selectedCategoryId, onSelectProducts, onSelectCategory, onCopyCategory, onEditCategory, onCreateSubcategory, onDrop, canDrop, canEdit, busy }) {
+  const { t } = useTranslation();
+  const tree = useMemo(() => buildCatalogTree(categories, products, search, t('rawMaterials.root', 'Todas las carpetas'), prune), [categories, products, search, prune, t]);
+  const subfolderCount = (categoryId) => categories.filter((category) => String(category.parentId) === String(categoryId)).length;
   const productCount = (categoryId) => products.filter((product) => String(product.cat) === String(categoryId)).length;
   const productNodes = useMemo(() => tree.filter((node) => node.data?.kind === 'product'), [tree]);
   const { select: selectProductRange, extend: extendProductSelection } = useTreeSelection(productNodes, {
@@ -277,7 +288,9 @@ function UnifiedCatalogTree({ categories, products, search, selectedProductIds, 
     };
     const rowClass = [
       treeStyles.row,
+      catalogStyles.row,
       selected && treeStyles.selected,
+      selected && catalogStyles.rowSelected,
       isDropTarget && treeStyles.dropTarget,
       isDragging && treeStyles.dragging,
     ].filter(Boolean).join(' ');
@@ -286,19 +299,40 @@ function UnifiedCatalogTree({ categories, products, search, selectedProductIds, 
       else if (kind === 'category') onSelectCategory(category.id);
       else onSelectCategory(null);
     }} onKeyDown={handleKeyDown} tabIndex={kind === 'product' ? 0 : undefined} role={kind === 'product' ? 'option' : undefined} aria-selected={kind === 'product' ? selected : undefined}>
-      {isFolder ? <button type="button" className={treeStyles.toggle} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onToggle?.(); }} aria-label={isOpen ? 'Colapsar' : 'Expandir'}><Icon name={isOpen ? 'chevronDown' : 'chevronRight'} size={16} /></button> : <span className={treeStyles.toggleSpacer} />}
-      <Icon name={kind === 'root' ? 'home' : isFolder ? 'folder' : 'box'} size={18} fill={isFolder && kind !== 'root'} />
-      <span className={treeStyles.label}><strong>{node.text}</strong><small>{kind === 'root' ? `${products.length} productos · ${categories.length} carpetas` : isFolder ? `${count} productos directos · ${categoryPath(categories, category.id)}` : `${product.sku || 'Sin SKU'} · ${product.suppliers?.length || 0} proveedores · stock ${product.stock ?? 0}`}</small></span>
-      {kind === 'product' && <span className={`mono ${catalogStyles.cost}`}>{product.suppliers?.length ? Q(Math.min(...product.suppliers.map((supplier) => Number(supplier.unitCost)))) : '—'}</span>}
-      {isFolder && <span className="badge neutral">{count ?? products.length}</span>}
-      {kind === 'root' && <div className={`${treeStyles.actions} ${catalogStyles.actions} ${catalogStyles.rootActions}`} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}><Button type="button" variant="ghost" size="sm" icon="plus" onClick={() => onCreateSubcategory(null)} disabled={!canEdit || busy}>Carpeta</Button><Button type="button" variant="accent" size="sm" icon="plus" onClick={onCreateProduct} disabled={!canEdit || busy}>Producto</Button></div>}
-      {kind === 'category' && <div className={`${treeStyles.actions} ${catalogStyles.actions}`} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}><Button type="button" variant="ghost" size="sm" icon="copy" title="Copiar carpeta" aria-label="Copiar carpeta" onClick={() => onCopyCategory(category)} disabled={!canEdit || busy}>Copiar</Button><Button type="button" variant="ghost" size="sm" icon="edit" title="Renombrar carpeta" aria-label="Renombrar carpeta" onClick={() => onEditCategory(category)} disabled={!canEdit || busy}>Renombrar</Button><Button type="button" variant="ghost" size="sm" icon="plus" title="Crear subcarpeta" aria-label="Crear subcarpeta" onClick={() => onCreateSubcategory(category.id)} disabled={!canEdit || busy}>Crear subfolder</Button></div>}
+      {isFolder ? <button type="button" className={treeStyles.toggle} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onToggle?.(); }} aria-label={isOpen ? t('rawMaterials.collapse', 'Colapsar') : t('rawMaterials.expand', 'Expandir')}><Icon name={isOpen ? 'chevronDown' : 'chevronRight'} size={16} /></button> : <span className={treeStyles.toggleSpacer} />}
+      {kind === 'product'
+        ? <ProductThumb product={product} className={catalogStyles.thumb} />
+        : <span className={`${catalogStyles.folderIcon} ${kind === 'root' ? catalogStyles.rootIcon : ''}`}><Icon name={kind === 'root' ? 'inventory_2' : isOpen ? 'folder_open' : 'folder'} size={18} fill={kind !== 'root'} /></span>}
+      <span className={treeStyles.label}>
+        <strong>{node.text}</strong>
+        {kind === 'root' && <small>{t('rawMaterials.rootHint', 'Suelta aquí para sacar algo de su carpeta')}</small>}
+        {kind === 'category' && <small>{folderMeta(t, count, subfolderCount(category.id))}</small>}
+        {kind === 'product' && <small><span className="mono">{product.sku || t('rawMaterials.noSku', 'Sin SKU')}</span> · {product.unit || 'Unidad'}</small>}
+      </span>
+      {kind === 'product' && (product.suppliers?.length
+        ? <span className={catalogStyles.cost}>
+            <strong className="mono">{Q(Math.min(...product.suppliers.map((supplier) => Number(supplier.unitCost))))}</strong>
+            <small>{t('rawMaterials.costMeta', '{{n}} prov. · stock {{stock}}', { n: product.suppliers.length, stock: Number(product.stock ?? 0).toLocaleString('es-GT') })}</small>
+          </span>
+        : <span className={catalogStyles.cost}>
+            <span className={catalogStyles.noSupplier}>{t('rawMaterials.noSupplier', 'Sin proveedor')}</span>
+            <small>{t('rawMaterials.stockOnly', 'stock {{stock}}', { stock: Number(product.stock ?? 0).toLocaleString('es-GT') })}</small>
+          </span>)}
+      {kind === 'category' && <div className={`${treeStyles.actions} ${catalogStyles.actions}`} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+        <Button type="button" variant="ghost" size="sm" iconOnly icon="create_new_folder" title={t('rawMaterials.newSubfolder', 'Nueva subcarpeta')} aria-label={t('rawMaterials.newSubfolder', 'Nueva subcarpeta')} onClick={() => onCreateSubcategory(category.id)} disabled={!canEdit || busy} />
+        <Button type="button" variant="ghost" size="sm" iconOnly icon="edit" title={t('rawMaterials.rename', 'Renombrar')} aria-label={t('rawMaterials.rename', 'Renombrar')} onClick={() => onEditCategory(category)} disabled={!canEdit || busy} />
+        <Button type="button" variant="ghost" size="sm" iconOnly icon="copy" title={t('rawMaterials.copyFolder', 'Copiar carpeta (sin productos)')} aria-label={t('rawMaterials.copyFolder', 'Copiar carpeta (sin productos)')} onClick={() => onCopyCategory(category)} disabled={!canEdit || busy} />
+      </div>}
+      {kind === 'category' && <span className={catalogStyles.count} title={t('rawMaterials.directProducts', 'Productos en esta carpeta')}>{count}</span>}
     </div></React.Fragment>;
   };
   return <TreeView className={catalogStyles.tree} tree={tree} rootId={0} initialOpen sort={false} insertDroppableFirst={false} dropTargetOffset={0} canDrag={(node) => canEdit && ['category', 'product'].includes(node?.data?.kind)} canDrop={canDrop} onDrop={onDrop} render={renderNode} />;
 }
 
 export default function CatalogModule({ pushToast }) {
+  const { t } = useTranslation();
+  // Atajo desde el resumen: ver solo lo que aún no tiene proveedor.
+  const [onlyNoSupplier, setOnlyNoSupplier] = useState(false);
   const { items: products, loading: productsLoading, error: productsError, reload: reloadProducts, create: createProductApi } = useProducts({ size: 200 });
   const { items: categories, loading: categoriesLoading, error: categoriesError, reload: reloadCategories } = useCategoryTree();
   const { items: suppliers, reload: reloadSuppliers } = useSuppliers();
@@ -433,13 +467,42 @@ export default function CatalogModule({ pushToast }) {
   };
   const openNewProduct = () => setProductModal({ product: null });
   const openNewCategory = (parentId = null) => setCategoryModal({ category: null, parentId });
-  const selectedProductsInCategory = selectedCategoryId == null ? products.length : products.filter((product) => String(product.cat) === String(selectedCategoryId)).length;
 
-  return <div className="page catalog-page"><div className="page-head"><div><h1 className="page-title">Materia prima</h1><div className="page-subtitle">Organiza folders y productos en un solo árbol. Arrastra para mover; copia o renombra carpetas desde cada nodo.</div></div><div className="page-head-actions"><Button icon="plus" variant="accent" onClick={openNewProduct}>Nuevo producto</Button></div></div>
-    {(productsError || categoriesError) && <div className="alert" style={{ marginBottom: 12 }}><Icon name="alert" size={16} />No se pudo cargar la materia prima. Verifica que el backend tenga aplicada la migración 057.</div>}
-    <div className="catalog-stats"><div className="stat"><span>Productos</span><strong>{products.length}</strong></div><div className="stat"><span>Carpetas</span><strong>{categories.length}</strong></div><div className="stat"><span>Proveedores asociados</span><strong>{products.reduce((total, product) => total + (product.suppliers?.length || 0), 0)}</strong></div><div className="stat"><span>En vista seleccionada</span><strong>{selectedProductsInCategory}</strong></div></div>
-    <div className="catalog-unified-layout"><section className="card catalog-unified-card"><div className="card-head"><div><h3>Árbol de materia prima</h3><span className="body-small muted">Misma interacción que Materiales: arrastra folders y productos entre destinos.</span></div></div><div className="catalog-tree-toolbar"><div className="catalog-search"><Icon name="search" size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar SKU, nombre o carpeta…" /></div><span className="muted mono">{selectedProductIds.size > 1 ? `${selectedProductIds.size} productos seleccionados` : search ? 'Filtro activo' : `${products.length} productos · ${categories.length} carpetas`}</span></div><div className="catalog-tree-hint"><Icon name="info" size={15} />Arrastra productos a carpetas, carpetas a otras carpetas o cualquier elemento a Raíz. Copiar una carpeta conserva su estructura, pero no duplica productos.</div>{productsLoading || categoriesLoading ? <div className="catalog-empty">Cargando materia prima…</div> : <UnifiedCatalogTree categories={categories} products={products} search={search} selectedProductIds={selectedProductIds} selectedCategoryId={selectedCategoryId} onSelectProducts={handleSelectProducts} onSelectCategory={handleSelectCategory} onCopyCategory={copyCategoryAction} onEditCategory={(category) => setCategoryModal({ category, parentId: category.parentId })} onCreateSubcategory={openNewCategory} onCreateProduct={openNewProduct} onDrop={handleDrop} canDrop={canDrop} canEdit={!busy} busy={busy} />}</section>
-      <aside className="card catalog-unified-inspector" ref={inspector}><div className="card-head"><h3>{selectedProduct ? 'Detalle del producto' : selectedCategory ? 'Detalle de carpeta' : 'Inspector'}</h3>{selectedProduct && <Button type="button" variant="ghost" size="sm" icon="edit" onClick={() => setProductModal({ product: selectedProduct })}>Editar</Button>}</div>{selectedProduct ? <div className="card-body"><div className="catalog-detail-title"><div className="catalog-product-icon"><Icon name="box" size={20} /></div><div><h3>{selectedProduct.name}</h3><span className="mono muted">{selectedProduct.sku}</span></div></div><div className="catalog-detail-section"><div className="catalog-detail-heading"><strong>Precios por proveedor</strong><span className="badge accent">{selectedProduct.suppliers?.length || 0}</span></div>{selectedProduct.suppliers?.length ? [...selectedProduct.suppliers].sort((left, right) => Number(left.unitCost) - Number(right.unitCost)).map((supplier) => <div className="catalog-price-row" key={supplier.supplierId}><div><strong>{supplier.supplierName}</strong><small>{supplier.preferred ? 'Proveedor preferido' : 'Precio asociado'}</small></div><span className="mono">{Q(supplier.unitCost)}</span></div>) : <div className="catalog-empty-inline">Este producto aún no tiene proveedor asociado.</div>}<Button type="button" size="sm" variant="ghost" icon="plus" onClick={() => setSupplierModal({ product: selectedProduct })}>Asociar proveedor</Button></div><div className="catalog-detail-section"><div className="catalog-detail-grid"><div><span>Carpeta</span><strong>{categoryPath(categories, selectedProduct.cat) || 'Raíz'}</strong></div><div><span>Tipo</span><strong>{ITEM_TYPES[selectedProduct.itemType]?.label || 'Producto'}</strong></div><div><span>Stock</span><strong className="mono">{selectedProduct.stock ?? 0}</strong></div><div><span>Precio venta</span><strong className="mono">{Q(selectedProduct.price)}</strong></div></div></div><div className="catalog-detail-section"><div className="catalog-inspector-note"><Icon name="info" size={15} />Mueve este producto directamente desde el árbol para conservar su ID y sus proveedores.</div></div></div> : selectedCategory ? <div className="card-body"><div className="catalog-detail-title"><div className="catalog-product-icon"><Icon name="folder" size={20} /></div><div><h3>{selectedCategory.name}</h3><span className="muted">{categoryPath(categories, selectedCategory.id)}</span></div></div><div className="catalog-detail-section"><div className="catalog-detail-grid"><div><span>Productos directos</span><strong>{products.filter((product) => String(product.cat) === String(selectedCategory.id)).length}</strong></div><div><span>Subcarpetas</span><strong>{categories.filter((category) => String(category.parentId) === String(selectedCategory.id)).length}</strong></div></div></div><div className="catalog-detail-section catalog-inspector-actions"><Button type="button" size="sm" variant="ghost" icon="edit" onClick={() => setCategoryModal({ category: selectedCategory, parentId: selectedCategory.parentId })}>Renombrar</Button><Button type="button" size="sm" variant="ghost" icon="copy" onClick={() => copyCategoryAction(selectedCategory)}>Copiar</Button><Button type="button" size="sm" variant="accent" icon="plus" onClick={() => openNewProduct()}>Producto aquí</Button></div></div> : <div className="catalog-empty detail-empty"><Icon name="drag_handle" size={28} /><strong>Selecciona un producto o carpeta</strong><span>El detalle y las acciones aparecerán aquí.</span></div>}</aside></div>
+  const sinProveedor = products.filter((product) => !product.suppliers?.length).length;
+  const sinCarpeta = products.filter((product) => product.cat == null).length;
+  const treeProducts = onlyNoSupplier ? products.filter((product) => !product.suppliers?.length) : products;
+  return <div className="page catalog-page">
+    <div className="page-head">
+      <div>
+        <h1 className="page-title">{t('rawMaterials.title', 'Materia prima')}</h1>
+        <div className="page-subtitle">{t('rawMaterials.subtitle', 'Organiza en carpetas lo que compras para fabricar y asigna a cada producto sus proveedores y costos.')}</div>
+      </div>
+      <div className="page-head-actions">
+        <Button icon="create_new_folder" onClick={() => openNewCategory(null)} disabled={busy}>{t('rawMaterials.newFolder', 'Nueva carpeta')}</Button>
+        <Button icon="plus" variant="accent" onClick={openNewProduct} disabled={busy}>{t('rawMaterials.newProduct', 'Nuevo producto')}</Button>
+      </div>
+    </div>
+    {(productsError || categoriesError) && <div className="alert" style={{ marginBottom: 12 }}><Icon name="alert" size={16} />{t('rawMaterials.loadError', 'No se pudo cargar la materia prima. Verifica que el backend tenga aplicada la migración 057.')}</div>}
+    <div className="catalog-kpis">
+      <div className="catalog-kpi"><span className="catalog-kpi-icon"><Icon name="box" size={20} /></span><div><strong>{products.length}</strong><span>{t('rawMaterials.kpiProducts', 'Productos')}</span></div></div>
+      <div className="catalog-kpi"><span className="catalog-kpi-icon"><Icon name="folder" size={20} /></span><div><strong>{categories.length}</strong><span>{t('rawMaterials.kpiFolders', 'Carpetas')}</span></div></div>
+      <button type="button" className={`catalog-kpi is-action${sinProveedor ? ' warn' : ''}${onlyNoSupplier ? ' on' : ''}`} onClick={() => setOnlyNoSupplier((v) => !v)} disabled={!sinProveedor && !onlyNoSupplier} aria-pressed={onlyNoSupplier}>
+        <span className="catalog-kpi-icon"><Icon name={sinProveedor ? 'warning' : 'check_circle'} size={20} /></span>
+        <div><strong>{sinProveedor}</strong><span>{onlyNoSupplier ? t('rawMaterials.kpiShowAll', 'Sin proveedor · ver todos') : t('rawMaterials.kpiNoSupplier', 'Sin proveedor')}</span></div>
+      </button>
+      <div className="catalog-kpi"><span className="catalog-kpi-icon"><Icon name="inbox" size={20} /></span><div><strong>{sinCarpeta}</strong><span>{t('rawMaterials.kpiNoFolder', 'Sin carpeta')}</span></div></div>
+    </div>
+    <div className="catalog-unified-layout">
+      <section className="card catalog-unified-card">
+        <div className="catalog-tree-toolbar">
+          <div className="catalog-search"><Icon name="search" size={18} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('rawMaterials.search', 'Buscar por nombre, SKU o carpeta…')} aria-label={t('rawMaterials.search', 'Buscar por nombre, SKU o carpeta…')} />{search && <button type="button" className="icon-btn" onClick={() => setSearch('')} aria-label={t('common.clear', 'Limpiar')}><Icon name="x" size={16} /></button>}</div>
+          {onlyNoSupplier && <button type="button" className="chip active" onClick={() => setOnlyNoSupplier(false)}>{t('rawMaterials.kpiNoSupplier', 'Sin proveedor')}<Icon name="x" size={14} /></button>}
+          <span className="catalog-tree-count">{selectedProductIds.size > 1 ? t('rawMaterials.selectedN', '{{n}} seleccionados', { n: selectedProductIds.size }) : t('rawMaterials.countN', '{{n}} productos', { n: treeProducts.length })}</span>
+        </div>
+        <div className="catalog-tree-hint"><Icon name="drag_indicator" size={16} />{t('rawMaterials.hint', 'Arrastra productos y carpetas para moverlos. Shift o Ctrl para elegir varios.')}</div>
+        {productsLoading || categoriesLoading ? <div className="catalog-empty">{t('rawMaterials.loading', 'Cargando materia prima…')}</div> : <UnifiedCatalogTree categories={categories} products={treeProducts} search={search} prune={onlyNoSupplier} selectedProductIds={selectedProductIds} selectedCategoryId={selectedCategoryId} onSelectProducts={handleSelectProducts} onSelectCategory={handleSelectCategory} onCopyCategory={copyCategoryAction} onEditCategory={(category) => setCategoryModal({ category, parentId: category.parentId })} onCreateSubcategory={openNewCategory} onDrop={handleDrop} canDrop={canDrop} canEdit={!busy} busy={busy} />}
+      </section>
+      <aside className="card catalog-unified-inspector" ref={inspector}><div className="card-head"><h3>{selectedProduct ? t('rawMaterials.productDetail', 'Producto') : selectedCategory ? t('rawMaterials.folderDetail', 'Carpeta') : t('rawMaterials.detail', 'Detalle')}</h3>{selectedProduct && <Button type="button" variant="ghost" size="sm" icon="edit" onClick={() => setProductModal({ product: selectedProduct })}>Editar</Button>}</div>{selectedProduct ? <div className="card-body"><div className="catalog-detail-title"><ProductThumb product={selectedProduct} size={selectedProduct.imageVersion != null ? 'full' : 'thumb'} className="catalog-product-icon catalog-product-photo" /><div><h3>{selectedProduct.name}</h3><span className="mono muted">{selectedProduct.sku}</span></div></div><div className="catalog-detail-section"><div className="catalog-detail-heading"><strong>Precios por proveedor</strong><span className="badge accent">{selectedProduct.suppliers?.length || 0}</span></div>{selectedProduct.suppliers?.length ? [...selectedProduct.suppliers].sort((left, right) => Number(left.unitCost) - Number(right.unitCost)).map((supplier) => <div className="catalog-price-row" key={supplier.supplierId}><div><strong>{supplier.supplierName}</strong><small>{supplier.preferred ? 'Proveedor preferido' : 'Precio asociado'}</small></div><span className="mono">{Q(supplier.unitCost)}</span></div>) : <div className="catalog-empty-inline">Este producto aún no tiene proveedor asociado.</div>}<Button type="button" size="sm" variant="ghost" icon="plus" onClick={() => setSupplierModal({ product: selectedProduct })}>Asociar proveedor</Button></div><div className="catalog-detail-section"><div className="catalog-detail-grid"><div><span>Carpeta</span><strong>{categoryPath(categories, selectedProduct.cat) || 'Raíz'}</strong></div><div><span>Tipo</span><strong>{ITEM_TYPES[selectedProduct.itemType]?.label || 'Producto'}</strong></div><div><span>Stock</span><strong className="mono">{selectedProduct.stock ?? 0}</strong></div><div><span>Precio venta</span><strong className="mono">{Q(selectedProduct.price)}</strong></div></div></div><div className="catalog-detail-section"><div className="catalog-inspector-note"><Icon name="info" size={15} />Mueve este producto directamente desde el árbol para conservar su ID y sus proveedores.</div></div></div> : selectedCategory ? <div className="card-body"><div className="catalog-detail-title"><div className="catalog-product-icon"><Icon name="folder" size={20} /></div><div><h3>{selectedCategory.name}</h3><span className="muted">{categoryPath(categories, selectedCategory.id)}</span></div></div><div className="catalog-detail-section"><div className="catalog-detail-grid"><div><span>Productos directos</span><strong>{products.filter((product) => String(product.cat) === String(selectedCategory.id)).length}</strong></div><div><span>Subcarpetas</span><strong>{categories.filter((category) => String(category.parentId) === String(selectedCategory.id)).length}</strong></div></div></div><div className="catalog-detail-section catalog-inspector-actions"><Button type="button" size="sm" variant="ghost" icon="edit" onClick={() => setCategoryModal({ category: selectedCategory, parentId: selectedCategory.parentId })}>Renombrar</Button><Button type="button" size="sm" variant="ghost" icon="copy" onClick={() => copyCategoryAction(selectedCategory)}>Copiar</Button><Button type="button" size="sm" variant="accent" icon="plus" onClick={() => openNewProduct()}>Producto aquí</Button></div></div> : <div className="catalog-empty detail-empty"><span className="catalog-empty-icon"><Icon name="touch_app" size={28} /></span><strong>{t('rawMaterials.emptyTitle', 'Elige un producto o una carpeta')}</strong><span>{t('rawMaterials.emptyText', 'Aquí verás sus proveedores, costos y acciones.')}</span></div>}</aside></div>
     {productModal && <ProductModal product={productModal.product} categories={categories} suppliers={suppliers} selectedCategoryId={selectedCategoryId} onClose={() => setProductModal(null)} onSave={handleSaveProduct} onCreateSupplier={handleCreateSupplier} pushToast={pushToast} />}
     {supplierModal && <SupplierModal product={supplierModal.product} suppliers={suppliers} onClose={() => setSupplierModal(null)} onSave={handleSaveSuppliers} onCreateSupplier={handleCreateSupplier} pushToast={pushToast} />}
     {categoryModal && <CategoryModal category={categoryModal.category} initialParentId={categoryModal.parentId} categories={categories} onClose={() => setCategoryModal(null)} onSave={handleSaveCategory} />}

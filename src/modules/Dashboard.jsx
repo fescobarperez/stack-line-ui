@@ -388,7 +388,6 @@ function DashboardModule() {
         </div>
       </div>
 
-      <button className="fab dash-fab"><Icon name="plus"/>Nueva venta</button>
     </div>
   );
 }
