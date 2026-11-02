@@ -59,6 +59,7 @@ const MAP = {
   eyeOff: 'visibility_off',
   bolt: 'bolt',
   truck: 'local_shipping',
+  health: 'stethoscope',
 };
 
 const Icon = ({ name, size = 14, fill = false, className = "", style }) => {

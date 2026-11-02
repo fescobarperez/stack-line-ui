@@ -15,6 +15,9 @@ export const SCREEN_MODULE = {
   accounting: 'accounting', costcenters: 'accounting', presupuestos: 'accounting', ledger: 'accounting',
   financials: 'accounting', banks: 'accounting', bankrec: 'accounting', fixedassets: 'accounting',
   payroll: 'payroll',
+  // `clinical_record` no es pantalla, pero su permiso solo tiene sentido con Salud.
+  patients: 'salud', clinical_record: 'salud', agenda: 'salud', agenda_config: 'salud',
+  salud_billing: 'salud', salud_followup: 'salud', salud_reports: 'salud',
 };
 
 /** Módulos de la sesión activa; null si la sesión es anterior a los planes (no se oculta nada). */

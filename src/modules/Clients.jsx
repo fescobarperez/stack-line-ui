@@ -12,6 +12,10 @@ import { createClient, updateClient } from '../api/partners.js';
 import { createPayment } from '../api/receivables.js';
 import { usePayments } from '../hooks/useOperations.js';
 import { hoyISO } from '../lib/fechas.js';
+import { moduleEnabled } from '../lib/modules.js';
+import { hasPerm } from '../lib/patients.js';
+import { sessionUser } from '../api/auth.js';
+import { lookupPatients } from '../api/salud.js';
 
 const TYPE_LABEL = { CF: 'CF', minorista: 'Minorista', mayorista: 'Mayorista', exento: 'Exento' };
 const STATUS_LABEL = { active: 'Activo', inactive: 'Inactivo', blocked: 'Bloqueado' };
@@ -163,7 +167,7 @@ function PaymentModal({ client, onSave, onClose }) {
 }
 
 // ── Panel de detalle de cliente ──────────────────────────────────────────────
-function ClientDetail({ client, payments, onClose, onEdit, onPayment }) {
+function ClientDetail({ client, payments, onClose, onEdit, onPayment, patientLink, onOpenPatient, onConvertPatient }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState('info');
   const clientPayments = payments.filter(p => p.clientId === client.id);
@@ -185,6 +189,13 @@ function ClientDetail({ client, payments, onClose, onEdit, onPayment }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          {/* Salud: el cliente que es paciente abre su expediente; el que no, se convierte. */}
+          {patientLink && onOpenPatient && (
+            <Button icon="health" onClick={onOpenPatient}>{t('clients.patient.open', 'Ver expediente')}</Button>
+          )}
+          {!patientLink && onConvertPatient && (
+            <Button icon="health" onClick={onConvertPatient}>{t('clients.patient.convert', 'Convertir en paciente')}</Button>
+          )}
           {client.balance > 0 && (
             <Button icon="cash" onClick={onPayment}>{t('clients.payment.title', 'Pago')}
             </Button>
@@ -311,6 +322,25 @@ export default function Clients({ pushToast }) {
   // Sincroniza la lista local cuando llegan los clientes del backend.
   useEffect(() => { setClients(apiClients); }, [apiClients]);
 
+  // Stackline Salud: cuáles de estos clientes son pacientes. Solo si la
+  // empresa tiene el módulo y el rol puede ver pacientes.
+  const salud = useMemo(() => {
+    const perms = sessionUser()?.perms || ['*'];
+    return {
+      ver: moduleEnabled('salud') && hasPerm(perms, 'patients', 'ver'),
+      crear: moduleEnabled('salud') && hasPerm(perms, 'patients', 'crear'),
+    };
+  }, []);
+  const [patientLinks, setPatientLinks] = useState({});
+  useEffect(() => {
+    if (!salud.ver || clients.length === 0) { setPatientLinks({}); return undefined; }
+    let vigente = true;
+    lookupPatients(clients.map((c) => c.id))
+      .then((r) => { if (vigente) setPatientLinks(Object.fromEntries((r || []).map((l) => [l.clientId, l]))); })
+      .catch(() => { if (vigente) setPatientLinks({}); });
+    return () => { vigente = false; };
+  }, [clients, salud.ver]);
+
   const filtered = useMemo(() => {
     let c = clients;
     if (typeFilter !== 'all') c = c.filter(x => x.clientType === typeFilter);
@@ -352,6 +382,9 @@ export default function Clients({ pushToast }) {
         address: form.address || null, phone: form.phone || null, email: form.email || null,
         creditLimit: parseFloat(form.creditLimit) || 0,
         paymentTerms: parseInt(form.paymentTerms) || 0,
+        // El formulario no muestra el saldo inicial, pero el backend reemplaza
+        // el cliente completo: hay que reenviar el que ya tenía.
+        openingBalance: Number(selected.openingBalance) || 0,
         status: selected.status,
       });
       await reloadClients();
@@ -493,6 +526,11 @@ export default function Clients({ pushToast }) {
                         {initials(c.name)}
                       </div>
                       <span style={{ fontWeight: 500 }}>{c.name}</span>
+                      {patientLinks[c.id] && (
+                        <span className="badge-m3 info" title={patientLinks[c.id].recordNumber}>
+                          {t('clients.patient.badge', 'Paciente')}
+                        </span>
+                      )}
                     </div>
                   ) },
                 { key: 'nit', header: 'NIT', mono: true, sortable: true, card: 'subtitle' },
@@ -594,6 +632,9 @@ export default function Clients({ pushToast }) {
             onClose={() => setSelected(null)}
             onEdit={() => setEditing(true)}
             onPayment={() => setShowPayment(true)}
+            patientLink={salud.ver ? patientLinks[selectedClient.id] : null}
+            onOpenPatient={salud.ver ? () => navigate('/patients', { state: { openPatientId: selectedClient.id } }) : null}
+            onConvertPatient={salud.crear ? () => navigate('/patients', { state: { convertClient: selectedClient } }) : null}
           />
         </div>
       )}

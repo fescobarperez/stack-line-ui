@@ -4651,6 +4651,9 @@ table.tbl tfoot td {
 .datepicker-field:focus-visible { outline: none; border-color: var(--accent); }
 .datepicker-field:disabled { opacity: .38; cursor: not-allowed; }
 .datepicker-icon { color: var(--muted); flex-shrink: 0; }
+.datepicker { min-width: 0; }
+.datepicker-field { min-width: 0; }
+.datepicker-field > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .datepicker-placeholder { color: var(--muted); }
 /* La «x» se superpone al campo; sin sitio reservado el texto pasaría por
    debajo, así que el campo cede espacio a la derecha cuando existe. */
@@ -4679,18 +4682,48 @@ table.tbl tfoot td {
 
 .datepicker-panel {
   z-index: 300;   /* sobre modales (100), bajo confirm (400) y loading (9000) */
-  width: 280px;
-  padding: 10px;
+  width: 300px; box-sizing: border-box;
+  padding: 12px;
   background: var(--md-sys-color-surface-container-low);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-lg);
 }
+/* Escribir la fecha: el atajo para ir lejos sin dar clics. */
+.datepicker-type {
+  width: 100%; height: 34px; box-sizing: border-box;
+  padding: 0 10px; margin-bottom: 8px;
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--surface); color: var(--text);
+  font: 400 13px/20px var(--font-sans);
+}
+.datepicker-type::placeholder { color: var(--muted); }
+.datepicker-type:focus { outline: none; border-color: var(--accent); }
+.datepicker-type.is-error { border-color: var(--md-sys-color-error); }
+.datepicker-error {
+  margin: -4px 0 8px;
+  color: var(--md-sys-color-error);
+  font: 400 12px/16px var(--font-sans);
+}
 .datepicker-head {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 6px;
 }
-.datepicker-month {
+.datepicker-titles { display: flex; align-items: center; gap: 2px; }
+/* Mes y año son botones: abren la vista de meses o de años. */
+.datepicker-title-btn {
+  display: inline-flex; align-items: center; gap: 2px;
+  height: 30px; padding: 0 10px;
+  border: none; border-radius: var(--shape-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font: 500 14px/20px var(--font-sans); letter-spacing: .1px;
+  cursor: pointer; transition: background .15s;
+}
+.datepicker-title-btn:hover { background: var(--surface-2); }
+.datepicker-title-btn:focus-visible { outline: none; background: var(--surface-3); }
+.datepicker-title-btn .msi { color: var(--muted); }
+.datepicker-range {
   font: 500 14px/20px var(--font-sans); letter-spacing: .1px;
   color: var(--md-sys-color-on-surface);
 }
@@ -4701,37 +4734,193 @@ table.tbl tfoot td {
   font: 500 11px/16px var(--font-sans); letter-spacing: .5px;
   color: var(--md-sys-color-on-surface-variant);
 }
+.datepicker-weekdays span.is-weekend { color: var(--md-sys-color-primary); }
 .datepicker-day {
-  height: 34px;
+  height: 36px;
   border: none; border-radius: 50%;
   background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font: 400 13px/20px var(--font-sans);
-  cursor: pointer;
+  font: 400 13px/20px var(--font-sans); font-variant-numeric: tabular-nums;
+  cursor: pointer; transition: background .12s, color .12s;
 }
-.datepicker-day:hover:not(:disabled) { background: var(--surface-2); }
-.datepicker-day.is-outside { color: var(--muted); }
-/* Hoy se marca con un borde y la selección con relleno: si ambos usaran
+/* Los días del mes se leen primero; los de los meses vecinos quedan de fondo. */
+.datepicker-day.is-current { color: var(--md-sys-color-on-surface); font-weight: 500; }
+.datepicker-day.is-outside {
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: .38;
+  font-weight: 400;
+}
+.datepicker-day:hover:not(:disabled) {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  opacity: 1;
+}
+.datepicker-day:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+/* Hoy se marca con un anillo y la selección con relleno: si ambos usaran
    relleno, el día de hoy parecería estar elegido. */
-.datepicker-day.is-today { box-shadow: inset 0 0 0 1px var(--md-sys-color-outline); }
-.datepicker-day.is-selected {
+.datepicker-day.is-today { box-shadow: inset 0 0 0 1.5px var(--md-sys-color-primary); color: var(--md-sys-color-primary); }
+.datepicker-day.is-selected,
+.datepicker-day.is-selected:hover {
   background: var(--md-sys-color-primary);
   color: var(--md-sys-color-on-primary);
-  font-weight: 500;
+  font-weight: 600;
+  opacity: 1;
+  box-shadow: none;
 }
-.datepicker-day:disabled { opacity: .3; cursor: not-allowed; }
+.datepicker-day:disabled { opacity: .2; cursor: not-allowed; text-decoration: line-through; }
+/* Meses y años: rejilla de 3 × 4 con celdas grandes. */
+.datepicker-cells {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  padding: 4px 0;
+}
+.datepicker-cell {
+  height: 44px;
+  border: none; border-radius: var(--shape-full);
+  background: var(--surface-2);
+  color: var(--md-sys-color-on-surface);
+  font: 500 14px/20px var(--font-sans); font-variant-numeric: tabular-nums;
+  cursor: pointer; transition: background .12s, color .12s;
+}
+.datepicker-cell:hover:not(:disabled) { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
+.datepicker-cell:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.datepicker-cell.is-today { box-shadow: inset 0 0 0 1.5px var(--md-sys-color-primary); }
+.datepicker-cell.is-selected,
+.datepicker-cell.is-selected:hover {
+  background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); box-shadow: none;
+}
+.datepicker-cell:disabled { opacity: .3; cursor: not-allowed; }
 .datepicker-foot {
-  display: flex; gap: 12px; justify-content: flex-end;
+  display: flex; align-items: center; gap: 14px;
   margin-top: 8px; padding-top: 8px;
   border-top: 1px solid var(--border);
 }
+.datepicker-spacer { flex: 1; }
 .datepicker-link {
+  display: inline-flex; align-items: center; gap: 2px;
   border: none; background: none; padding: 0;
   color: var(--md-sys-color-primary);
   font: 500 12px/16px var(--font-sans); letter-spacing: .5px;
   cursor: pointer;
 }
-.datepicker-link:hover { text-decoration: underline; }
+.datepicker-link:hover:not(:disabled) { text-decoration: underline; }
+.datepicker-link:disabled { opacity: .38; cursor: not-allowed; }
+
+/* ===== TimePicker: hora en dos toques (hora y luego minutos) ===== */
+/* Contenedor de consulta: en un campo angosto se esconde el «a. m.» antes
+   que dejar sin sitio a la hora. */
+.timepicker { position: relative; width: 100%; min-width: 0; container-type: inline-size; }
+.timepicker-field {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; height: var(--control-h); box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--surface); color: var(--text);
+  cursor: text;
+}
+.timepicker-field.has-clear { padding-right: 32px; }
+.timepicker-field:hover:not(.is-disabled) { border-color: var(--md-sys-color-outline); }
+.timepicker-field.is-open,
+.timepicker-field:focus-within { border-color: var(--accent); }
+.timepicker-field.is-disabled { opacity: .38; cursor: not-allowed; }
+.timepicker-icon { color: var(--muted); flex-shrink: 0; }
+.timepicker-field.is-open .timepicker-icon { color: var(--accent); }
+.timepicker-input {
+  flex: 1; min-width: 5ch; width: 100%; height: 100%;
+  border: none; outline: none; background: transparent; padding: 0;
+  color: inherit; font: 500 14px/20px var(--font-sans); letter-spacing: .5px;
+  font-variant-numeric: tabular-nums;
+}
+.timepicker-input::placeholder { color: var(--muted); font-weight: 400; }
+.timepicker-ampm {
+  flex-shrink: 0;
+  padding: 1px 6px; border-radius: var(--shape-full);
+  background: var(--surface-2); color: var(--md-sys-color-on-surface-variant);
+  font: 500 11px/16px var(--font-sans); letter-spacing: .4px;
+}
+@container (max-width: 150px) {
+  .timepicker-ampm { display: none; }
+}
+.timepicker-clear {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center;
+  width: 22px; height: 22px; padding: 0;
+  border: none; border-radius: 50%; background: transparent; color: var(--muted);
+  cursor: pointer;
+}
+.timepicker-clear:hover { background: var(--surface-3); color: var(--text); }
+.timepicker-clear .msi { display: block; }
+
+.timepicker-panel {
+  z-index: 300;   /* como datepicker-panel: sobre modales, bajo confirm */
+  width: 296px; box-sizing: border-box;
+  padding: 12px;
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+}
+/* La hora elegida en grande, como en el reloj de Material: cada mitad es un
+   botón que cambia entre la vista de horas y la de minutos. */
+.timepicker-readout {
+  display: flex; align-items: center; gap: 4px;
+  padding-bottom: 10px; margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.timepicker-seg {
+  min-width: 56px; height: 48px; padding: 0 8px;
+  border: none; border-radius: var(--shape-sm);
+  background: var(--surface-2); color: var(--md-sys-color-on-surface);
+  font: 400 30px/36px var(--font-sans); font-variant-numeric: tabular-nums;
+  cursor: pointer; transition: background .15s, color .15s;
+}
+.timepicker-seg:hover:not(:disabled) { background: var(--surface-3); }
+.timepicker-seg.is-active {
+  background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container);
+}
+.timepicker-seg:disabled { opacity: .5; cursor: default; }
+.timepicker-colon { font: 400 30px/36px var(--font-sans); color: var(--md-sys-color-on-surface-variant); }
+.timepicker-readout-12 {
+  margin-left: auto;
+  font: 500 12px/16px var(--font-sans); letter-spacing: .4px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.timepicker-body { display: flex; flex-direction: column; gap: 10px; max-height: 280px; overflow-y: auto; }
+.timepicker-group { display: flex; flex-direction: column; gap: 4px; }
+.timepicker-group-label {
+  font: 500 11px/16px var(--font-sans); letter-spacing: .5px; text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.timepicker-grid { display: grid; gap: 4px; }
+.timepicker-grid--hours { grid-template-columns: repeat(6, 1fr); }
+.timepicker-grid--mins { grid-template-columns: repeat(4, 1fr); }
+.timepicker-grid--many { grid-template-columns: repeat(6, 1fr); }
+.timepicker-chip {
+  height: 34px; padding: 0;
+  border: 1px solid transparent; border-radius: var(--shape-full);
+  background: var(--surface-2); color: var(--md-sys-color-on-surface);
+  font: 500 13px/20px var(--font-sans); font-variant-numeric: tabular-nums;
+  cursor: pointer; transition: background .15s, color .15s, border-color .15s;
+}
+.timepicker-grid--mins .timepicker-chip { height: 40px; font-size: 15px; }
+.timepicker-chip:hover:not(:disabled) { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
+.timepicker-chip:focus-visible { outline: none; border-color: var(--accent); }
+.timepicker-chip.is-selected,
+.timepicker-chip.is-selected:hover {
+  background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary);
+}
+.timepicker-chip:disabled { opacity: .3; cursor: not-allowed; }
+.timepicker-foot {
+  display: flex; align-items: center; gap: 14px;
+  margin-top: 10px; padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.timepicker-spacer { flex: 1; }
+.timepicker-link {
+  display: inline-flex; align-items: center; gap: 2px;
+  border: none; background: none; padding: 0;
+  color: var(--md-sys-color-primary);
+  font: 500 12px/16px var(--font-sans); letter-spacing: .5px;
+  cursor: pointer;
+}
+.timepicker-link:hover { text-decoration: underline; }
 
 /* ===== Campo de secreto con mostrar/ocultar ===== */
 .secret-field { position: relative; display: block; }
@@ -6257,3 +6446,429 @@ table.tbl tfoot td {
 @media (max-width: 900px) { .quote-client-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 599px) { .quote-client-grid { gap: 12px 16px; } }
 @media (max-width: 359px) { .quote-client-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ===== Stackline Salud · Pacientes =====
+   Formulario con pestañas en modal, listas editables (alergias, contactos…),
+   buscador «antes de crear» y el expediente en el panel lateral. */
+.salud-modal { width: min(900px, 100%); }
+.salud-form { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.salud-form-tabs { padding: 0 18px; margin-bottom: 0; overflow-x: auto; flex-shrink: 0; }
+.salud-form-tabs .tab, .salud-drawer-tabs .tab { background: none; border-top: 0; border-left: 0; border-right: 0; cursor: pointer; white-space: nowrap; }
+.salud-tab-alert { color: var(--danger); margin-left: 4px; vertical-align: middle; }
+.salud-form-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+.salud-errors { align-items: flex-start; }
+.salud-errors ul { margin: 0; padding-left: 18px; }
+.salud-help { margin: 0 0 8px; font: 400 13px/18px var(--font-sans); }
+.salud-age { display: flex; align-items: center; gap: 8px; min-height: var(--control-h); }
+.salud-stack { display: flex; flex-direction: column; gap: 12px; }
+/* Configuración de la agenda: el título va aparte, sobre la tabla, y no
+   dentro de una tarjeta que la envuelva (dos bordes se leían como uno solo). */
+.ag-config-section { display: flex; flex-direction: column; gap: 10px; }
+.ag-config-section + .ag-config-section { margin-top: 16px; }
+.ag-config-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ag-config-head h3 { margin: 0; font: 500 18px/24px var(--font-sans); letter-spacing: .1px; color: var(--md-sys-color-on-surface); }
+.ag-config-head p { margin: 2px 0 0; font: 400 13px/18px var(--font-sans); }
+/* Ajustes sin tabla (recordatorios): el mismo borde que las tablas, con aire. */
+.ag-config-box {
+  display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap;
+  padding: 14px 16px;
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.ag-config-box .salud-check { padding-bottom: 8px; }
+.ag-config-when { width: 220px; max-width: 100%; }
+.salud-section { display: flex; flex-direction: column; gap: 10px; }
+.salud-section + .salud-section { border-top: 1px solid var(--border); padding-top: 14px; }
+.salud-section-title { margin: 4px 0 0; font: 500 14px/20px var(--font-sans); letter-spacing: .1px; }
+.salud-clinical { display: flex; flex-direction: column; gap: 14px; }
+
+.salud-rows { display: flex; flex-direction: column; gap: 10px; }
+.salud-rows-empty { padding: 8px 0; font: 400 13px/18px var(--font-sans); }
+.salud-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 12px; border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--surface-2); flex-wrap: wrap;
+}
+.salud-row-fields { flex: 1; min-width: 0; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.salud-row-fields .span-2 { grid-column: span 2; }
+/* Reprogramar en el detalle (drawer angosto): día y hora en una fila, el
+   profesional y los horarios libres debajo a todo lo ancho. */
+.salud-row-fields.ag-move-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.salud-row-fields.ag-move-fields .span-2 { grid-column: 1 / -1; }
+.salud-inline-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.salud-row > .salud-inline-actions { flex-basis: 100%; }
+.salud-tab-actions { margin-bottom: 12px; }
+
+.salud-guardian {
+  flex: 1; min-width: 0;
+  display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; gap: 12px; align-items: center;
+}
+.salud-checks { display: flex; flex-direction: column; gap: 6px; }
+.salud-check { display: flex; align-items: center; gap: 8px; cursor: pointer; font: 400 14px/20px var(--font-sans); }
+.salud-check input { accent-color: var(--accent); }
+
+.salud-search { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.salud-search .search-wrap { width: 100%; }
+.salud-results { list-style: none; margin: 8px 0 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.salud-result {
+  width: 100%; display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--surface); color: inherit; cursor: pointer; text-align: left;
+}
+.salud-result:hover { background: var(--surface-2); }
+.salud-result-name { font: 500 14px/20px var(--font-sans); }
+.salud-candidate {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-md);
+}
+
+.salud-drawer-title { min-width: 0; }
+.salud-badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.salud-alerts { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 18px; border-bottom: 1px solid var(--border); }
+.salud-alerts .badge-m3 { display: inline-flex; align-items: center; gap: 4px; }
+.salud-drawer-tabs { padding: 0 18px; margin-bottom: 0; overflow-x: auto; }
+.salud-pager { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 12px; }
+
+@media (max-width: 1024px) {
+  .salud-row-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .salud-guardian { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .salud-checks { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; gap: 16px; }
+}
+@media (max-width: 599px) {
+  .salud-row-fields, .salud-guardian { grid-template-columns: 1fr; }
+  .salud-row-fields .span-2 { grid-column: auto; }
+  .salud-candidate { flex-direction: column; align-items: stretch; }
+  .salud-drawer-title + .salud-inline-actions { justify-content: flex-start; }
+  .salud-pager { justify-content: space-between; }
+  .salud-modal .modal-foot { flex-wrap: wrap; }
+}
+
+/* ===== Stackline Salud · Agenda =====
+   Cuadrícula de día/semana: eje de horas + una columna por profesional o
+   por día. La posición de cada cita se calcula en JS (minutos × escala); el
+   resto vive aquí. Fuera del horario de trabajo, fondo sombreado. */
+.ag-toolbar { justify-content: space-between; gap: 12px; }
+.ag-start { justify-content: flex-start; }
+.ag-date { width: 170px; }
+.ag-filter { min-width: 220px; }
+.ag-segment { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.ag-tab { background: none; border-top: 0; border-left: 0; border-right: 0; cursor: pointer; }
+.ag-setup { margin-bottom: 12px; }
+.ag-link { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; font: inherit; }
+.ag-blocks { margin-top: 16px; }
+.ag-grow { flex: 1; min-width: 0; }
+.ag-actions { justify-content: flex-start; }
+.ag-hint { margin: 0; font: 400 13px/18px var(--font-sans); }
+.ag-color { padding: 4px; cursor: pointer; }
+.ag-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.ag-slots { display: flex; flex-wrap: wrap; gap: 6px; max-height: 148px; overflow-y: auto; }
+
+.ag-scroll {
+  border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface);
+  overflow: auto; max-height: calc(100dvh - 330px); min-height: 360px;
+}
+.ag-grid { display: grid; grid-template-columns: 56px repeat(var(--ag-cols), minmax(150px, 1fr)); }
+.ag-corner, .ag-head {
+  position: sticky; top: 0; z-index: 3; background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.ag-corner { left: 0; z-index: 4; }
+.ag-head {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 8px 10px; border-left: 1px solid var(--border); min-width: 0;
+}
+.ag-head--today .ag-head-label { color: var(--accent); }
+.ag-head-label { font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag-head-sub { font: 400 12px/16px var(--font-sans); flex-basis: 100%; }
+.ag-axis { position: sticky; left: 0; z-index: 2; background: var(--surface); }
+.ag-hour {
+  position: absolute; right: 8px; transform: translateY(-50%);
+  font: 400 11px/14px var(--font-mono); color: var(--muted);
+}
+.ag-hour:first-child { transform: none; }
+.ag-col { position: relative; border-left: 1px solid var(--border); background: var(--surface-2); cursor: copy; }
+.ag-line { position: absolute; left: 0; right: 0; border-top: 1px solid var(--border); pointer-events: none; }
+.ag-work { position: absolute; left: 0; right: 0; background: var(--surface); pointer-events: none; }
+.ag-work { z-index: 0; }
+.ag-line { z-index: 1; }
+.ag-block {
+  position: absolute; left: 0; right: 0; z-index: 1; pointer-events: none; overflow: hidden;
+  background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, color-mix(in oklab, var(--muted) 18%, transparent) 6px 12px);
+}
+.ag-block-label { display: block; padding: 4px 6px; font: 500 12px/16px var(--font-sans); color: var(--muted); }
+.ag-appt {
+  position: absolute; left: 4px; right: 4px; z-index: 2; overflow: hidden;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 3px 6px; text-align: left; cursor: pointer; color: var(--text);
+  border: 0; border-left: 3px solid var(--ag-color, var(--accent)); border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--ag-color, var(--accent)) 16%, var(--surface));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
+}
+.ag-appt:hover { background: color-mix(in oklab, var(--ag-color, var(--accent)) 26%, var(--surface)); }
+.ag-appt:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ag-appt--off { opacity: .55; text-decoration: line-through; }
+.ag-appt--solicitada { border-left-style: dashed; }
+.ag-appt--short { flex-direction: row; gap: 6px; align-items: center; }
+.ag-appt-time { font: 500 11px/14px var(--font-mono); }
+.ag-appt-name { font: 500 13px/16px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.ag-appt-meta { font: 400 11px/14px var(--font-sans); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.ag-appt > * { flex-shrink: 0; }
+.ag-appt-meta strong { font-weight: 500; color: var(--text); }
+
+@media (max-width: 1024px) {
+  .ag-grid { grid-template-columns: 48px repeat(var(--ag-cols), minmax(130px, 1fr)); }
+  .ag-filter { min-width: 180px; }
+}
+@media (max-width: 599px) {
+  .ag-toolbar { flex-direction: column; align-items: stretch; }
+  .ag-date, .ag-filter { width: 100%; min-width: 0; }
+}
+.ag-appt--completada { opacity: .8; }
+
+/* ===== Agenda · vista de mes (domingo a sábado) ===== */
+.ag-month {
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--surface); overflow: hidden;
+}
+.ag-month-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.ag-month-row + .ag-month-row { border-top: 1px solid var(--border); }
+.ag-month-head { background: var(--surface); }
+.ag-month-wd {
+  padding: 8px 10px;
+  font: 500 12px/16px var(--font-sans); letter-spacing: .5px; text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.ag-month-wd.is-weekend { color: var(--md-sys-color-primary); }
+.ag-month-cell {
+  min-height: 112px; min-width: 0;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 6px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+}
+.ag-month-cell:first-child { border-left: 0; }
+.ag-month-cell.is-weekend { background: color-mix(in oklab, var(--surface-2) 55%, var(--surface)); }
+/* Los días de los meses vecinos quedan de fondo, como en el DatePicker. */
+.ag-month-cell.is-outside { background: var(--surface-2); }
+.ag-month-cell.is-outside .ag-month-num { color: var(--md-sys-color-on-surface-variant); opacity: .45; font-weight: 400; }
+.ag-month-cell.is-outside .ag-month-list { opacity: .6; }
+.ag-month-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.ag-month-num {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-width: 28px; height: 28px; padding: 0 6px;
+  border: 0; border-radius: var(--shape-full);
+  background: transparent; color: var(--md-sys-color-on-surface);
+  font: 500 13px/20px var(--font-sans); font-variant-numeric: tabular-nums;
+  cursor: pointer; transition: background .12s;
+}
+.ag-month-mon { font-weight: 400; text-transform: lowercase; }
+.ag-month-num:hover { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
+.ag-month-cell.is-today .ag-month-num { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
+.ag-month-count {
+  padding: 0 7px; border-radius: var(--shape-full);
+  background: var(--surface-2); color: var(--md-sys-color-on-surface-variant);
+  font: 500 11px/18px var(--font-sans);
+}
+.ag-month-list { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ag-month-appt {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+  padding: 2px 6px; text-align: left; cursor: pointer; color: var(--text);
+  border: 0; border-left: 3px solid var(--ag-color, var(--accent)); border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--ag-color, var(--accent)) 14%, var(--surface));
+  font: 400 12px/18px var(--font-sans);
+}
+.ag-month-appt:hover { background: color-mix(in oklab, var(--ag-color, var(--accent)) 26%, var(--surface)); }
+.ag-month-time { flex-shrink: 0; font: 500 11px/18px var(--font-mono); color: var(--md-sys-color-on-surface-variant); }
+.ag-month-name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ag-month-more {
+  align-self: flex-start;
+  border: 0; background: none; padding: 0 6px;
+  color: var(--md-sys-color-primary);
+  font: 500 12px/18px var(--font-sans); cursor: pointer;
+}
+.ag-month-more:hover { text-decoration: underline; }
+
+/* ===== Salud · Consulta (atención clínica, fase 6) ===== */
+.enc-backdrop { z-index: 120; padding: 16px; }
+.enc-modal { width: min(1180px, 100%); height: min(92vh, 1000px); height: min(92dvh, 1000px); }
+.enc-head { align-items: flex-start; }
+.enc-head-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.enc-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.enc-title h3 { margin: 0; }
+.enc-meta { font: 400 13px/18px var(--font-sans); }
+.enc-allergy {
+  margin: 0; border-radius: 0; border-left: 0; border-right: 0;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container);
+  border-color: color-mix(in oklab, var(--md-sys-color-error) 30%, transparent);
+}
+.enc-body {
+  flex: 1; min-height: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start;
+}
+@media (max-width: 900px) { .enc-body { grid-template-columns: minmax(0, 1fr); } }
+.enc-main, .enc-aside { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.enc-aside { position: sticky; top: 0; }
+.enc-section {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.enc-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.enc-section-head h4 { margin: 0; font: 500 15px/22px var(--font-sans); color: var(--md-sys-color-on-surface); }
+.enc-section-head .muted { font: 400 12px/16px var(--font-sans); }
+.enc-area { min-height: 64px; resize: vertical; font: 400 14px/20px var(--font-sans); }
+.enc-text { white-space: pre-wrap; font: 400 14px/21px var(--font-sans); color: var(--text); }
+.enc-vitals { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.enc-vital { position: relative; }
+.enc-vital .field-input { padding-right: 44px; font-variant-numeric: tabular-nums; }
+.enc-unit {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  font: 400 12px/16px var(--font-sans); color: var(--muted); pointer-events: none;
+}
+.enc-vital.is-error .field-input { border-color: var(--md-sys-color-error); }
+.enc-vital-ro {
+  height: var(--control-h); display: flex; align-items: center;
+  font: 500 14px/20px var(--font-sans); font-variant-numeric: tabular-nums;
+}
+.enc-errors { color: var(--md-sys-color-error); font: 400 12px/16px var(--font-sans); }
+/* Escala de dolor 0–10: leve, moderado y severo con los colores de estado del tema. */
+.enc-pain { display: flex; gap: 4px; flex-wrap: wrap; }
+.enc-pain-n {
+  width: 34px; height: 34px; padding: 0;
+  border: 1px solid var(--border); border-radius: 50%;
+  background: var(--surface); color: var(--text);
+  font: 500 13px/20px var(--font-sans); cursor: pointer;
+}
+.enc-pain-n:disabled { opacity: .35; cursor: default; }
+.enc-pain-low.is-on { background: var(--md-sys-color-success); border-color: var(--md-sys-color-success); color: var(--md-sys-color-on-success); }
+.enc-pain-mid.is-on { background: var(--md-sys-color-warning-container); border-color: var(--md-sys-color-warning); color: var(--md-sys-color-on-warning-container); }
+.enc-pain-high.is-on { background: var(--md-sys-color-error); border-color: var(--md-sys-color-error); color: var(--md-sys-color-on-error); }
+.enc-pain-n:hover:not(:disabled):not(.is-on) { background: var(--surface-2); }
+.enc-code {
+  display: inline-block; min-width: 46px; margin: 0 4px;
+  padding: 1px 6px; border-radius: var(--r-sm);
+  background: var(--surface-2); color: var(--md-sys-color-on-surface-variant);
+  font: 500 12px/18px var(--font-mono); text-align: center;
+}
+.enc-code--free { color: var(--muted); }
+.enc-cie10-item { flex-direction: row !important; align-items: center; gap: 6px; }
+.enc-cie10-free { flex-direction: row !important; align-items: center; gap: 6px; color: var(--md-sys-color-primary); }
+.enc-dx-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.enc-dx {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--r-md);
+}
+.enc-dx.is-primary { border-color: color-mix(in oklab, var(--md-sys-color-primary) 45%, var(--border)); }
+.enc-dx-desc { flex: 1; min-width: 0; }
+.enc-dx-make { font-size: 12px; color: var(--md-sys-color-primary); }
+.enc-rx-ro { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.enc-prev { display: flex; flex-direction: column; gap: 4px; font: 400 13px/19px var(--font-sans); }
+.enc-addendum { padding: 8px 10px; border-left: 3px solid var(--md-sys-color-primary); background: var(--surface-2); border-radius: var(--r-sm); }
+.enc-addendum-new { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.enc-addendum-new textarea { width: 100%; }
+.enc-sign-errors { margin: 0 18px 8px; display: flex; gap: 8px; align-items: flex-start; }
+.enc-sign-errors ul { margin: 0; padding-left: 16px; }
+.enc-foot { align-items: center; }
+.enc-foot-info { margin-right: auto; font: 400 13px/18px var(--font-sans); }
+
+/* Historia clínica (pestaña Consultas del expediente) */
+.enc-case {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.enc-case.is-closed { background: var(--surface-2); }
+.enc-case-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.enc-case-head h4 { margin: 0; font: 500 15px/22px var(--font-sans); }
+.enc-case-head .muted { font: 400 12px/16px var(--font-sans); }
+.enc-hist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.enc-hist li + li { border-top: 1px solid var(--border); }
+.enc-hist-item {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 8px 4px; border: 0; background: transparent; text-align: left; cursor: pointer; color: inherit;
+  border-radius: var(--r-sm);
+}
+.enc-hist-item:hover { background: var(--surface-2); }
+.enc-hist-date { flex-shrink: 0; width: 84px; font-size: 12px; color: var(--muted); }
+.enc-hist-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.enc-hist-main .muted { font: 400 12px/16px var(--font-sans); }
+.enc-fu {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 10px; border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--md-sys-color-primary) 7%, var(--surface));
+  font: 400 13px/19px var(--font-sans);
+}
+.enc-fu.is-late { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
+.enc-fu-main { flex: 1; min-width: 0; }
+
+/* Agenda: atender desde el detalle de la cita y aviso de control al agendar */
+.ag-attend {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 14px; border-radius: var(--r-lg);
+  background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container);
+}
+.ag-attend .muted { color: inherit; opacity: .8; font: 400 12px/16px var(--font-sans); }
+.ag-followup { display: flex; align-items: center; gap: 8px; }
+
+/* ── Salud · caja y seguimiento (fase 7) ───────────────────────────── */
+.ag-charge {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 14px; border-radius: var(--r-lg);
+  border: 1px dashed var(--border); background: var(--surface-2);
+}
+.ag-charge.is-paid { border-style: solid; background: color-mix(in oklab, var(--success) 9%, var(--surface)); }
+.ag-charge .muted { font: 400 12px/16px var(--font-sans); }
+.ag-charge > .icon, .ag-charge > svg { color: var(--muted); flex-shrink: 0; }
+
+.cj-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cj-summary {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2);
+}
+.cj-line { display: flex; justify-content: space-between; gap: 12px; font: 400 13px/20px var(--font-sans); }
+.cj-line.is-strong { font-weight: 600; border-top: 1px solid var(--border); padding-top: 4px; margin-top: 2px; }
+.cj-packages, .cj-pk-list { display: flex; flex-direction: column; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.cj-package {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-md); cursor: pointer;
+}
+.cj-package > span:not(.badge-m3) { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.cj-package > .badge-m3 { flex-shrink: 0; }
+.cj-package .muted { font: 400 12px/16px var(--font-sans); }
+.cj-package.is-active { border-color: var(--md-sys-color-primary); background: color-mix(in oklab, var(--md-sys-color-primary) 6%, var(--surface)); }
+.cj-pk-list .cj-package { cursor: default; }
+.cj-account-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cj-balance { font: 500 22px/28px var(--font-sans); font-variant-numeric: tabular-nums; }
+.cj-section-title { margin: 4px 0 8px; font: 500 14px/20px var(--font-sans); }
+.cj-cell { display: flex; flex-direction: column; min-width: 0; }
+.cj-cell .muted { font-size: 12px; }
+.cj-late { color: var(--danger); font-weight: 500; }
+.cj-range { display: flex; align-items: center; gap: 6px; }
+.cj-range > * { min-width: 0; }
+.cj-note { margin: 0 16px 8px; font-size: 12px; }
+.cj-totals {
+  display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: flex-end;
+  padding: 10px 16px; border-top: 1px solid var(--border); font: 400 13px/20px var(--font-sans);
+}
+.cj-totals strong { margin-left: 6px; }
+
+.enc-plan {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface);
+}
+.enc-plan.is-closed { background: var(--surface-2); }
+.enc-plan-main { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 3px; }
+.enc-plan-main .muted { font: 400 12px/16px var(--font-sans); }
+.enc-plan-bar { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.enc-plan-bar > span { display: block; height: 100%; background: var(--md-sys-color-primary); border-radius: inherit; }
+.enc-plan-form {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px; border-radius: var(--r-md); border: 1px dashed var(--border);
+}
+@media (max-width: 600px) {
+  .cj-range { width: 100%; }
+  .cj-totals { justify-content: flex-start; }
+}

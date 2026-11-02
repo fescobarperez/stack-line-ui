@@ -60,6 +60,10 @@ import Presupuestos from './modules/Presupuestos.jsx';
 import Loyalty from './modules/Loyalty.jsx';
 import FEL from './modules/FEL.jsx';
 import Users from './modules/Users.jsx';
+import Patients from './modules/Patients.jsx';
+import Agenda from './modules/Agenda.jsx';
+import SaludFollowUps from './modules/SaludFollowUps.jsx';
+import SaludReports from './modules/SaludReports.jsx';
 
 const NAV = [
   {
@@ -101,6 +105,16 @@ const NAV = [
       { id: 'loyalty', label: 'Fidelización', icon: 'tag'  },
       { id: 'cxc',     label: 'Cuentas por Cobrar', icon: 'card' },
       { id: 'cxp',     label: 'Cuentas por Pagar',  icon: 'receipt' },
+    ],
+  },
+  {
+    // Stackline Salud: solo aparece si la empresa tiene el módulo `salud`.
+    section: 'SALUD',
+    items: [
+      { id: 'patients', label: 'Pacientes', icon: 'health' },
+      { id: 'agenda',   label: 'Agenda',    icon: 'calendar' },
+      { id: 'salud_followup', label: 'Seguimiento', icon: 'bell' },
+      { id: 'salud_reports',  label: 'Reportes de salud', icon: 'chart' },
     ],
   },
   {
@@ -164,6 +178,10 @@ const MODULE_MAP = {
   presupuestos: Presupuestos,
   loyalty:      Loyalty,
   fel:          FEL,
+  patients:     Patients,
+  agenda:       Agenda,
+  salud_followup: SaludFollowUps,
+  salud_reports:  SaludReports,
 };
 
 const TWEAK_DEFAULTS = {

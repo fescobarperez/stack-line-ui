@@ -7,7 +7,7 @@
 // clics y no veintiocho.
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { sectionsInPlan, screenEnabled } from '../lib/modules.js';
+import { sectionsInPlan, screenEnabled, moduleEnabled } from '../lib/modules.js';
 import Icon from './Icon.jsx';
 import {
   PERM_SECTIONS, ACTIONS, PRESETS, aplicarPreset, PERM_IDS,
@@ -81,7 +81,7 @@ export default function PermissionMatrix({ matriz, onChange, readOnly = false })
         {!readOnly && (
           <div className="perm-presets">
             <span className="perm-presets-label">{t('users.startFrom', 'Partir de')}</span>
-            {PRESETS.map((p) => (
+            {PRESETS.filter((p) => !p.module || moduleEnabled(p.module)).map((p) => (
               <button key={p.id} type="button" className="perm-preset"
                 onClick={() => onChange(aplicarPreset(p))}>
                 {p.label}
