@@ -1,0 +1,225 @@
+.root {
+  width: min(100%, 720px);
+  margin: 0 auto 12px;
+}
+
+.animation {
+  width: 100%;
+  overflow: hidden;
+}
+
+.scene {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.scene text {
+  font-family: var(--font-sans);
+  fill: var(--muted);
+  font-size: 9px;
+}
+
+.strong {
+  fill: var(--text);
+  font-weight: 700;
+}
+
+.surface {
+  fill: var(--surface-2);
+  stroke: var(--border);
+}
+
+.browserTop {
+  fill: var(--surface-3);
+  stroke: var(--border);
+}
+
+.browserDot {
+  fill: var(--muted);
+}
+
+.dataRow {
+  fill: var(--surface);
+  stroke: var(--border);
+}
+
+.dataMark {
+  fill: var(--accent);
+}
+
+.cubeFront {
+  fill: var(--warning-soft);
+  stroke: var(--warning);
+  stroke-width: 1.8;
+}
+
+.cubeTop {
+  fill: var(--accent-soft);
+  stroke: var(--warning);
+  stroke-width: 1.8;
+}
+
+.cubeSide {
+  fill: var(--surface-3);
+  stroke: var(--warning);
+  stroke-width: 1.8;
+}
+
+.paper {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.paperLine {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+
+.nexo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nexoWalk 12s ease-in-out infinite;
+}
+
+.nexoArm {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.nexoShell {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.nexoLight {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 1.2;
+}
+
+.shadow {
+  fill: var(--surface-3);
+  opacity: .8;
+}
+
+.brandMark {
+  fill: var(--accent);
+  font-size: 27px;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.eye {
+  fill: var(--success);
+  animation: blink 4.6s ease-in-out infinite;
+}
+
+.smile {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.antenna {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.foot {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 7;
+  stroke-linecap: round;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: walkFeet .55s ease-in-out infinite alternate;
+}
+
+.footRight {
+  animation-delay: -.27s;
+}
+
+.paperOne,
+.paperTwo,
+.paperThree {
+  animation: carryPaper 12s ease-in-out infinite;
+}
+
+.paperTwo {
+  animation-delay: -.32s;
+}
+
+.paperThree {
+  animation-delay: -.64s;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 4px var(--success-soft);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes nexoWalk {
+  0%, 12% { transform: translateX(0) translateY(0); }
+  17% { transform: translateX(0) translateY(-2px); }
+  23% { transform: translateX(0) translateY(0); }
+  62%, 75% { transform: translateX(245px) translateY(0); }
+  80% { transform: translateX(245px) translateY(-1px); }
+  94% { transform: translateX(0) translateY(-1px); }
+  100% { transform: translateX(0) translateY(0); }
+}
+
+@keyframes carryPaper {
+  0%, 12% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  16%, 22% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  30% { transform: translate(46px, 24px) rotate(-5deg); opacity: 1; }
+  43% { transform: translate(140px, 35px) rotate(2deg); opacity: 1; }
+  70%, 80% { transform: translate(465px, 10px) rotate(0deg); opacity: 1; }
+  84%, 100% { transform: translate(465px, 10px) rotate(0deg); opacity: 0; }
+}
+
+@keyframes walkFeet {
+  from { transform: rotate(-9deg); }
+  to { transform: rotate(9deg); }
+}
+
+@keyframes blink {
+  0%, 45%, 49%, 100% { transform: scaleY(1); }
+  47% { transform: scaleY(.12); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: .45; transform: scale(.82); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene *,
+  .nexo,
+  .statusDot {
+    animation: none !important;
+  }
+}
