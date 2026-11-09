@@ -1,0 +1,17 @@
+.websitePickerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.websitePicker {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .websitePickerRow {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+}
