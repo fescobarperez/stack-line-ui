@@ -4,6 +4,8 @@ import Button from './Button.jsx';
 import DataTable from './DataTable.jsx';
 import CrawlerImportAnimation from './CrawlerImportAnimation.jsx';
 import CategoryScopePicker from './CategoryScopePicker.jsx';
+import SupplierWebsiteInlineForm from './SupplierWebsiteInlineForm.jsx';
+import styles from './SupplierCatalogImportModal.module.css';
 import { listSupplierWebsites, listCatalogImportBatches, listPendingCatalogImportBatches, startSupplierWebsiteCrawl, getCrawlRun, getCatalogImportBatch, deleteCatalogImport, previewCatalogImport, approveCatalogImport, rejectCatalogImport, applyCatalogImport, saveCatalogImportProgress, excludeCatalogImportItem } from '../api/supplierIngestion.js';
 import { parseCatalogCsv } from '../lib/catalogImportCsv.js';
 
@@ -36,6 +38,8 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
   const [supplierId, setSupplierId] = useState(initialSupplierId != null ? String(initialSupplierId) : '');
   const [websiteId, setWebsiteId] = useState('');
   const [websites, setWebsites] = useState([]);
+  const [websitesLoading, setWebsitesLoading] = useState(false);
+  const [showWebsiteForm, setShowWebsiteForm] = useState(false);
   const [pendingBatches, setPendingBatches] = useState([]);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [mode, setMode] = useState('csv');
@@ -61,12 +65,23 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
 
   useEffect(() => {
     setWebsiteId('');
-    if (!supplierId) { setWebsites([]); return undefined; }
+    setShowWebsiteForm(false);
+    if (!supplierId) {
+      setWebsites([]);
+      setWebsitesLoading(false);
+      return undefined;
+    }
     let active = true;
+    setWebsitesLoading(true);
     listSupplierWebsites(supplierId).then((rows) => {
-      if (active) setWebsites(Array.isArray(rows) ? rows : []);
+      if (!active) return;
+      const nextWebsites = Array.isArray(rows) ? rows : [];
+      setWebsites(nextWebsites);
+      setShowWebsiteForm(nextWebsites.length === 0);
     }).catch((err) => {
       if (active) setError(err.message);
+    }).finally(() => {
+      if (active) setWebsitesLoading(false);
     });
     return () => { active = false; };
   }, [supplierId]);
@@ -178,6 +193,13 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
   const websiteOptions = useMemo(() => websites.map((website) => ({
     id: String(website.id), name: `${website.name} · ${website.baseUrl}`,
   })), [websites]);
+  const websiteCreated = (website) => {
+    setWebsites((current) => [...current.filter((item) => item.id !== website.id), website]
+      .sort((left, right) => left.name.localeCompare(right.name)));
+    setWebsiteId(String(website.id));
+    setShowWebsiteForm(false);
+    setError('');
+  };
   const dirtyCount = Object.keys(dirtyDecisions).length;
 
   useEffect(() => {
@@ -485,9 +507,24 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
               </div>
               <div className="field">
                 <label className="field-label">Sitio web *</label>
-                <Autocomplete value={websiteId} onChange={(value) => setWebsiteId(value == null ? '' : String(value))}
-                  options={websiteOptions} allowClear={false} placeholder="Seleccionar sitio…" emptyText="Registra primero un sitio" />
+                <div className={styles.websitePickerRow}>
+                  <Autocomplete value={websiteId} onChange={(value) => setWebsiteId(value == null ? '' : String(value))}
+                    options={websiteOptions} allowClear={false} placeholder="Seleccionar sitio…"
+                    emptyText={websitesLoading ? 'Cargando sitios…' : 'Sin páginas asignadas'}
+                    disabled={!supplierId || websitesLoading} className={styles.websitePicker} />
+                  <Button type="button" size="sm" variant="tonal" icon="plus"
+                    disabled={!supplierId || websitesLoading || busy}
+                    onClick={() => { setShowWebsiteForm(true); setError(''); }}>
+                    {websites.length ? 'Agregar otra página' : 'Asignar página web'}
+                  </Button>
+                </div>
               </div>
+              {supplierId && showWebsiteForm && (
+                <div className="field span-2">
+                  <SupplierWebsiteInlineForm supplierId={supplierId} onCreated={websiteCreated}
+                    onCancel={() => setShowWebsiteForm(false)} pushToast={pushToast} />
+                </div>
+              )}
               {mode === 'csv' ? (
                 <div className="field span-2">
                   <label className="field-label">Archivo CSV *</label>
