@@ -50,6 +50,24 @@ export const PERM_SECTIONS = [
     { id: 'cxc',     label: 'Cuentas por Cobrar' },
     { id: 'cxp',     label: 'Cuentas por Pagar' },
   ]},
+  // Salud: `clinical_record` no es una opción del menú sino el permiso de ver
+  // y editar los datos clínicos dentro del expediente. Se separa de
+  // `patients` (la ficha) para que recepción pueda registrar pacientes sin
+  // leer sus alergias, antecedentes ni medicamentos. El backend lo valida.
+  { section: 'SALUD', items: [
+    { id: 'patients',        label: 'Pacientes' },
+    { id: 'clinical_record', label: 'Expediente clínico' },
+    { id: 'agenda',          label: 'Agenda' },
+    // Como `clinical_record`, no es opción del menú: abre la pestaña
+    // Configuración de la Agenda (profesionales, horarios, recursos, tipos).
+    { id: 'agenda_config',   label: 'Configuración de agenda' },
+    // Fase 7. `salud_billing` tampoco es opción del menú: cobrar citas,
+    // vender paquetes y recibir anticipos (botón «Cobrar» de la agenda y
+    // pestaña «Cuenta» del paciente). Caja lo tiene sin ver el expediente.
+    { id: 'salud_billing',   label: 'Cobros de salud' },
+    { id: 'salud_followup',  label: 'Seguimiento de controles' },
+    { id: 'salud_reports',   label: 'Reportes de salud' },
+  ]},
   { section: 'CONTABILIDAD', items: [
     { id: 'accounting',   label: 'Contabilidad' },
     { id: 'costcenters',  label: 'Centros de Costo' },
@@ -172,7 +190,17 @@ export const normalizarMatriz = (matrix) => {
   return out;
 };
 
-/** Puntos de partida. No son roles fijos: rellenan y quedan editables. */
+/**
+ * El expediente clínico no entra en los puntos de partida genéricos: ni el
+ * gerente ni «solo ver» deberían leer datos clínicos sin que alguien lo
+ * decida a propósito.
+ */
+const SIN_CLINICO = (ids) => ids.filter((id) => id !== 'clinical_record');
+
+/**
+ * Puntos de partida. No son roles fijos: rellenan y quedan editables.
+ * `module` limita el preset a las empresas con ese módulo en su plan.
+ */
 export const PRESETS = [
   { id: 'cajero', label: 'Cajero',
     total: ['pos', 'cash', 'returns'], ver: ['billing', 'fel', 'clients'] },
@@ -180,9 +208,13 @@ export const PRESETS = [
     total: ['accounting', 'costcenters', 'presupuestos', 'ledger', 'financials', 'banks', 'bankrec'],
     ver: ['reports', 'billing', 'cxc', 'cxp', 'fixedassets'] },
   { id: 'gerente', label: 'Gerente',
-    total: PERM_IDS.filter(id => !['users', 'config', 'audit'].includes(id)),
+    total: SIN_CLINICO(PERM_IDS.filter(id => !['users', 'config', 'audit'].includes(id))),
     ver: ['users', 'audit'] },
-  { id: 'lectura', label: 'Solo ver', total: [], ver: PERM_IDS },
+  { id: 'lectura', label: 'Solo ver', total: [], ver: SIN_CLINICO(PERM_IDS) },
+  { id: 'recepcion_clinica', label: 'Recepción de clínica', module: 'salud',
+    total: ['patients', 'agenda'], ver: ['clients'] },
+  { id: 'profesional_salud', label: 'Profesional de salud', module: 'salud',
+    total: ['clinical_record', 'agenda'], ver: ['patients'] },
 ];
 
 export const aplicarPreset = (preset) => {

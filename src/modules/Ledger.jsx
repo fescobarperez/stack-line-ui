@@ -109,7 +109,7 @@ export default function Ledger() {
           </div>
 
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="tbl-wrap"><table className="tbl">
+            <div className="tbl-wrap"><table className="tbl tbl-stack" data-title-col="1">
               <thead>
                 <tr>
                   <th style={{ width: 90 }}>{t('common.code', 'Código')}</th>
@@ -178,7 +178,7 @@ export default function Ledger() {
           </div>
 
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="tbl-wrap"><table className="tbl">
+            <div className="tbl-wrap"><table className="tbl tbl-stack">
               <thead>
                 <tr>
                   <th style={{ width: 110 }}>{t('common.date', 'Fecha')}</th>

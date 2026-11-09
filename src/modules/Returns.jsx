@@ -4,6 +4,7 @@ import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
+import DataTable from '../components/DataTable.jsx';
 import { useTranslation } from 'react-i18next';
 import { useCreditNotes } from '../hooks/useReturns.js';
 import { createCreditNote, retryCreditNoteFel } from '../api/wave2.js';
@@ -122,7 +123,7 @@ export default function Returns({ pushToast }) {
 
       {/* Filtros */}
       <div className="filterbar">
-        <div className="search-wrap" style={{ flex: 1, maxWidth: 320 }}>
+        <div className="search-wrap filterbar-grow">
           <Icon name="search" className="icon" size={13} />
           <input
             className="search-input"
@@ -146,59 +147,38 @@ export default function Returns({ pushToast }) {
       </div>
 
       {/* Tabla */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="tbl-wrap"><table className="tbl">
-          <thead>
-            <tr>
-              <th>{t('returns.creditNote', 'Nota de Crédito')}</th>
-              <th>{t('returns.originTicket', 'Ticket origen')}</th>
-              <th>{t('common.client', 'Cliente')}</th>
-              <th>{t('common.date', 'Fecha')}</th>
-              <th>{t('common.type', 'Tipo')}</th>
-              <th style={{ textAlign: 'right' }}>{t('common.amount', 'Monto')}</th>
-              <th>{t('returns.cashierHeader', 'Cajero')}</th>
-              <th>{t('returns.felStatus', 'Estado FEL')}</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr><td colSpan={9} className="empty">{t('returns.noResults', 'Sin notas de crédito con los filtros aplicados')}</td></tr>
-            ) : filtered.map(n => (
-              <tr key={n.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(n)}>
-                <td><span className="mono" style={{ fontSize: 12, fontWeight: 500 }}>{n.id}</span></td>
-                <td><span className="mono muted" style={{ fontSize: 12 }}>{n.ticketId}</span></td>
-                <td>
-                  <div style={{ fontSize: 14 }}>{n.clientName}</div>
-                  <div className="mono muted" style={{ fontSize: 11 }}>{n.clientNit}</div>
-                </td>
-                <td className="muted">{n.date}</td>
-                <td>
-                  <span className={`badge-m3 ${TYPE_CLASS[n.type]}`}>
-                    {TYPE_LABEL[n.type]}
-                  </span>
-                </td>
-                <td style={{ textAlign: 'right', fontWeight: 500, color: 'var(--danger)' }}>
-                  −{Q(n.amount)}
-                </td>
-                <td className="muted">{n.cashier} · {n.branch}</td>
-                <td>
-                  <span className={`badge-m3 ${FEL_CLASS[n.felStatus]}`}>
-                    {FEL_LABEL[n.felStatus]}
-                  </span>
-                </td>
-                <td onClick={e => e.stopPropagation()}>
-                  {n.felStatus === 'rechazada' && (
-                    <Button size="sm" style={{ color: 'var(--warning)', borderColor: 'var(--warning)' }} onClick={() => retryFel(n)}>
-                      {t('returns.retry', 'Reintentar')}
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table></div>
-      </div>
+      <DataTable
+        cards="tablet"
+        rowKey={(n) => n.id}
+        rows={filtered}
+        onRowClick={setSelected}
+        empty={t('returns.noResults', 'Sin notas de crédito con los filtros aplicados')}
+        emptyIcon="return"
+        columns={[
+          { key: 'id', header: t('returns.creditNote', 'Nota de Crédito'), mono: true, sortable: true, card: 'title',
+            render: (n) => <span style={{ fontWeight: 500 }}>{n.id}</span> },
+          { key: 'ticketId', header: t('returns.originTicket', 'Ticket origen'), mono: true, className: 'muted', hideOnTablet: true, hideOnLaptop: true },
+          { key: 'clientName', header: t('common.client', 'Cliente'), sortable: true, card: 'subtitle',
+            render: (n) => (<>
+              <div>{n.clientName}</div>
+              <div className="mono muted" style={{ fontSize: 11 }}>{n.clientNit}</div>
+            </>) },
+          { key: 'date', header: t('common.date', 'Fecha'), className: 'muted', sortable: true },
+          { key: 'type', header: t('common.type', 'Tipo'), hideOnTablet: true,
+            render: (n) => <span className={`badge-m3 ${TYPE_CLASS[n.type]}`}>{TYPE_LABEL[n.type]}</span> },
+          { key: 'amount', header: t('common.amount', 'Monto'), align: 'right', sortable: true, card: 'amount',
+            render: (n) => <span style={{ fontWeight: 500, color: 'var(--danger)' }}>−{Q(n.amount)}</span> },
+          { key: 'cashier', header: t('returns.cashierHeader', 'Cajero'), className: 'muted', hideOnTablet: true, card: 'hide',
+            render: (n) => `${n.cashier} · ${n.branch}` },
+          { key: 'felStatus', header: t('returns.felStatus', 'Estado FEL'), card: 'badge',
+            render: (n) => <span className={`badge-m3 ${FEL_CLASS[n.felStatus]}`}>{FEL_LABEL[n.felStatus]}</span> },
+        ]}
+        actions={(n) => (n.felStatus === 'rechazada' ? (
+          <Button size="sm" style={{ color: 'var(--warning)', borderColor: 'var(--warning)' }} onClick={() => retryFel(n)}>
+            {t('returns.retry', 'Reintentar')}
+          </Button>
+        ) : null)}
+      />
 
       {/* Drawer detalle */}
       {selected && (
@@ -249,7 +229,7 @@ export default function Returns({ pushToast }) {
               <div style={{ marginTop: 12 }}>
                 <div className="detail-label" style={{ marginBottom: 8 }}>{t('returns.items', 'Artículos')}</div>
                 <div className="tbl-wrap" style={{ borderRadius: 'var(--r-md)' }}>
-                  <table className="tbl">
+                  <table className="tbl tbl-stack">
                     <thead>
                       <tr>
                         <th>{t('common.product', 'Producto')}</th>
@@ -261,10 +241,10 @@ export default function Returns({ pushToast }) {
                     <tbody>
                       {selected.items.map((item, i) => (
                         <tr key={i}>
-                          <td>{item.name}</td>
-                          <td style={{ textAlign: 'right' }}>{item.qty}</td>
-                          <td style={{ textAlign: 'right' }}>{Q(item.unitPrice)}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 500 }}>{Q(item.qty * item.unitPrice)}</td>
+                          <td className="stack-title">{item.name}</td>
+                          <td data-label={t('returns.qty', 'Cant.')} style={{ textAlign: 'right' }}>{item.qty}</td>
+                          <td data-label={t('returns.unitPrice', 'P. Unit.')} style={{ textAlign: 'right' }}>{Q(item.unitPrice)}</td>
+                          <td data-label={t('common.total', 'Total')} style={{ textAlign: 'right', fontWeight: 500 }}>{Q(item.qty * item.unitPrice)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -384,7 +364,7 @@ function CreateModal({ onClose, onSave }) {
           {type !== 'descuento' && (
             <div className="field">
               <label className="field-label">{t('returns.itemsToReturn', 'Artículos a devolver')}</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 90px auto', gap: 6, marginBottom: 6 }}>
+              <div className="return-line-input">
                 <input className="field-input" placeholder={t('returns.productName', 'Nombre del producto')}
                   value={itemName} onChange={e => setItemName(e.target.value)} />
                 <input className="field-input mono" type="number" min="1" placeholder={t('returns.qty', 'Cant.')}

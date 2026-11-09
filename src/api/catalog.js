@@ -31,14 +31,29 @@ export const deleteCategory = (id) => api.del(`/api/categories/${id}`);
 // Productos (paginado: el backend devuelve { content, totalSize, ... })
 // `itemType`: 'sellable' | 'raw_material' | 'service'. Sin él devuelve todo.
 // El POS pide solo 'sellable': la materia prima se consume y no se vende.
-export function listProducts({ search = '', itemType = '', page = 0, size = 50 } = {}) {
+// `review`: 'pending' trae solo los que propuso el asistente y esperan revisión
+// (sin él, el catálogo normal: esos no aparecen ni en el POS ni en búsquedas).
+export function listProducts({ search = '', itemType = '', review = '', page = 0, size = 50 } = {}) {
   const q = new URLSearchParams({ page: String(page), size: String(size) });
   if (search) q.set('search', search);
   if (itemType) q.set('itemType', itemType);
+  if (review) q.set('review', review);
   return api.get(`/api/products?${q.toString()}`);
 }
+export const productReviewCount = () => api.get('/api/products/review-count');
+// data: { action: 'approve', price, categoryId, sku } | { action: 'discard' }
+export const reviewProduct = (id, data) => api.post(`/api/products/${id}/review`, data);
 export const getProduct = (id) => api.get(`/api/products/${id}`);
 export const createProduct = (data) => api.post('/api/products', data);
 export const updateProduct = (id, data) => api.put(`/api/products/${id}`, data);
 export const moveProduct = (id, categoryId) => api.put(`/api/products/${id}/category`, { categoryId });
 export const deleteProduct = (id) => api.del(`/api/products/${id}`);
+
+// Foto del producto (una por producto). data: { imageBase64, imageMime, thumbBase64, thumbMime }
+// ya reducida en el navegador (lib/productImage.js). Devuelve { productId, imageVersion }.
+export const uploadProductImage = (id, data) => api.put(`/api/products/${id}/image`, data);
+export const deleteProductImage = (id) => api.del(`/api/products/${id}/image`);
+// size: 'thumb' (240 px, listados y POS) | 'full'. v = imageVersion: con ella el
+// navegador la cachea sin volver a pedirla hasta que cambie la foto.
+export const getProductImage = (id, { size = 'thumb', v } = {}) =>
+  api.get(`/api/products/${id}/image?size=${size}${v != null ? `&v=${v}` : ''}`, { blob: true, silent: true });

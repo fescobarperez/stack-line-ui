@@ -114,17 +114,17 @@ export default function Promotions({ pushToast }) {
   );
 
   const promoColumns = [
-    { key: 'id', header: 'ID', render: (p) => <span className="sku">{p.id}</span> },
-    { key: 'name', header: t('common.name', 'Nombre'), sortable: true, render: (p) => <span className="nm" style={{ whiteSpace: 'normal', display: 'block', maxWidth: 220 }}>{p.name}</span> },
+    { key: 'id', header: 'ID', card: 'hide', hideOnTablet: true, render: (p) => <span className="sku">{p.id}</span> },
+    { key: 'name', header: t('common.name', 'Nombre'), sortable: true, card: 'title', render: (p) => <span className="nm" style={{ whiteSpace: 'normal', display: 'block', maxWidth: 220 }}>{p.name}</span> },
     { key: 'type', header: t('common.type', 'Tipo'), render: (p) => <PromoTypeBadge type={p.type} /> },
-    { key: 'appliesTo', header: t('promotions.appliesTo', 'Aplica a'), render: (p) => (
+    { key: 'appliesTo', header: t('promotions.appliesTo', 'Aplica a'), hideOnTablet: true, render: (p) => (
       <div style={{ fontSize: 12 }}>
         {p.category && <span className="badge-m3" style={{ marginRight: 4 }}>{p.category}</span>}
         {p.product && <span style={{ color: 'var(--muted)' }}>{p.product}</span>}
         {!p.category && !p.product && <span className="muted">{t('promotions.entireCart', 'Todo el carrito')}</span>}
       </div>
     ) },
-    { key: 'conditions', header: t('promotions.conditions', 'Condiciones'), render: (p) => (
+    { key: 'conditions', header: t('promotions.conditions', 'Condiciones'), hideOnTablet: true, card: 'hide', render: (p) => (
       <div className="sku">
         <div>{p.clientType !== 'Todos' ? p.clientType : t('promotions.allClients', 'Todos los clientes')}</div>
         <div>{p.branches}</div>
@@ -135,9 +135,9 @@ export default function Promotions({ pushToast }) {
     { key: 'validity', header: t('promotions.validity', 'Vigencia'), render: (p) => (
       <div className="sku"><div>{p.dateStart}</div><div style={{ color: 'var(--muted)' }}>→ {p.dateEnd}</div></div>
     ) },
-    { key: 'uses', header: t('promotions.uses', 'Usos'), align: 'right', sortable: true, render: (p) => p.uses.toLocaleString('es-GT') },
-    { key: 'savings', header: t('promotions.savingsGenerated', 'Ahorro generado'), align: 'right', sortable: true, sortValue: (p) => p.savings, render: (p) => <span className="num" style={{ color: 'var(--success)' }}>{p.savings > 0 ? Q(p.savings) : '—'}</span> },
-    { key: 'status', header: t('common.status', 'Estado'), render: (p) => <StatusPill status={p.status} /> },
+    { key: 'uses', header: t('promotions.uses', 'Usos'), align: 'right', sortable: true, hideOnTablet: true, render: (p) => p.uses.toLocaleString('es-GT') },
+    { key: 'savings', header: t('promotions.savingsGenerated', 'Ahorro generado'), align: 'right', sortable: true, card: 'amount', sortValue: (p) => p.savings, render: (p) => <span className="num" style={{ color: 'var(--success)' }}>{p.savings > 0 ? Q(p.savings) : '—'}</span> },
+    { key: 'status', header: t('common.status', 'Estado'), card: 'badge', render: (p) => <StatusPill status={p.status} /> },
   ];
 
   // Empaqueta el formulario del wizard al shape del backend.
@@ -245,7 +245,7 @@ export default function Promotions({ pushToast }) {
 
       {/* Buscador */}
       <div className="toolbar">
-        <div className="search-wrap" style={{flex:1, maxWidth:320}}>
+        <div className="search-wrap filterbar-grow">
           <Icon name="search" size={13} className="icon"/>
           <input className="search-input" placeholder={t('promotions.searchPlaceholder', 'Buscar promoción…')}
             value={search} onChange={e => setSearch(e.target.value)}/>
@@ -278,7 +278,7 @@ export default function Promotions({ pushToast }) {
                 <span className="meta">{t('promotions.currentMonth', 'Mes actual')}</span>
               </div>
               <div className="card-body flush">
-                <table className="mtable">
+                <table className="mtable tbl-stack">
                   <thead>
                     <tr>
                       <th>#</th><th>{t('promotions.promotionCol', 'Promoción')}</th><th>{t('common.type', 'Tipo')}</th>

@@ -6,13 +6,20 @@ import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 // Stackline — Inventory module
-import React, { useState as useStateInv, useMemo as useMemoInv } from 'react';
+import React, { useState as useStateInv, useMemo as useMemoInv, useEffect as useEffectInv, useCallback as useCallbackInv } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useProducts, useCategories } from '../hooks/useCatalog.js';
+import { dimensionsPayload, useProducts, useCategories } from '../hooks/useCatalog.js';
+import DimensionsFields from '../components/DimensionsFields.jsx';
 import SupplierPriceModal from '../components/SupplierPriceModal.jsx';
+import ProductReviewPanel from '../components/ProductReviewPanel.jsx';
+import { productReviewCount, uploadProductImage, deleteProductImage } from '../api/catalog.js';
+import ProductImagePicker from '../components/ProductImagePicker.jsx';
+import ProductThumb from '../components/ProductThumb.jsx';
 import { useSuppliers, useBranches } from '../hooks/useMasters.js';
 import { useStockMovements } from '../hooks/useOperations.js';
 import { fechaISO } from '../lib/fechas.js';
+import { listStock } from '../api/inventory.js';
+import { stockPorSucursal } from '../lib/branchStock.js';
 
 const Q = (v) => `Q ${Number(v || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const Qs = Q;
@@ -26,7 +33,7 @@ const ITEM_TYPES = {
   service:      { label: 'Servicio',      variant: 'warning' },
 };
 
-const EMPTY_FORM = { name: '', sku: '', cat: '', unit: 'Unidad', purchaseUnit: '', purchaseFactor: '', itemType: 'sellable', supplierId: '', cost: '', price: '', stock: '', min: '', desc: '', active: true, lots: false };
+const EMPTY_FORM = { name: '', sku: '', cat: '', unit: 'Unidad', purchaseUnit: '', purchaseFactor: '', itemType: 'sellable', supplierId: '', cost: '', price: '', stock: '', min: '', desc: '', active: true, lots: false, height: '', width: '', depth: '', dimensionUnit: null, madeToOrder: false };
 
 function InventoryModule({ pushToast }) {
   const { t } = useTranslation();
@@ -56,11 +63,30 @@ function InventoryModule({ pushToast }) {
   const [search, setSearch] = useStateInv('');
   const [stockFilter, setStockFilter] = useStateInv('all'); // all, low, ok, out
   const [selected, setSelected] = useStateInv(null);
+  // Existencias reales del producto abierto, por sucursal (GET /api/stock?productId=).
+  const [stockSucursal, setStockSucursal] = useStateInv({ rows: [], loading: false, error: null });
   const [selRows, setSelRows] = useStateInv([]);
   const [showNew, setShowNew] = useStateInv(false);
   const [form, setForm] = useStateInv(EMPTY_FORM);
   const [editingId, setEditingId] = useStateInv(null);
   const [saving, setSaving] = useStateInv(false);
+  // Foto elegida en el formulario; se aplica al guardar (ver ProductImagePicker).
+  const [imageChange, setImageChange] = useStateInv(null);
+  // Productos que propuso el asistente y esperan precio (no están en PRODUCTS).
+  const [porRevisar, setPorRevisar] = useStateInv(0);
+  const cargarPorRevisar = useCallbackInv(() => {
+    productReviewCount().then((r) => setPorRevisar(Number(r?.pending) || 0)).catch(() => setPorRevisar(0));
+  }, []);
+  useEffectInv(() => { cargarPorRevisar(); }, [cargarPorRevisar]);
+  useEffectInv(() => {
+    if (!selected?.id) return undefined;
+    let vivo = true;
+    setStockSucursal({ rows: [], loading: true, error: null });
+    listStock({ productId: selected.id })
+      .then((filas) => { if (vivo) setStockSucursal({ rows: Array.isArray(filas) ? filas : [], loading: false, error: null }); })
+      .catch((e) => { if (vivo) setStockSucursal({ rows: [], loading: false, error: e }); });
+    return () => { vivo = false; };
+  }, [selected?.id]);
 
   const filtered = useMemoInv(() => {
     let p = PRODUCTS;
@@ -85,6 +111,7 @@ function InventoryModule({ pushToast }) {
   const openNew = () => {
     setEditingId(null);
     setForm({ ...EMPTY_FORM, cat: firstCatId() });
+    setImageChange(null);
     setShowNew(true);
   };
   const viewProduct = (p) => setSelected(p);
@@ -100,7 +127,10 @@ function InventoryModule({ pushToast }) {
       itemType: p.itemType ?? 'sellable', supplierId: p.supplierId ?? p.suppliers?.[0]?.supplierId ?? '',
       cost: p.cost ?? p.suppliers?.[0]?.unitCost ?? '', price: p.price ?? '', stock: p.stock ?? '', min: p.min ?? '',
       desc: p.description ?? '', active: (p.status ?? 'ACTIVE') !== 'INACTIVE', lots: !!p.lots,
+      height: p.height ?? '', width: p.width ?? '', depth: p.depth ?? '', dimensionUnit: p.dimensionUnit ?? null,
+      madeToOrder: p.tracksStock === false,
     });
+    setImageChange(null);
     setShowNew(true);
   };
   const saveProduct = async () => {
@@ -127,16 +157,32 @@ function InventoryModule({ pushToast }) {
       supplierCost: form.itemType === 'raw_material' ? Number(form.cost) || null : null,
       minStock: Number(form.min) || 0,
       status: form.active ? 'ACTIVE' : 'INACTIVE',
+      ...dimensionsPayload(form),
     };
     setSaving(true);
     try {
+      let id = editingId;
       if (editingId != null) {
         await updateProductApi(editingId, payload);
-        if (pushToast) pushToast(`"${payload.name}" actualizado`, 'success');
       } else {
-        await createProductApi(payload);
-        if (pushToast) pushToast(`"${payload.name}" creado`, 'success');
+        id = (await createProductApi(payload))?.id;
       }
+      // La foto va aparte: al crear hace falta el id. Si falla, el producto ya
+      // quedó guardado y se avisa solo lo de la foto.
+      let fotoError = null;
+      if (imageChange && id != null) {
+        try {
+          if (imageChange.kind === 'set') await uploadProductImage(id, imageChange.upload);
+          else if (imageChange.kind === 'remove') await deleteProductImage(id);
+          await reloadProducts();
+        } catch (e) {
+          fotoError = e?.message || t('productImage.err.upload', 'No se pudo subir la foto');
+        }
+      }
+      if (imageChange?.kind === 'set') URL.revokeObjectURL(imageChange.previewUrl);
+      setImageChange(null);
+      if (pushToast) pushToast(editingId != null ? `"${payload.name}" actualizado` : `"${payload.name}" creado`, 'success');
+      if (fotoError && pushToast) pushToast(t('productImage.err.saved', 'El producto se guardó, pero la foto no: {{msg}}', { msg: fotoError }), 'danger');
       setShowNew(false);
     } catch (err) {
       if (pushToast) pushToast(err?.message || 'No se pudo guardar el producto', 'danger');
@@ -187,27 +233,32 @@ function InventoryModule({ pushToast }) {
   // Columnas de la tabla de productos (demo del componente <DataTable>)
   const catName = (id) => CATEGORIES.find(c => c.id === id)?.name;
   const productColumns = [
-    { key: 'sku', header: t('inventory.headers.sku', 'SKU / Código'), sortable: true, mono: true },
-    { key: 'name', header: t('inventory.headers.product', 'Producto'), sortable: true,
-      render: (p) => (<><div style={{ fontWeight: 500 }}>{p.name}</div><div className="muted" style={{ fontSize: 11 }}>{p.unit}</div></>) },
-    { key: 'cat', header: t('inventory.headers.category', 'Categoría'), sortable: true,
+    { key: 'sku', header: t('inventory.headers.sku', 'SKU / Código'), sortable: true, mono: true, card: 'subtitle', hideOnTablet: true },
+    { key: 'name', header: t('inventory.headers.product', 'Producto'), sortable: true, card: 'title',
+      render: (p) => (
+        <div className="inv-prod-cell">
+          <ProductThumb product={p} className="inv-prod-thumb" />
+          <div><div style={{ fontWeight: 500 }}>{p.name}</div><div className="muted" style={{ fontSize: 11 }}>{p.unit}</div></div>
+        </div>
+      ) },
+    { key: 'cat', header: t('inventory.headers.category', 'Categoría'), sortable: true, hideOnTablet: true,
       sortValue: (p) => catName(p.cat), render: (p) => catName(p.cat) },
-    { key: 'itemType', header: t('inventory.headers.itemType', 'Tipo'), sortable: true,
+    { key: 'itemType', header: t('inventory.headers.itemType', 'Tipo'), sortable: true, card: 'badge', hideOnTablet: true,
       render: (p) => {
         const it = ITEM_TYPES[p.itemType] || ITEM_TYPES.sellable;
         return <span className={`badge-m3 ${it.variant}`}>{it.label}</span>;
       } },
-    { key: 'cost', header: t('inventory.headers.cost', 'Costo'), align: 'right', sortable: true, render: (p) => Q(p.cost) },
-    { key: 'price', header: t('inventory.headers.price', 'Precio'), align: 'right', sortable: true,
+    { key: 'cost', header: t('inventory.headers.cost', 'Costo'), align: 'right', sortable: true, card: 'hide', hideOnTablet: true, render: (p) => Q(p.cost) },
+    { key: 'price', header: t('inventory.headers.price', 'Precio'), align: 'right', sortable: true, card: 'amount',
       render: (p) => (<span style={{ fontWeight: 500 }}>{Q(p.price)}</span>) },
-    { key: 'margin', header: t('inventory.headers.margin', 'Margen'), align: 'right', sortable: true,
+    { key: 'margin', header: t('inventory.headers.margin', 'Margen'), align: 'right', sortable: true, card: 'hide', hideOnTablet: true, hideOnLaptop: true,
       sortValue: (p) => ((p.price - p.cost) / p.price * 100),
       render: (p) => { const m = ((p.price - p.cost) / p.price * 100); return <span style={{ color: m > 30 ? 'var(--success)' : m > 15 ? 'var(--text-2)' : 'var(--warning)' }}>{m.toFixed(1)}%</span>; } },
     { key: 'stock', header: t('inventory.headers.stock', 'Stock'), align: 'right', sortable: true,
       render: (p) => (<span style={{ fontWeight: 500, color: p.stock === 0 ? 'var(--danger)' : p.stock < p.min ? 'var(--warning)' : 'var(--text)' }}>{p.stock}</span>) },
-    { key: 'min', header: t('inventory.headers.min', 'Mín'), align: 'right', sortable: true, className: 'muted' },
-    { key: 'batch', header: t('inventory.headers.lot', 'Lote'), mono: true, className: 'muted', render: (p) => p.batch || '—' },
-    { key: 'exp', header: t('inventory.headers.expires', 'Vence'), mono: true, className: 'muted', render: (p) => p.exp || '—' },
+    { key: 'min', header: t('inventory.headers.min', 'Mín'), align: 'right', sortable: true, className: 'muted', card: 'hide', hideOnTablet: true },
+    { key: 'batch', header: t('inventory.headers.lot', 'Lote'), mono: true, className: 'muted', card: 'hide', hideOnTablet: true, hideOnLaptop: true, render: (p) => p.batch || '—' },
+    { key: 'exp', header: t('inventory.headers.expires', 'Vence'), mono: true, className: 'muted', card: 'hide', hideOnTablet: true, hideOnLaptop: true, render: (p) => p.exp || '—' },
   ];
 
   return (
@@ -218,8 +269,6 @@ function InventoryModule({ pushToast }) {
           <div className="page-subtitle">{PRODUCTS.length} SKUs activos · {CATEGORIES.length - 1} categorías · Valor cost. <span className="mono">{Qs(totalValueCost)}</span></div>
         </div>
         <div className="page-head-actions">
-          <Button icon="upload">{t('common.import', 'Importar')}</Button>
-          <Button icon="download">{t('common.export', 'Exportar')}</Button>
           <Button icon="plus" variant="accent" onClick={openNew}>{t('inventory.newProduct', 'Nuevo producto')}</Button>
         </div>
       </div>
@@ -258,6 +307,9 @@ function InventoryModule({ pushToast }) {
         <div className={`tab ${tab==='productos'?'active':''}`} onClick={() => setTab('productos')}>
           {t('inventory.tabs.products', 'Productos')} <span className="count">{PRODUCTS.length}</span>
         </div>
+        <div className={`tab ${tab==='revision'?'active':''}`} onClick={() => setTab('revision')}>
+          {t('productReview.tab', 'Por revisar')} <span className="count" style={porRevisar ? { color: 'var(--warning)' } : undefined}>{porRevisar}</span>
+        </div>
         <div className={`tab ${tab==='kardex'?'active':''}`} onClick={() => setTab('kardex')}>
           {t('inventory.tabs.movements', 'Kárdex / Movimientos')} <span className="count">{STOCK_MOVEMENTS.length}</span>
         </div>
@@ -278,9 +330,9 @@ function InventoryModule({ pushToast }) {
       {tab === 'productos' && (
         <>
           <div className="filterbar">
-            <div style={{position:'relative', width:280}}>
-              <Icon name="search" size={12} style={{position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', color:'var(--muted)'}}/>
-              <input className="input" style={{width:'100%', paddingLeft:26}} placeholder={t('inventory.searchPlaceholder', 'Buscar SKU, código de barras o nombre…')} value={search} onChange={e=>setSearch(e.target.value)}/>
+            <div className="filterbar-search">
+              <Icon name="search" size={12}/>
+              <input className="input" placeholder={t('inventory.searchPlaceholder', 'Buscar SKU, código de barras o nombre…')} value={search} onChange={e=>setSearch(e.target.value)}/>
             </div>
             <Autocomplete value={cat} onChange={(id) => setCat(id == null || id === '' ? 'todos' : String(id))}
               options={CATEGORIES.map((c) => ({ id: c.id, name: c.name }))}
@@ -322,6 +374,14 @@ function InventoryModule({ pushToast }) {
         </>
       )}
 
+      {tab === 'revision' && (
+        <ProductReviewPanel
+          categories={CATEGORIES.filter((c) => c.id !== 'todos')}
+          pushToast={pushToast}
+          onChanged={() => { cargarPorRevisar(); reloadProducts(); }}
+        />
+      )}
+
       {tab === 'kardex' && (
         <>
           <div className="filterbar">
@@ -339,10 +399,9 @@ function InventoryModule({ pushToast }) {
             </select>
             <div className="grow"></div>
             <Button icon="calendar" size="sm">Mayo 2026</Button>
-            <Button icon="download" size="sm">{t('inventory.exportMovements', 'Exportar')}</Button>
           </div>
           <div className="card card-outlined">
-            <table className="mtable">
+            <table className="mtable tbl-stack" data-title-col="3">
               <thead>
                 <tr>
                   <th>{t('inventory.headers.date', 'Fecha')}</th>
@@ -394,7 +453,7 @@ function InventoryModule({ pushToast }) {
             <Button icon="tag" variant="accent" size="sm">{t('inventory.createPromoExpiring', 'Crear promoción para vencimientos')}</Button>
           </div>
           <div className="card">
-            <table className="tbl">
+            <table className="tbl tbl-stack" data-title-col="1">
               <thead>
                 <tr>
                   <th>{t('inventory.headers.lot', 'Lote')}</th>
@@ -453,7 +512,7 @@ function InventoryModule({ pushToast }) {
               <span className="muted mono" style={{fontSize:11}}>{LOW_STOCK.length} de {PRODUCTS.length} SKUs</span>
             </div>
             <div className="card-body flush">
-              <table className="tbl">
+              <table className="tbl tbl-stack" data-title-col="2">
                 <thead>
                   <tr>
                     <th><input type="checkbox"/></th>
@@ -586,7 +645,7 @@ function InventoryModule({ pushToast }) {
           </div>
           <div className="card">
             <div className="tbl-wrap">
-              <table className="tbl">
+              <table className="tbl tbl-stack" data-title-col="1">
                 <thead>
                   <tr>
                     <th>{t('inventory.headers.sku', 'SKU / Código')}</th>
@@ -644,6 +703,11 @@ function InventoryModule({ pushToast }) {
               <button className="icon-btn" onClick={() => setSelected(null)}><Icon name="x"/></button>
             </div>
             <div className="drawer-body">
+              {selected.imageVersion != null && (
+                <div className="inv-drawer-photo">
+                  <ProductThumb product={selected} size="full" />
+                </div>
+              )}
               <div className="stat-grid" style={{gridTemplateColumns:'1fr 1fr', marginBottom:12}}>
                 <StatCard
                   tone="pri"
@@ -672,26 +736,26 @@ function InventoryModule({ pushToast }) {
               </div>
 
               <div className="card">
-                <div className="card-head"><h3>Stock por sucursal</h3></div>
+                <div className="card-head"><h3>{t('inventory.stockByBranch', 'Stock por sucursal')}</h3></div>
                 <div className="card-body flush">
-                  <table className="tbl">
-                    <thead><tr><th>{t('inventory.headers.branch', 'Sucursal')}</th><th className="num">{t('inventory.headers.stock', 'Stock')}</th><th className="num">{t('inventory.headers.min', 'Mín')}</th><th>{t('inventory.headers.status', 'Estado')}</th></tr></thead>
-                    <tbody>
-                      {BRANCHES.map((b, i) => {
-                        const s = Math.max(0, Math.floor(selected.stock * (0.1 + 0.25 * Math.random() + i*0.05)));
-                        return (
-                          <tr key={b.id}>
-                            <td>{b.name}</td>
-                            <td className="num">{s}</td>
-                            <td className="num muted">{Math.floor(selected.min/3)}</td>
-                            <td>
-                              {s < selected.min/3 ? <span className="badge-m3 warning"><span className="dot"/>Bajo</span> : <span className="badge-m3 success"><span className="dot"/>OK</span>}
-                            </td>
+                  {stockSucursal.loading ? (
+                    <p className="muted" style={{ padding: 14 }}>{t('common.loading', 'Cargando…')}</p>
+                  ) : stockSucursal.error ? (
+                    <p className="muted" style={{ padding: 14 }}>{t('inventory.stockError', 'No se pudieron cargar las existencias.')}</p>
+                  ) : (
+                    <table className="tbl tbl-stack" data-title-col="0">
+                      <thead><tr><th>{t('inventory.headers.branch', 'Sucursal')}</th><th className="num">{t('inventory.headers.stock', 'Stock')}</th><th>{t('inventory.headers.lot', 'Lote')}</th></tr></thead>
+                      <tbody>
+                        {stockPorSucursal(stockSucursal.rows, BRANCHES).map((b) => (
+                          <tr key={b.branchId ?? b.branchName}>
+                            <td>{b.branchName}</td>
+                            <td className={`num ${b.quantity > 0 ? '' : 'muted'}`}>{b.quantity.toLocaleString('es-GT', { maximumFractionDigits: 3 })} {selected.unit}</td>
+                            <td className="muted">{b.lots.length ? b.lots.map((l) => (l.expiry ? `${l.batch} · ${t('inventory.headers.expires', 'Vence')} ${l.expiry}` : l.batch)).join(', ') : '—'}</td>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
             </div>
@@ -712,6 +776,11 @@ function InventoryModule({ pushToast }) {
               <button className="icon-btn" onClick={() => setShowNew(false)}><Icon name="x"/></button>
             </div>
             <div className="modal-body" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 14px'}}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <ProductImagePicker
+                  product={editingId != null ? PRODUCTS.find((x) => x.id === editingId) : null}
+                  value={imageChange} onChange={setImageChange} disabled={saving} />
+              </div>
               <div className="field" style={{gridColumn:'1 / -1'}}><label>Nombre del producto</label>
                 <input placeholder="Ej. Coca-Cola 600ml" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}/></div>
               <div className="field"><label>Código de barras / SKU</label>
@@ -762,6 +831,11 @@ function InventoryModule({ pushToast }) {
                     value={form.purchaseFactor} placeholder="1"
                     onChange={e => setForm(f => ({ ...f, purchaseFactor: e.target.value }))} />
                 </div>
+              </div>
+              {/* Medida estándar opcional: base para cotizar muebles a medida. */}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <DimensionsFields value={form} className="field"
+                  onChange={(k, v) => setForm(f => ({ ...f, [k]: v }))} />
               </div>
               <div className="field"><label>{t('inventory.headers.supplier', 'Proveedor')}</label>
                 <Autocomplete value={form.supplierId} onChange={(id) => setForm((f) => ({ ...f, supplierId: id == null ? '' : String(id) }))}

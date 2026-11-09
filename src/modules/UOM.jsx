@@ -281,16 +281,16 @@ export default function UOM({ pushToast }) {
 
   // Columnas de las tablas CRUD (DataTable)
   const uomColumns = [
-    { key: 'code', header: t('common.code', 'Código'), sortable: true, render: (u) => <strong className="num">{u.code}</strong> },
-    { key: 'name', header: t('common.name', 'Nombre'), sortable: true, mono: false, render: (u) => <span className="nm">{u.name}</span> },
+    { key: 'code', header: t('common.code', 'Código'), sortable: true, card: 'subtitle', render: (u) => <strong className="num">{u.code}</strong> },
+    { key: 'name', header: t('common.name', 'Nombre'), sortable: true, mono: false, card: 'title', render: (u) => <span className="nm">{u.name}</span> },
     { key: 'symbol', header: t('uom.symbol', 'Símbolo'), render: (u) => <span className="sku">{u.symbol}</span> },
     { key: 'type', header: t('common.type', 'Tipo'), sortable: true, render: (u) => <span className={`badge-m3 ${TYPE_BADGE[u.type] || ''}`}>{TYPE_LABEL[u.type] || u.type || '—'}</span> },
     { key: 'base', header: t('uom.base', 'Base'), align: 'center', render: (u) => u.base ? <span className="badge-m3 success">{t('uom.baseLabel', 'Base')}</span> : <span className="sku">—</span> },
-    { key: 'active', header: t('common.status', 'Estado'), align: 'center', sortable: true, render: (u) => <span className={`badge-m3 ${u.active ? 'success' : ''}`}>{u.active ? t('uom.active', 'Activa') : t('uom.inactive', 'Inactiva')}</span> },
+    { key: 'active', header: t('common.status', 'Estado'), align: 'center', sortable: true, card: 'badge', render: (u) => <span className={`badge-m3 ${u.active ? 'success' : ''}`}>{u.active ? t('uom.active', 'Activa') : t('uom.inactive', 'Inactiva')}</span> },
   ];
   const prodColumns = [
-    { key: 'sku', header: 'SKU', mono: true, render: (p) => <span className="sku">{p.sku.slice(-6)}</span> },
-    { key: 'name', header: t('common.product', 'Producto'), sortable: true, render: (p) => <span className="nm">{p.name}</span> },
+    { key: 'sku', header: 'SKU', mono: true, card: 'subtitle', render: (p) => <span className="sku">{p.sku.slice(-6)}</span> },
+    { key: 'name', header: t('common.product', 'Producto'), sortable: true, card: 'title', render: (p) => <span className="nm">{p.name}</span> },
     { key: 'baseUom', header: t('uom.baseUom', 'UOM Base'), render: (p) => <strong>{p.baseUom}</strong> },
     { key: 'purchase', header: t('uom.purchaseUom', 'UOM Compra'), render: (p) => { const c = p.convs.find(x => x.isPurchase); return c ? <span className="badge-m3">{c.uom} ×{c.factor}</span> : <span className="sku">—</span>; } },
     { key: 'sale', header: t('uom.saleUom', 'UOM Venta'), render: (p) => p.convs.filter(c => c.isSale).map(c => <span key={c.uom} className="badge-m3" style={{ marginRight: 4 }}>{c.uom}</span>) },
@@ -350,9 +350,9 @@ export default function UOM({ pushToast }) {
       {tab === 'catalog' && (
         <>
           <div className="filterbar" style={{ marginTop: 16 }}>
-            <div style={{ position: 'relative', width: 240 }}>
-              <Icon name="search" size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
-              <input className="input" style={{ width: '100%', paddingLeft: 26 }}
+            <div className="filterbar-search">
+              <Icon name="search" size={12} />
+              <input className="input"
                 placeholder={t('uom.searchUnitPlaceholder', 'Buscar unidad, código o símbolo…')}
                 value={unitSearch} onChange={e => setUnitSearch(e.target.value)} />
             </div>
@@ -377,9 +377,9 @@ export default function UOM({ pushToast }) {
       {tab === 'products' && (
         <>
           <div className="filterbar" style={{ marginTop: 16 }}>
-            <div style={{ position: 'relative', width: 240 }}>
-              <Icon name="search" size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
-              <input className="input" style={{ width: '100%', paddingLeft: 26 }}
+            <div className="filterbar-search">
+              <Icon name="search" size={12} />
+              <input className="input"
                 placeholder={t('uom.searchPlaceholder', 'Buscar producto o SKU…')}
                 value={search} onChange={e => setSearch(e.target.value)} />
             </div>
@@ -421,7 +421,7 @@ export default function UOM({ pushToast }) {
                 </span>
               </div>
 
-              <table className="mtable" style={{ marginBottom: 12 }}>
+              <table className="mtable tbl-stack" style={{ marginBottom: 12 }}>
                 <thead>
                   <tr>
                     <th>UOM</th>

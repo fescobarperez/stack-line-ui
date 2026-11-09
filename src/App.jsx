@@ -17,11 +17,19 @@ import Logo from './components/Logo.jsx';
 
 import { useNotifications, NotificationsPanel } from './components/NotificationsPanel.jsx';
 import GlobalSearch from './components/GlobalSearch.jsx';
+import TopbarMoreMenu from './components/TopbarMoreMenu.jsx';
+import { useLayout, useMediaQuery } from './hooks/useLayout.js';
+import { sidebarMode } from './lib/breakpoints.js';
+import { vigilarTablasApiladas } from './lib/stackLabels.js';
 import Dashboard from './modules/Dashboard.jsx';
 import POS from './modules/POS.jsx';
 import Billing from './modules/Billing.jsx';
 import Inventory from './modules/Inventory.jsx';
 import Catalog from './modules/Catalog.jsx';
+import AssistantWidget from './assistant/AssistantWidget.jsx';
+import { screenEnabled, moduleEnabled } from './lib/modules.js';
+import { navCounter, sectionCounter } from './lib/navCounters.js';
+import { useNavCounters } from './hooks/useNavCounters.js';
 import Reports from './modules/Reports.jsx';
 import Maintenance from './modules/Maintenance.jsx';
 import Clients from './modules/Clients.jsx';
@@ -52,6 +60,10 @@ import Presupuestos from './modules/Presupuestos.jsx';
 import Loyalty from './modules/Loyalty.jsx';
 import FEL from './modules/FEL.jsx';
 import Users from './modules/Users.jsx';
+import Patients from './modules/Patients.jsx';
+import Agenda from './modules/Agenda.jsx';
+import SaludFollowUps from './modules/SaludFollowUps.jsx';
+import SaludReports from './modules/SaludReports.jsx';
 
 const NAV = [
   {
@@ -59,29 +71,29 @@ const NAV = [
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
       { id: 'pos', label: 'Punto de venta', icon: 'pos', kbd: '⌘P' },
-      { id: 'billing',  label: 'Facturación',          icon: 'receipt', badge: 142 },
+      { id: 'billing',  label: 'Facturación',          icon: 'receipt' },
       { id: 'fel',      label: 'FEL · SAT',            icon: 'check'              },
-      { id: 'returns',  label: 'Devoluciones',          icon: 'return',  badge: 1   },
+      { id: 'returns',  label: 'Devoluciones',          icon: 'return'  },
       { id: 'cash', label: 'Caja y Cortes', icon: 'cash' },
     ],
   },
   {
     section: 'INVENTARIO',
     items: [
-      { id: 'inventory',  label: 'Productos y stock', icon: 'box',      alert: 5 },
+      { id: 'inventory',  label: 'Productos y stock', icon: 'box'      },
       { id: 'rawmaterials', label: 'Materia prima', icon: 'folder' },
       { id: 'variants',    label: 'Variantes',              icon: 'settings'          },
       { id: 'stockcount', label: 'Conteo físico',          icon: 'check'             },
       { id: 'uom',        label: 'Unidades de Medida',     icon: 'settings'          },
-      { id: 'purchases',  label: 'Compras y OCs',          icon: 'truck',    badge: 2 },
-      { id: 'transfers',  label: 'Transferencias',        icon: 'transfer', badge: 1 },
+      { id: 'purchases',  label: 'Compras y OCs',          icon: 'truck'    },
+      { id: 'transfers',  label: 'Transferencias',        icon: 'transfer' },
     ],
   },
   {
     section: 'ANÁLISIS',
     items: [
       { id: 'reports', label: 'Reportería',  icon: 'chart'    },
-      { id: 'quotes',      label: 'Cotizaciones', icon: 'receipt', badge: 2 },
+      { id: 'quotes',      label: 'Cotizaciones', icon: 'receipt' },
       { id: 'projects',    label: 'Proyectos',    icon: 'box'              },
       { id: 'promotions',  label: 'Promociones',  icon: 'tag'              },
     ],
@@ -91,8 +103,18 @@ const NAV = [
     items: [
       { id: 'clients', label: 'Clientes',     icon: 'user' },
       { id: 'loyalty', label: 'Fidelización', icon: 'tag'  },
-      { id: 'cxc',     label: 'Cuentas por Cobrar', icon: 'card', alert: 3 },
-      { id: 'cxp',     label: 'Cuentas por Pagar',  icon: 'receipt', alert: 2 },
+      { id: 'cxc',     label: 'Cuentas por Cobrar', icon: 'card' },
+      { id: 'cxp',     label: 'Cuentas por Pagar',  icon: 'receipt' },
+    ],
+  },
+  {
+    // Stackline Salud: solo aparece si la empresa tiene el módulo `salud`.
+    section: 'SALUD',
+    items: [
+      { id: 'patients', label: 'Pacientes', icon: 'health' },
+      { id: 'agenda',   label: 'Agenda',    icon: 'calendar' },
+      { id: 'salud_followup', label: 'Seguimiento', icon: 'bell' },
+      { id: 'salud_reports',  label: 'Reportes de salud', icon: 'chart' },
     ],
   },
   {
@@ -156,6 +178,10 @@ const MODULE_MAP = {
   presupuestos: Presupuestos,
   loyalty:      Loyalty,
   fel:          FEL,
+  patients:     Patients,
+  agenda:       Agenda,
+  salud_followup: SaludFollowUps,
+  salud_reports:  SaludReports,
 };
 
 const TWEAK_DEFAULTS = {
@@ -175,11 +201,25 @@ export default function App({ session, onLogout }) {
   const location = useLocation();
   const { t, i18n } = useTranslation();
   const route = location.pathname.slice(1) || 'dashboard';
+  // Pendientes reales por opción del menú (GET /api/nav/counters).
+  const { counters: navCounters } = useNavCounters(route);
 
   const [toasts, setToasts] = useState([]);
   const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const [collapsed, setCollapsed] = useState({});
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Acordeón: una sola sección abierta a la vez (null = todas plegadas).
+  const [openSection, setOpenSection] = useState(() => NAV.find(s => s.items.some(i => i.id === route))?.section ?? null);
+  // Laptops de menos de 1440 px arrancan con el menú en riel: con el menú
+  // expandido (320 px) las tablas anchas no caben. El usuario lo puede abrir.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1440);
+  // Tablet y teléfono: el menú se abre encima del contenido, como cajón.
+  const layout = useLayout();
+  const compacto = layout !== 'desktop';
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const menu = sidebarMode(layout, { collapsed: sidebarCollapsed, drawerOpen });
+  const enRiel = menu === 'collapsed';
+  // El tooltip del riel solo con mouse: en pantalla táctil quedaría pegado.
+  const conHover = useMediaQuery('(hover: hover)', true);
+  const alternarMenu = () => (compacto ? setDrawerOpen((v) => !v) : setSidebarCollapsed((v) => !v));
   const [navTooltip, setNavTooltip] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
@@ -198,6 +238,18 @@ export default function App({ session, onLogout }) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // El cajón se cierra al navegar, con Escape y al volver a escritorio.
+  useEffect(() => { setDrawerOpen(false); }, [route, layout]);
+  useEffect(() => {
+    if (menu !== 'drawer') return undefined;
+    const alTeclear = (e) => { if (e.key === 'Escape') setDrawerOpen(false); };
+    window.addEventListener('keydown', alTeclear);
+    return () => window.removeEventListener('keydown', alTeclear);
+  }, [menu]);
+
+  // Tablas hechas a mano con .tbl-stack: etiquetas para apilarlas en el teléfono.
+  useEffect(() => vigilarTablasApiladas(document.body), []);
+
   // Aplicar tema/estilo al <html>
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', tweaks.theme);
@@ -207,7 +259,7 @@ export default function App({ session, onLogout }) {
   // Auto-expandir la sección que contiene la ruta activa
   useEffect(() => {
     const sec = NAV.find(s => s.items.some(i => i.id === route));
-    if (sec) setCollapsed(prev => ({ ...prev, [sec.section]: false }));
+    if (sec) setOpenSection(sec.section);
   }, [route]);
 
   const branch = session.user.branch;
@@ -215,7 +267,7 @@ export default function App({ session, onLogout }) {
 
   const visibleNav = NAV.map(sec => ({
     ...sec,
-    items: sec.items.filter(it => canView(it.id, perms)),
+    items: sec.items.filter(it => canView(it.id, perms) && screenEnabled(it.id, session.enabledModules)),
   })).filter(sec => sec.items.length > 0);
 
   const pushToast = (msg, kind = '') => {
@@ -227,6 +279,8 @@ export default function App({ session, onLogout }) {
   const ModuleComponent = MODULE_MAP[route];
   const module = !ModuleComponent
     ? <div className="page">{t('shell.underConstruction')}</div>
+    : !screenEnabled(route, session.enabledModules)
+    ? <NotInPlan />
     : !canView(route, perms)
     ? <AccessDenied />
     : <ModuleComponent pushToast={pushToast} />;
@@ -234,11 +288,24 @@ export default function App({ session, onLogout }) {
   const currentNav = NAV.flatMap((s) => s.items).find((i) => i.id === route);
 
   return (
-    <div className="app" data-screen-label={`Module · ${currentNav?.label}`} data-sidebar={sidebarCollapsed ? 'collapsed' : 'expanded'}>
+    <div className="app" data-screen-label={`Module · ${currentNav?.label}`} data-layout={layout} data-sidebar={menu}>
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <Logo size={40} className="drawer-mark" />
+          {/* En riel el logo es el botón para expandir: la flecha se oculta ahí. */}
+          {enRiel ? (
+            <button
+              type="button"
+              className="drawer-mark-btn"
+              title={t('shell.expandMenu', 'Expandir menú')}
+              aria-label={t('shell.expandMenu', 'Expandir menú')}
+              onClick={alternarMenu}
+            >
+              <Logo size={40} className="drawer-mark" />
+            </button>
+          ) : (
+            <Logo size={40} className="drawer-mark" />
+          )}
           <div className="sidebar-brand-text">
             <div className="drawer-wordmark">Stack<span className="wm-l">line</span></div>
             <div className="tier">STACKLINE · RETAIL v4.0</div>
@@ -246,62 +313,63 @@ export default function App({ session, onLogout }) {
           <button
             className="icon-btn sidebar-toggle"
             style={{ marginLeft: 'auto' }}
-            title={sidebarCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
-            onClick={() => setSidebarCollapsed(v => !v)}
+            title={menu === 'drawer' ? t('shell.closeMenu', 'Cerrar menú') : sidebarCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+            aria-label={menu === 'drawer' ? t('shell.closeMenu', 'Cerrar menú') : undefined}
+            onClick={alternarMenu}
           >
-            <Icon name="chevronDown" size={13} style={{ transform: sidebarCollapsed ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.2s' }} />
-          </button>
-        </div>
-
-        <div className="sidebar-org">
-          <button className="sidebar-org-btn">
-            <span className="sidebar-org-dot"></span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="sidebar-org-name">{session.company.name}</div>
-              <div className="muted mono" style={{ fontSize: 11, marginTop: 1 }}>
-                {session.company.code} · {session.company.tier}
-              </div>
-            </div>
-            <Icon name="chevronDown" size={11} className="sidebar-org-arrow" />
+            <Icon name="chevronDown" size={13} style={{ transform: enRiel ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.2s' }} />
           </button>
         </div>
 
         <div className="sidebar-nav">
           {visibleNav.map((sec) => {
-            const isCollapsed = !!collapsed[sec.section];
+            const isCollapsed = openSection !== sec.section;
+            const ids = sec.items.map((it) => it.id);
+            // Plegada: la suma de sus pendientes, para que no se escapen.
+            const resumen = isCollapsed ? sectionCounter(ids, navCounters) : null;
+            const actual = ids.includes(route);
             return (
-              <div key={sec.section}>
-                <div
-                  className="nav-section"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
-                  onClick={() => setCollapsed(prev => ({ ...prev, [sec.section]: !prev[sec.section] }))}
+              <div key={sec.section} className="nav-group">
+                <button
+                  type="button"
+                  className={`nav-section${actual ? ' current' : ''}`}
+                  aria-expanded={!isCollapsed}
+                  onClick={() => setOpenSection(prev => (prev === sec.section ? null : sec.section))}
                 >
                   <span className="nav-section-label">{t(`nav.sections.${sec.section}`, sec.section)}</span>
-                  <Icon
-                    name="chevronDown"
-                    size={10}
-                    className="nav-section-label"
-                    style={{ marginRight: 4, transition: 'transform 0.2s', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
-                  />
-                </div>
-                {!isCollapsed && sec.items.map((it) => (
+                  {resumen && (
+                    <span className={`nav-section-count${resumen.alert ? ' alert' : ''}`}>{resumen.text}</span>
+                  )}
+                  <span className={`nav-section-chevron${isCollapsed ? ' closed' : ''}`} aria-hidden="true">
+                    <Icon name="chevronDown" size={20} />
+                  </span>
+                </button>
+                {/* En el riel no hay títulos para desplegar: se muestran todas las
+                    opciones aunque la sección esté plegada en el menú abierto. */}
+                {(!isCollapsed || enRiel) && (
+                <div className="nav-group-items">
+                {sec.items.map((it) => (
                   <div
                     key={it.id}
                     className={`nav-item ${route === it.id ? 'active' : ''}`}
                     onClick={() => navigate('/' + it.id)}
-                    onMouseEnter={sidebarCollapsed ? (e) => {
+                    onMouseEnter={enRiel && conHover ? (e) => {
                       const r = e.currentTarget.getBoundingClientRect();
                       setNavTooltip({ label: it.label, y: r.top + r.height / 2 });
                     } : undefined}
-                    onMouseLeave={sidebarCollapsed ? () => setNavTooltip(null) : undefined}
+                    onMouseLeave={enRiel && conHover ? () => setNavTooltip(null) : undefined}
                   >
                     <Icon name={it.icon} size={24} fill={route === it.id} className="icon" />
                     <span className="nav-item-label">{t(`nav.${it.id}`, it.label)}</span>
-                    {it.alert && <span className="badge alert">{it.alert}</span>}
-                    {it.badge && !it.alert && <span className="badge">{it.badge}</span>}
+                    {(() => {
+                      const c = navCounter(it.id, navCounters);
+                      return c && <span className={`badge${c.alert ? ' alert' : ''}`}>{c.text}</span>;
+                    })()}
                     {it.kbd && route !== it.id && <span className="badge mono">{it.kbd}</span>}
                   </div>
                 ))}
+                </div>
+                )}
               </div>
             );
           })}
@@ -318,13 +386,19 @@ export default function App({ session, onLogout }) {
           </button>
         </div>
       </aside>
+      {menu === 'drawer' && <div className="sidebar-scrim" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
 
       {/* Main */}
       <main className="main">
         <header className="topbar">
-          <button className="icon-btn" title="Menú" onClick={() => setSidebarCollapsed(v => !v)}>
-            <Icon name="menu" size={24} />
-          </button>
+          {/* Escritorio y tablet abren el menú desde el propio drawer (logo en el
+              riel). En el teléfono el drawer está oculto: este es su único acceso. */}
+          {layout === 'phone' && (
+            <button className="icon-btn" title={t('shell.openMenu', 'Menú')} aria-label={t('shell.openMenu', 'Menú')}
+              aria-expanded={drawerOpen} onClick={alternarMenu}>
+              <Icon name="menu" size={24} />
+            </button>
+          )}
           <div className="topbar-search" role="button" tabIndex={0} onClick={() => setShowSearch(true)} onKeyDown={e => e.key === 'Enter' && setShowSearch(true)}>
             <Icon name="search" className="icon" size={24} />
             <span style={{ flex: 1, color: 'var(--md-sys-color-on-surface-variant)' }}>{t('shell.searchPlaceholder')}</span>
@@ -332,11 +406,11 @@ export default function App({ session, onLogout }) {
           </div>
           <div className="topbar-spacer"></div>
           <div className="topbar-actions">
-            <span className="badge-m3 success" style={{ marginRight: 4 }}>
+            <span className="badge-m3 success topbar-status" style={{ marginRight: 4 }}>
               <span className="dot" />
               {t('shell.satOnline')}
             </span>
-            <Button variant="ghost" title={t('common.language')} onClick={toggleLang} style={{ minWidth: 44, padding: '0 10px' }}>
+            <Button variant="ghost" className="topbar-lang" title={t('common.language')} onClick={toggleLang} style={{ minWidth: 44, padding: '0 10px' }}>
               {i18n.language === 'es' ? 'ES' : 'EN'}
             </Button>
             {canApprove && (
@@ -363,18 +437,27 @@ export default function App({ session, onLogout }) {
               onMarkAllRead={markAllRead}
             />
             <button
-              className="icon-btn"
+              className="icon-btn topbar-theme"
               title={t('common.theme')}
               onClick={() => setTweak('theme', tweaks.theme === 'dark' ? 'light' : 'dark')}
             >
               <Icon name={tweaks.theme === 'dark' ? 'light_mode' : 'moon'} size={24} />
             </button>
-            <button className="icon-btn" title={t('common.help', 'Ayuda')}>
+            <button className="icon-btn topbar-help" title={t('common.help', 'Ayuda')}>
               <Icon name="help" size={24} />
             </button>
-            <div className="avatar" title={session.user.name} style={{ width: 32, height: 32, fontSize: 12, marginLeft: 8 }}>
+            <div className="avatar topbar-avatar" title={session.user.name} style={{ width: 32, height: 32, fontSize: 12, marginLeft: 8 }}>
               {session.user.initials}
             </div>
+            {/* Teléfono: lo que se oculta de la barra queda en este menú. */}
+            <TopbarMoreMenu
+              user={{ name: session.user.name, initials: session.user.initials, role: session.user.role, branch }}
+              language={i18n.language === 'en' ? 'en' : 'es'}
+              theme={tweaks.theme}
+              onToggleLanguage={toggleLang}
+              onToggleTheme={() => setTweak('theme', tweaks.theme === 'dark' ? 'light' : 'dark')}
+              onLogout={onLogout}
+            />
           </div>
         </header>
 
@@ -384,7 +467,7 @@ export default function App({ session, onLogout }) {
       </main>
 
       {/* Tooltip sidebar colapsado */}
-      {sidebarCollapsed && navTooltip && (
+      {enRiel && navTooltip && (
         <div style={{
           position: 'fixed',
           left: 60,
@@ -415,6 +498,9 @@ export default function App({ session, onLogout }) {
           onNavigate={(route) => navigate('/' + route)}
         />
       )}
+
+      {/* Asistente comercial: flota sobre cualquier módulo */}
+      {moduleEnabled('ai', session.enabledModules) && <AssistantWidget />}
 
       {/* Toasts */}
       <div className="toast-stack">
@@ -460,6 +546,19 @@ export default function App({ session, onLogout }) {
           </TweakSection>
         </TweaksPanel>
       )}
+    </div>
+  );
+}
+
+/** La pantalla existe pero el plan de la empresa no la incluye. */
+function NotInPlan() {
+  const { t } = useTranslation();
+  return (
+    <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+      <div style={{ textAlign: 'center', maxWidth: 420 }}>
+        <div className="title-medium" style={{ marginBottom: 6 }}>{t('shell.notInPlan', 'Tu plan no incluye este módulo')}</div>
+        <div className="muted body-medium">{t('shell.notInPlanDesc', 'Para activarlo, contacta a Stackline.')}</div>
+      </div>
     </div>
   );
 }

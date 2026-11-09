@@ -25,6 +25,14 @@ export const getQuote = (id) => api.get(`/api/quotes/${id}`);
 export const createQuote = (data) => api.post('/api/quotes', data);
 export const updateQuote = (id, data) => api.put(`/api/quotes/${id}`, data);
 export const updateQuoteStatus = (id, data) => api.put(`/api/quotes/${id}/status`, data);
+// Ciclo del asistente: abrir el detalle de un prospecto lo toma (pasa a
+// borrador a nombre del vendedor) y el cliente ya no puede reabrirlo.
+export const takeQuote = (id) => api.post(`/api/quotes/${id}/take`, {});
+// Solicitudes de cambio del cliente y el «Aplicar» del vendedor.
+export const listQuoteChangeRequests = (id) => api.get(`/api/quotes/${id}/change-requests`);
+export const applyQuoteChangeRequests = (id, data) => api.post(`/api/quotes/${id}/change-requests/apply`, data);
+// Motivos de rechazo/ajuste: los de la empresa o los de por defecto.
+export const listChangeRequestReasons = (id) => api.get(`/api/quotes/${id}/change-requests/reasons`);
 
 // Gastos/cargos de la cotización (fixed/percent). Cada llamada devuelve el
 // resumen recalculado { materialsCost, fixedTotal, subtotalCost, percentTotal, total, charges[] }.
@@ -104,6 +112,22 @@ export const saveMailSettings = (data) => api.put('/api/company/mail-settings', 
 export const testMailSettings = () => api.post('/api/company/mail-settings/test', {});
 /** Reenvía la cotización al cliente. Devuelve { ok, message }. */
 export const resendQuoteEmail = (id) => api.post(`/api/quotes/${id}/send-email`, {});
+// ── Condiciones comerciales (Configuración → Empresa → Cotizaciones) ──
+export const listQuoteConditions = () => api.get('/api/quote-conditions');
+export const createQuoteCondition = (data) => api.post('/api/quote-conditions', data);
+export const updateQuoteCondition = (id, data) => api.put(`/api/quote-conditions/${id}`, data);
+export const deleteQuoteCondition = (id) => api.del(`/api/quote-conditions/${id}`);
+// Las que define el asesor en una cotización: [{ conditionId, title, value, defaultValue }].
+export const getQuoteConditionValues = (quoteId) => api.get(`/api/quotes/${quoteId}/conditions`);
+export const saveQuoteConditionValues = (quoteId, values) => api.put(`/api/quotes/${quoteId}/conditions`, { values });
+
+/** El PDF de la cotización (generado en el backend) como Blob. */
+export const getQuotePdf = (id) => api.get(`/api/quotes/${id}/pdf`, { blob: true });
+// Diseño que el cliente aprobó con el asistente (ficha + render). 404 si no tiene.
+export const getQuoteDesign = (id) => api.get(`/api/quotes/${id}/design`, { silent: true });
+export const getQuoteDesignImage = (id) => api.get(`/api/quotes/${id}/design/image`, { blob: true, silent: true });
+/** Reenvía por WhatsApp la cotización enviada (solo las que nacieron por WhatsApp). */
+export const resendQuoteWhatsapp = (id) => api.post(`/api/quotes/${id}/send-whatsapp`, {});
 export const deleteSetting = (key) => api.del(`/api/settings/${encodeURIComponent(key)}`);
 
 // ── Subida de logo a S3 (URL prefirmada) ──────────────────────────────

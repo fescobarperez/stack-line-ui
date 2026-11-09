@@ -25,6 +25,7 @@ const MAP = {
   x: 'close',
   close: 'close',
   check: 'check',
+  chevronUp: 'expand_less',
   chevronDown: 'expand_more',
   chevronRight: 'chevron_right',
   chevronLeft: 'chevron_left',
@@ -58,6 +59,7 @@ const MAP = {
   eyeOff: 'visibility_off',
   bolt: 'bolt',
   truck: 'local_shipping',
+  health: 'stethoscope',
 };
 
 const Icon = ({ name, size = 14, fill = false, className = "", style }) => {

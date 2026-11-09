@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './i18n/index.js';
 import App from './App.jsx';
 import Login from './modules/Login.jsx';
+import Activate from './modules/Activate.jsx';
 import GlobalLoading from './components/GlobalLoading.jsx';
 import { logout } from './api/auth.js';
 import { ConfirmProvider } from './components/ConfirmDialog.jsx';
@@ -37,6 +38,8 @@ function Root() {
         path="/login"
         element={session ? <Navigate to="/dashboard" replace /> : <Login onLogin={handleLogin} />}
       />
+      {/* Enlace de invitación de la consola de Stackline: sin sesión. */}
+      <Route path="/activar" element={<Activate />} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route
         path="/:module"

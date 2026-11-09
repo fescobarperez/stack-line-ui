@@ -142,14 +142,14 @@ export default function CostCenters({ pushToast }) {
       </div>
 
       <div className="card card-outlined">
-        <table className="mtable">
+        <table className="mtable tbl-stack" data-title-col="1">
           <thead>
             <tr>
               <th>{t('common.code', 'Código')}</th>
               <th>{t('common.name', 'Nombre')}</th>
-              <th>{t('costcenters.group', 'Grupo')}</th>
+              <th className="hide-tablet">{t('costcenters.group', 'Grupo')}</th>
               <th>{t('common.type', 'Tipo')}</th>
-              <th>{t('costcenters.responsible', 'Responsable')}</th>
+              <th className="hide-tablet">{t('costcenters.responsible', 'Responsable')}</th>
               <th className="r">{t('costcenters.monthlyBudget', 'Presupuesto / mes')}</th>
               <th>{t('common.status', 'Estado')}</th>
               <th></th>
@@ -164,12 +164,12 @@ export default function CostCenters({ pushToast }) {
                   <tr key={c.id} style={{ opacity: c.active ? 1 : 0.55 }}>
                     <td><strong className="num">{c.code}</strong></td>
                     <td><span className="nm">{c.name}</span></td>
-                    <td style={{ color: 'var(--muted)' }}>{c.group}</td>
+                    <td className="hide-tablet" style={{ color: 'var(--muted)' }}>{c.group}</td>
                     <td><span className={`badge-m3 ${c.type === 'profit' ? 'success' : ''}`}>{TYPE_LABEL[c.type] || c.type}</span></td>
-                    <td>{c.responsible || '—'}</td>
+                    <td className="hide-tablet">{c.responsible || '—'}</td>
                     <td className="r num">{Q(c.budget)}</td>
                     <td><span className={`badge-m3 ${c.active ? 'success' : ''}`}>{c.active ? t('common.active', 'Activo') : t('common.inactive', 'Inactivo')}</span></td>
-                    <td>
+                    <td className="stack-actions">
                       <div style={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
                         <button className="icon-btn" title={t('common.edit', 'Editar')} style={{ width: 32, height: 32 }} onClick={() => openEdit(c)}><Icon name="edit" size={18} /></button>
                         <Button variant="ghost" size="sm" onClick={() => toggleActive(c)}>{c.active ? t('costcenters.deactivate', 'Desactivar') : t('costcenters.activate', 'Activar')}</Button>

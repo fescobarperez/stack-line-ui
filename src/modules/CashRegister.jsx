@@ -4,6 +4,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
+import DataTable from '../components/DataTable.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useCashRegisters, useCashPoints, usePendingRegisters } from '../hooks/useOperations.js';
@@ -294,7 +295,7 @@ function TurnoDrawer({ register, onClose, onCerrar }) {
             <div className="quote-subsection-title" style={{ marginTop: 18 }}>
               {t('cash.lastSales', 'Últimas ventas')}
             </div>
-            <table className="mtable">
+            <table className="mtable tbl-stack">
               <thead><tr>
                 <th>{t('cash.doc', 'Documento')}</th>
                 <th>{t('common.date', 'Fecha')}</th>
@@ -309,10 +310,10 @@ function TurnoDrawer({ register, onClose, onCerrar }) {
                 )}
                 {(datos.lastSales || []).map((v) => (
                   <tr key={v.id}>
-                    <td><span className="sku">{v.docNumber}</span></td>
-                    <td className="muted">{fmtDateTime(v.createdAt)}</td>
-                    <td><span className="badge-m3">{etiquetaMetodoPago(v.paymentMethod, t)}</span></td>
-                    <td className="r num">{fmt(v.total)}</td>
+                    <td className="stack-title"><span className="sku">{v.docNumber}</span></td>
+                    <td className="muted" data-label={t('common.date', 'Fecha')}>{fmtDateTime(v.createdAt)}</td>
+                    <td data-label={t('projects.method', 'Método')}><span className="badge-m3">{etiquetaMetodoPago(v.paymentMethod, t)}</span></td>
+                    <td className="r num" data-label={t('projects.amount', 'Monto')}>{fmt(v.total)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -551,7 +552,7 @@ export default function CashRegister({ pushToast }) {
               </Button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+            <div className="cash-registers-grid">
               {openRegisters.map(r => (
                 <CajaCard key={r.id} register={r} onClose={setClosing} onOpenDetail={setDetalle} />
               ))}
@@ -563,53 +564,37 @@ export default function CashRegister({ pushToast }) {
       {tab === 'historial' && (
         <>
           <div className="toolbar">
-            <div className="search-wrap" style={{ flex: 1, maxWidth: 300 }}>
+            <div className="search-wrap filterbar-grow">
               <Icon name="search" className="icon" size={13} />
               <input className="search-input" placeholder={t('cash.searchPlaceholder', 'Buscar por sucursal o cajero…')}
                 value={histSearch} onChange={e => setSearch(e.target.value)} />
             </div>
             <span className="muted" style={{ fontSize: 12 }}>{closedRegisters.length} {t('cash.cutLabel', 'corte')}{closedRegisters.length !== 1 ? 's' : ''}</span>
           </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>{t('common.branch', 'Sucursal')}</th>
-                  <th>{t('cash.cashPoint', 'Caja')}</th>
-                  <th>{t('cash.cashier', 'Cajero')}</th>
-                  <th>{t('cash.opening', 'Apertura')}</th>
-                  <th>{t('cash.closing', 'Cierre')}</th>
-                  <th className="right">{t('cash.openingAmount', 'Fondo inicial')}</th>
-                  <th className="right">{t('cash.totalSales', 'Ventas totales')}</th>
-                  <th className="right">{t('cash.countedCash', 'Efectivo contado')}</th>
-                  <th className="right">{t('cash.difference', 'Diferencia')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {closedRegisters.length === 0 ? (
-                  <tr><td colSpan={8} className="empty">{t('cash.noCuts', 'Sin cortes registrados')}</td></tr>
-                ) : closedRegisters.map(r => (
-                  <tr key={r.id}>
-                    <td style={{ fontWeight: 500 }}>{r.branch}</td>
-                    <td>{r.cashPoint}</td>
-                    <td className="muted">{r.cashier}</td>
-                    <td className="mono muted">{r.openedAt}</td>
-                    <td className="mono muted">{r.closedAt || '—'}</td>
-                    <td className="right mono muted">{fmt(r.openingAmount)}</td>
-                    <td className="right mono">{fmt(r.salesTotal)}</td>
-                    <td className="right mono">{r.closingAmount != null ? fmt(r.closingAmount) : '—'}</td>
-                    <td className="right">
-                      {r.diff != null ? (
-                        <span className="mono" style={{ color: r.diff > 0 ? 'var(--success)' : r.diff < 0 ? 'var(--danger)' : 'var(--muted)', fontWeight: 500 }}>
-                          {r.diff >= 0 ? '+' : ''}{fmt(r.diff)}
-                        </span>
-                      ) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            rowKey={(r) => r.id}
+            rows={closedRegisters}
+            empty={t('cash.noCuts', 'Sin cortes registrados')}
+            emptyIcon="cash"
+            columns={[
+              { key: 'branch', header: t('common.branch', 'Sucursal'), card: 'title', sortable: true,
+                render: (r) => <span style={{ fontWeight: 500 }}>{r.branch}</span> },
+              { key: 'cashPoint', header: t('cash.cashPoint', 'Caja'), card: 'subtitle', sortable: true },
+              { key: 'cashier', header: t('cash.cashier', 'Cajero'), className: 'muted', sortable: true },
+              { key: 'openedAt', header: t('cash.opening', 'Apertura'), mono: true, className: 'muted', hideOnTablet: true, sortable: true },
+              { key: 'closedAt', header: t('cash.closing', 'Cierre'), mono: true, className: 'muted', sortable: true, render: (r) => r.closedAt || '—' },
+              { key: 'openingAmount', header: t('cash.openingAmount', 'Fondo inicial'), align: 'right', mono: true, hideOnTablet: true, render: (r) => fmt(r.openingAmount) },
+              { key: 'salesTotal', header: t('cash.totalSales', 'Ventas totales'), align: 'right', mono: true, card: 'amount', sortable: true, render: (r) => fmt(r.salesTotal) },
+              { key: 'closingAmount', header: t('cash.countedCash', 'Efectivo contado'), align: 'right', mono: true, hideOnTablet: true,
+                render: (r) => (r.closingAmount != null ? fmt(r.closingAmount) : '—') },
+              { key: 'diff', header: t('cash.difference', 'Diferencia'), align: 'right', card: 'badge', sortable: true,
+                render: (r) => (r.diff != null ? (
+                  <span className="mono" style={{ color: r.diff > 0 ? 'var(--success)' : r.diff < 0 ? 'var(--danger)' : 'var(--muted)', fontWeight: 500 }}>
+                    {r.diff >= 0 ? '+' : ''}{fmt(r.diff)}
+                  </span>
+                ) : '—') },
+            ]}
+          />
         </>
       )}
 

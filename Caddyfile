@@ -8,10 +8,30 @@
 {$SITE_ADDRESS::80} {
 	encode gzip zstd
 
+	# Servicio a servicio (agents-services → ERP): solo por la red interna
+	# (backend:8080). Desde afuera no existe.
+	handle /api/internal/* {
+		respond 404
+	}
+
 	# La API va al backend. Debe ir ANTES del handler del estático: si no, la
 	# regla de SPA se tragaría /api/... y devolvería el index.html.
 	handle /api/* {
 		reverse_proxy {$API_UPSTREAM:backend:8080}
+	}
+
+	# Webhook de WhatsApp (Meta) hacia agents-services. Con el canal web, es lo
+	# único del agente que se publica: /v1/agent/* y /v1/admin/* quedan en la
+	# red interna, solo para el ERP.
+	handle /webhooks/whatsapp* {
+		reverse_proxy {$AGENT_UPSTREAM:agents:8081}
+	}
+
+	# Canal web: el widget de chat que las empresas pegan en su página. Es
+	# público a propósito; agents-services valida el dominio de cada widget y
+	# limita los mensajes (la IP real le llega en X-Forwarded-For).
+	handle /v1/web/* {
+		reverse_proxy {$AGENT_UPSTREAM:agents:8081}
 	}
 
 	handle {

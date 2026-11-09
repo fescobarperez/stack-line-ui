@@ -12,6 +12,10 @@ import { createClient, updateClient } from '../api/partners.js';
 import { createPayment } from '../api/receivables.js';
 import { usePayments } from '../hooks/useOperations.js';
 import { hoyISO } from '../lib/fechas.js';
+import { moduleEnabled } from '../lib/modules.js';
+import { hasPerm } from '../lib/patients.js';
+import { sessionUser } from '../api/auth.js';
+import { lookupPatients } from '../api/salud.js';
 
 const TYPE_LABEL = { CF: 'CF', minorista: 'Minorista', mayorista: 'Mayorista', exento: 'Exento' };
 const STATUS_LABEL = { active: 'Activo', inactive: 'Inactivo', blocked: 'Bloqueado' };
@@ -163,7 +167,7 @@ function PaymentModal({ client, onSave, onClose }) {
 }
 
 // ── Panel de detalle de cliente ──────────────────────────────────────────────
-function ClientDetail({ client, payments, onClose, onEdit, onPayment }) {
+function ClientDetail({ client, payments, onClose, onEdit, onPayment, patientLink, onOpenPatient, onConvertPatient }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState('info');
   const clientPayments = payments.filter(p => p.clientId === client.id);
@@ -185,6 +189,13 @@ function ClientDetail({ client, payments, onClose, onEdit, onPayment }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          {/* Salud: el cliente que es paciente abre su expediente; el que no, se convierte. */}
+          {patientLink && onOpenPatient && (
+            <Button icon="health" onClick={onOpenPatient}>{t('clients.patient.open', 'Ver expediente')}</Button>
+          )}
+          {!patientLink && onConvertPatient && (
+            <Button icon="health" onClick={onConvertPatient}>{t('clients.patient.convert', 'Convertir en paciente')}</Button>
+          )}
           {client.balance > 0 && (
             <Button icon="cash" onClick={onPayment}>{t('clients.payment.title', 'Pago')}
             </Button>
@@ -266,13 +277,13 @@ function ClientDetail({ client, payments, onClose, onEdit, onPayment }) {
         <div className="drawer-body" style={{ overflowY: 'auto', padding: 0 }}>
           <DataTable
             columns={[
-              { key: 'date', header: t('clients.drawer.paymentHeaders.date', 'Fecha'), mono: true, sortable: true },
-              { key: 'paymentMethod', header: t('clients.drawer.paymentHeaders.method', 'Forma de pago'),
+              { key: 'date', header: t('clients.drawer.paymentHeaders.date', 'Fecha'), mono: true, sortable: true, card: 'title' },
+              { key: 'paymentMethod', header: t('clients.drawer.paymentHeaders.method', 'Forma de pago'), card: 'subtitle',
                 render: (p) => METHOD_LABEL[p.paymentMethod] || p.paymentMethod },
               { key: 'reference', header: t('clients.drawer.paymentHeaders.reference', 'Referencia'), mono: true,
                 render: (p) => p.reference || '—' },
               { key: 'amount', header: t('clients.drawer.paymentHeaders.amount', 'Monto'),
-                align: 'right', sortable: true,
+                align: 'right', sortable: true, card: 'amount',
                 render: (p) => <span className="num" style={{ color: 'var(--success)' }}>+{fmt(p.amount)}</span> },
             ]}
             rows={clientPayments}
@@ -310,6 +321,25 @@ export default function Clients({ pushToast }) {
   const [clients, setClients] = useState(apiClients);
   // Sincroniza la lista local cuando llegan los clientes del backend.
   useEffect(() => { setClients(apiClients); }, [apiClients]);
+
+  // Stackline Salud: cuáles de estos clientes son pacientes. Solo si la
+  // empresa tiene el módulo y el rol puede ver pacientes.
+  const salud = useMemo(() => {
+    const perms = sessionUser()?.perms || ['*'];
+    return {
+      ver: moduleEnabled('salud') && hasPerm(perms, 'patients', 'ver'),
+      crear: moduleEnabled('salud') && hasPerm(perms, 'patients', 'crear'),
+    };
+  }, []);
+  const [patientLinks, setPatientLinks] = useState({});
+  useEffect(() => {
+    if (!salud.ver || clients.length === 0) { setPatientLinks({}); return undefined; }
+    let vigente = true;
+    lookupPatients(clients.map((c) => c.id))
+      .then((r) => { if (vigente) setPatientLinks(Object.fromEntries((r || []).map((l) => [l.clientId, l]))); })
+      .catch(() => { if (vigente) setPatientLinks({}); });
+    return () => { vigente = false; };
+  }, [clients, salud.ver]);
 
   const filtered = useMemo(() => {
     let c = clients;
@@ -352,6 +382,9 @@ export default function Clients({ pushToast }) {
         address: form.address || null, phone: form.phone || null, email: form.email || null,
         creditLimit: parseFloat(form.creditLimit) || 0,
         paymentTerms: parseInt(form.paymentTerms) || 0,
+        // El formulario no muestra el saldo inicial, pero el backend reemplaza
+        // el cliente completo: hay que reenviar el que ya tenía.
+        openingBalance: Number(selected.openingBalance) || 0,
         status: selected.status,
       });
       await reloadClients();
@@ -459,7 +492,7 @@ export default function Clients({ pushToast }) {
         <>
           {/* Filtros */}
           <div className="toolbar">
-            <div className="search-wrap" style={{ flex: 1, maxWidth: 320 }}>
+            <div className="search-wrap filterbar-grow">
               <Icon name="search" className="icon" size={13} />
               <input
                 className="search-input"
@@ -486,30 +519,35 @@ export default function Clients({ pushToast }) {
           <div className="table-wrap">
             <DataTable
               columns={[
-                { key: 'name', header: t('common.client', 'Cliente'), sortable: true,
+                { key: 'name', header: t('common.client', 'Cliente'), sortable: true, card: 'title',
                   render: (c) => (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div className="avatar" style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }}>
                         {initials(c.name)}
                       </div>
                       <span style={{ fontWeight: 500 }}>{c.name}</span>
+                      {patientLinks[c.id] && (
+                        <span className="badge-m3 info" title={patientLinks[c.id].recordNumber}>
+                          {t('clients.patient.badge', 'Paciente')}
+                        </span>
+                      )}
                     </div>
                   ) },
-                { key: 'nit', header: 'NIT', mono: true, sortable: true },
-                { key: 'clientType', header: t('common.type', 'Tipo'), sortable: true,
+                { key: 'nit', header: 'NIT', mono: true, sortable: true, card: 'subtitle' },
+                { key: 'clientType', header: t('common.type', 'Tipo'), sortable: true, hideOnTablet: true,
                   render: (c) => <span className="badge-m3 neutral">{TYPE_LABEL[c.clientType]}</span> },
-                { key: 'contact', header: 'Contacto',
+                { key: 'contact', header: 'Contacto', hideOnTablet: true,
                   render: (c) => <span className="muted">{c.phone || c.email || '—'}</span> },
-                { key: 'creditLimit', header: 'Límite crédito', align: 'right', sortable: true,
+                { key: 'creditLimit', header: 'Límite crédito', align: 'right', sortable: true, hideOnTablet: true,
                   render: (c) => <span className="num">{c.creditLimit > 0 ? fmt(c.creditLimit) : '—'}</span> },
                 { key: 'balance', header: t('clients.drawer.labels.pendingBalance', 'Saldo pendiente'),
-                  align: 'right', sortable: true,
+                  align: 'right', sortable: true, card: 'amount',
                   render: (c) => (
                     <span className="num" style={{ color: c.balance > 0 ? 'var(--danger)' : 'var(--muted)' }}>
                       {fmt(c.balance)}
                     </span>
                   ) },
-                { key: 'status', header: t('common.status', 'Estado'), sortable: true,
+                { key: 'status', header: t('common.status', 'Estado'), sortable: true, card: 'badge',
                   render: (c) => <span className={`badge-m3 ${STATUS_CLASS[c.status]}`}>{STATUS_LABEL[c.status]}</span> },
               ]}
               rows={filtered}
@@ -532,7 +570,7 @@ export default function Clients({ pushToast }) {
       {tab === 'cxc' && (
         <DataTable
           columns={[
-            { key: 'name', header: t('common.client', 'Cliente'), sortable: true,
+            { key: 'name', header: t('common.client', 'Cliente'), sortable: true, card: 'title',
               render: (c) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div className="avatar" style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }}>
@@ -541,14 +579,15 @@ export default function Clients({ pushToast }) {
                   <span style={{ fontWeight: 500 }}>{c.name}</span>
                 </div>
               ) },
-            { key: 'clientType', header: t('common.type', 'Tipo'), sortable: true,
+            { key: 'clientType', header: t('common.type', 'Tipo'), sortable: true, hideOnTablet: true,
               render: (c) => <span className="badge-m3 neutral">{TYPE_LABEL[c.clientType]}</span> },
             { key: 'creditLimit', header: 'Límite crédito', align: 'right', sortable: true,
               render: (c) => <span className="num">{c.creditLimit > 0 ? fmt(c.creditLimit) : '—'}</span> },
             { key: 'balance', header: t('clients.drawer.labels.pendingBalance', 'Saldo pendiente'),
               align: 'right', sortable: true,
+              card: 'amount',
               render: (c) => <span className="num" style={{ color: 'var(--danger)' }}>{fmt(c.balance)}</span> },
-            { key: 'pct', header: '% utilizado', align: 'right',
+            { key: 'pct', header: '% utilizado', align: 'right', card: 'badge',
               sortValue: (c) => (c.creditLimit > 0 ? c.balance / c.creditLimit : 0),
               render: (c) => {
                 const pct = c.creditLimit > 0 ? (c.balance / c.creditLimit * 100) : 0;
@@ -558,7 +597,7 @@ export default function Clients({ pushToast }) {
                   </span>
                 );
               } },
-            { key: 'paymentTerms', header: 'Plazo', sortable: true,
+            { key: 'paymentTerms', header: 'Plazo', sortable: true, hideOnTablet: true,
               render: (c) => <span className="muted">{c.paymentTerms > 0 ? `${c.paymentTerms} días` : 'Contado'}</span> },
           ]}
           rows={cxcClients}
@@ -593,6 +632,9 @@ export default function Clients({ pushToast }) {
             onClose={() => setSelected(null)}
             onEdit={() => setEditing(true)}
             onPayment={() => setShowPayment(true)}
+            patientLink={salud.ver ? patientLinks[selectedClient.id] : null}
+            onOpenPatient={salud.ver ? () => navigate('/patients', { state: { openPatientId: selectedClient.id } }) : null}
+            onConvertPatient={salud.crear ? () => navigate('/patients', { state: { convertClient: selectedClient } }) : null}
           />
         </div>
       )}

@@ -41,11 +41,25 @@ export class ApiError extends Error {
  * @param {boolean} opts.silent  Exime ESTA llamada del velo de carga. Para el
  *   caso puntual; si el endpoint siempre debe eximirse, va en RUTAS_EXENTAS
  *   de loading.js, que es donde se busca.
+ * @param {AbortSignal} opts.signal  Para cortar la petición (p. ej. por tiempo
+ *   límite). Una petición abortada se reporta como ApiError de estado 0.
+ * @param {boolean} opts.blob  Devuelve el cuerpo como Blob en vez de JSON.
  */
-async function request(path, { method = 'GET', body, headers, silent = false, timeoutMs = 30000 } = {}) {
+async function request(path, {
+  method = 'GET',
+  body,
+  headers,
+  silent = false,
+  signal,
+  blob = false,
+  timeoutMs = 30000,
+} = {}) {
   const token = getToken();
   const conVelo = !silent && !estaExenta(path);
   const controller = new AbortController();
+  const relayAbort = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener('abort', relayAbort, { once: true });
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   if (conVelo) inicioPeticion();
   try {
@@ -70,16 +84,22 @@ async function request(path, { method = 'GET', body, headers, silent = false, ti
       }
       throw new ApiError(res.status, detail?.message || res.statusText);
     }
-    return res.status === 204 ? null : res.json();
+    if (res.status === 204) return null;
+    // Archivos (el PDF de la cotización): se devuelven como Blob.
+    return blob ? res.blob() : res.json();
   } catch (error) {
     if (error instanceof ApiError) throw error;
     const service = resolveBaseUrl(path) || 'mismo origen';
     if (error?.name === 'AbortError') {
+      if (signal?.aborted) {
+        throw new ApiError(0, 'La solicitud fue cancelada.');
+      }
       throw new ApiError(0, `La solicitud a ${service} tardó más de ${Math.round(timeoutMs / 1000)} segundos.`);
     }
     throw new ApiError(0, `No se pudo conectar con ${service}. Verifica que el backend esté activo.`);
   } finally {
     window.clearTimeout(timeout);
+    signal?.removeEventListener('abort', relayAbort);
     // En `finally` para que un error tampoco deje el indicador encendido.
     if (conVelo) finPeticion();
   }
@@ -89,5 +109,6 @@ export const api = {
   get:  (path, opts)       => request(path, { ...opts }),
   post: (path, body, opts) => request(path, { ...opts, method: 'POST', body }),
   put:  (path, body, opts) => request(path, { ...opts, method: 'PUT', body }),
+  patch: (path, body, opts) => request(path, { ...opts, method: 'PATCH', body }),
   del:  (path, opts)       => request(path, { ...opts, method: 'DELETE' }),
 };

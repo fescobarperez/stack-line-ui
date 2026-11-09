@@ -108,7 +108,7 @@ export default function BankReconciliation({ pushToast }) {
           {t('bankrec.bookMovements', 'Movimientos en libros')}
         </div>
         <div className="table-wrap" style={{ border: 'none', margin: 0, borderRadius: 0 }}>
-          <table className="tbl">
+          <table className="tbl tbl-stack">
             <thead>
               <tr>
                 <th>{t('common.date', 'Fecha')}</th><th>{t('bankrec.descRef', 'Descripción / Ref.')}</th>
@@ -143,7 +143,7 @@ export default function BankReconciliation({ pushToast }) {
           {t('bankrec.history', 'Historial de conciliaciones')}
         </div>
         <div className="table-wrap" style={{ border: 'none', margin: 0, borderRadius: 0 }}>
-          <table className="tbl">
+          <table className="tbl tbl-stack">
             <thead>
               <tr>
                 <th>{t('bankrec.statementDate', 'Fecha extracto')}</th>

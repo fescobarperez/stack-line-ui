@@ -256,13 +256,15 @@ export default function QuoteChargesPanel({ quoteId, canEdit = true, pushToast, 
         );
 
   return (
-    <div className="quote-subsection quote-subsection--charges" style={{ marginTop: 16 }}>
+    <div className="quote-subsection quote-subsection--charges">
       <div className="quote-subsection-heading">
-        <div className="quote-subsection-title">{t('quotes.charges', 'Gastos / cargos')}</div>
-        <div className="quote-subsection-description">{t('quotes.chargesHint', 'Materiales derivados y cargos adicionales')}</div>
+        <div>
+          <div className="quote-subsection-title">{t('quotes.charges', 'Gastos / cargos')}</div>
+          <div className="quote-subsection-description">{t('quotes.chargesHint', 'Materiales derivados y cargos adicionales')}</div>
+        </div>
       </div>
       <div className="quote-subsection-card">
-        <table className="data-table" style={{ width: '100%', fontSize: 12 }}>
+        <table className="data-table tbl-stack quote-table">
         <thead>
           <tr>
             <th style={{ textAlign: 'left' }}>{t('quotes.chargeType', 'Tipo')}</th>
@@ -275,17 +277,17 @@ export default function QuoteChargesPanel({ quoteId, canEdit = true, pushToast, 
         <tbody>
           {/* Gasto de materiales: derivado, no editable ni eliminable. */}
           <tr>
-            <td><span className="badge-m3 success"><Icon name="box" size={13} /> {t('quotes.materials', 'Materiales')}</span></td>
-            <td className="muted">{t('quotes.materialsAuto', 'Auto desde líneas')}</td>
-            <td className="muted">{t('quotes.derived', 'derivado')}</td>
-            <td className="num" style={{ textAlign: 'right' }}>{Q(summary.materialsCost)}</td>
+            <td className="stack-title"><span className="badge-m3 success"><Icon name="box" size={13} /> {t('quotes.materials', 'Materiales')}</span></td>
+            <td className="muted" data-label={t('common.description', 'Descripción')}>{t('quotes.materialsAuto', 'Auto desde líneas')}</td>
+            <td className="muted" data-label={t('quotes.chargeCalc', 'Cálculo')}>{t('quotes.derived', 'derivado')}</td>
+            <td className="num" data-label={t('projects.amount', 'Monto')} style={{ textAlign: 'right' }}>{Q(summary.materialsCost)}</td>
             <td />
           </tr>
           {/* Gastos operativos: renglón fijo. Está siempre, aunque valga Q0,
               igual que el de Materiales — si desaparece cuando está vacío,
               nadie se acuerda de llenarlo. */}
           <tr className="quote-op-row">
-            <td>
+            <td className="stack-title">
               <button type="button" className={`quote-op-toggle${opAbierto ? ' is-open' : ''}`}
                 onClick={() => setOpAbierto((v) => !v)}
                 aria-expanded={opAbierto}
@@ -294,14 +296,14 @@ export default function QuoteChargesPanel({ quoteId, canEdit = true, pushToast, 
                 <span className="badge-m3 accent"><Icon name="cash" size={13} /> {t('quotes.operating', 'Gastos operativos')}</span>
               </button>
             </td>
-            <td className="muted">
+            <td className="muted" data-label={t('common.description', 'Descripción')}>
               {modo === 'percent'
                 ? `${Number(summary.operatingExpensePct || 0)}% ${t('quotes.opOfSubtotal', 'del subtotal')}`
                 : modo === 'single'
                   ? t('quotes.opSingle', 'Monto único')
                   : `${partidasOperativas.length} ${partidasOperativas.length === 1 ? t('quotes.opItem', 'partida') : t('quotes.opItems', 'partidas')}`}
             </td>
-            <td>
+            <td data-label={t('quotes.chargeCalc', 'Cálculo')}>
               {canEdit && (
                 <div className="segmented quote-op-modo">
                   <button type="button" className={`seg ${modo === 'single' ? 'sel' : ''}`}
@@ -319,7 +321,7 @@ export default function QuoteChargesPanel({ quoteId, canEdit = true, pushToast, 
                 </div>
               )}
             </td>
-            <td className="num" style={{ textAlign: 'right', fontWeight: 500 }}>{Q(summary.operatingExpenses)}</td>
+            <td className="num" data-label={t('projects.amount', 'Monto')} style={{ textAlign: 'right', fontWeight: 500 }}>{Q(summary.operatingExpenses)}</td>
             <td />
           </tr>
 
@@ -360,27 +362,23 @@ export default function QuoteChargesPanel({ quoteId, canEdit = true, pushToast, 
 
           {otrosCargos.map((c) => (
             <tr key={c.id}>
-              <td>{c.category || <span className="muted">{t('quotes.manual', 'Manual')}</span>}</td>
-              <td>{c.description}</td>
-              <td>{c.calcType === 'percent'
+              <td className="stack-title">{c.category || <span className="muted">{t('quotes.manual', 'Manual')}</span>}</td>
+              <td data-label={t('common.description', 'Descripción')}>{c.description}</td>
+              <td data-label={t('quotes.chargeCalc', 'Cálculo')}>{c.calcType === 'percent'
                 ? <span>{Number(c.value)}% <span className="muted">/ {t('quotes.overSubtotal', 'subtotal')}</span></span>
                 : <span className="muted">{t('quotes.fixed', 'fijo')}</span>}</td>
-              <td className="num" style={{ textAlign: 'right' }}>{Q(c.computedAmount)}</td>
-              <td style={{ textAlign: 'right' }}>
+              <td className="num" data-label={t('projects.amount', 'Monto')} style={{ textAlign: 'right' }}>{Q(c.computedAmount)}</td>
+              <td className="stack-actions" style={{ textAlign: 'right' }}>
                 {canEdit && <button className="icon-btn" onClick={() => remove(c.id)} disabled={busy} aria-label="Eliminar gasto"><Icon name="close" size={12} /></button>}
               </td>
             </tr>
           ))}
         </tbody>
         <tfoot>
-          <tr style={{ borderTop: '1px solid var(--border)' }}>
-            <td colSpan={3} className="muted">{t('quotes.subtotalCost', 'Subtotal de costo')}</td>
+          {/* El total de la cotización va solo en el Resumen. */}
+          <tr>
+            <td colSpan={3}>{t('quotes.subtotalCost', 'Subtotal de costo')}</td>
             <td className="num" style={{ textAlign: 'right' }}>{Q(summary.subtotalCost)}</td>
-            <td />
-          </tr>
-          <tr style={{ fontWeight: 600 }}>
-            <td colSpan={3}>{t('common.total', 'Total')}</td>
-            <td className="num" style={{ textAlign: 'right' }}>{Q(summary.total)}</td>
             <td />
           </tr>
         </tfoot>

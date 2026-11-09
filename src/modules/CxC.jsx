@@ -5,6 +5,7 @@ import Autocomplete from '../components/Autocomplete.jsx';
 import Icon from '../components/Icon.jsx';
 import Button from '../components/Button.jsx';
 import StatCard from '../components/StatCard.jsx';
+import DataTable from '../components/DataTable.jsx';
 import { useAging, usePayments, useBankAccounts } from '../hooks/useOperations.js';
 import { useAccounts } from '../hooks/useAccounting.js';
 import { createPayment } from '../api/receivables.js';
@@ -142,7 +143,7 @@ export default function CxC({ pushToast }) {
 
       {tab === 'aging' && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 24 }}>
+          <div className="aging-buckets">
             {BUCKET_ORDER.map((b) => (
               <div key={b} className="card" style={{ padding: '14px 16px', borderTop: `3px solid var(--${BUCKET_CLASS[b]})` }}>
                 <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{BUCKET_LABEL[b]}</div>
@@ -152,119 +153,84 @@ export default function CxC({ pushToast }) {
             ))}
           </div>
 
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="tbl-wrap"><table className="mtable">
-              <thead>
-                <tr>
-                  <th>{t('common.client', 'Cliente')}</th>
-                  {BUCKET_ORDER.map((b) => <th key={b} style={{ textAlign: 'right' }}>{BUCKET_LABEL[b]}</th>)}
-                  <th style={{ textAlign: 'right' }}>{t('common.total', 'Total')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clientAging.length === 0 && <tr><td colSpan={7}><div className="empty" style={{ padding: 24 }}>Sin saldos por cobrar</div></td></tr>}
-                {clientAging.map((row) => (
-                  <tr key={row.clientId}>
-                    <td style={{ fontWeight: 500 }}>{row.clientName}</td>
-                    {BUCKET_ORDER.map((b) => (
-                      <td key={b} style={{ textAlign: 'right' }}>
-                        {row.buckets?.[b]
-                          ? <span style={{ color: b === 'current' ? 'inherit' : `var(--${BUCKET_CLASS[b]})`, fontWeight: b !== 'current' ? 600 : 400 }}>{Q(row.buckets[b])}</span>
-                          : <span className="muted">—</span>}
-                      </td>
-                    ))}
-                    <td style={{ textAlign: 'right', fontWeight: 500 }}>{Q(row.total)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table></div>
-          </div>
+          <DataTable
+            rowKey={(row) => row.clientId}
+            rows={clientAging}
+            empty="Sin saldos por cobrar"
+            emptyIcon="card"
+            columns={[
+              { key: 'clientName', header: t('common.client', 'Cliente'), card: 'title', render: (row) => <span style={{ fontWeight: 500 }}>{row.clientName}</span> },
+              ...BUCKET_ORDER.map((b) => ({
+                key: b, header: BUCKET_LABEL[b], align: 'right',
+                render: (row) => (row.buckets?.[b]
+                  ? <span style={{ color: b === 'current' ? 'inherit' : `var(--${BUCKET_CLASS[b]})`, fontWeight: b !== 'current' ? 600 : 400 }}>{Q(row.buckets[b])}</span>
+                  : <span className="muted">—</span>),
+              })),
+              { key: 'total', header: t('common.total', 'Total'), align: 'right', card: 'amount',
+                render: (row) => <span style={{ fontWeight: 500 }}>{Q(row.total)}</span> },
+            ]}
+          />
         </>
       )}
 
       {tab === 'invoices' && (
         <>
           <div className="filterbar">
-            <div className="search-wrap" style={{ flex: 1, maxWidth: 320 }}>
+            <div className="search-wrap filterbar-grow">
               <Icon name="search" className="icon" size={13} />
               <input className="search-input" placeholder={t('cxc.searchPlaceholder', 'Buscar cliente o documento…')} value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
           </div>
 
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="tbl-wrap"><table className="mtable">
-              <thead>
-                <tr>
-                  <th>Documento</th><th>{t('common.client', 'Cliente')}</th><th>{t('common.date', 'Fecha')}</th>
-                  <th>Vencimiento</th><th style={{ textAlign: 'right' }}>{t('common.amount', 'Monto')}</th>
-                  <th style={{ textAlign: 'right' }}>Pendiente</th><th>Antigüedad</th><th>{t('common.status', 'Estado')}</th><th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0
-                  ? <tr><td colSpan={9}><div className="empty" style={{ padding: 24 }}>Sin documentos</div></td></tr>
-                  : filtered.map((inv) => {
-                    const st = invStatus(inv);
-                    return (
-                      <tr key={inv.saleId}>
-                        <td><span className="mono" style={{ fontSize: 12 }}>{inv.docNumber}</span></td>
-                        <td>{inv.clientName}</td>
-                        <td className="muted">{inv.saleDate}</td>
-                        <td style={{ color: inv.daysOverdue> 0 ? 'var(--danger)' : 'inherit' }}>{inv.dueDate}</td>
-                        <td style={{ textAlign: 'right' }}>{Q(inv.amount)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 500 }}>{Q(inv.outstanding)}</td>
-                        <td><span className={`badge-m3 ${BUCKET_CLASS[inv.bucket]}`}>{inv.bucket === 'current' ? 'Al día' : `${inv.bucket} días`}</span></td>
-                        <td><span className={`badge-m3 ${STATUS_CLASS[st]}`}>{STATUS_LABEL[st]}</span></td>
-                        <td>
-                          <Button size="sm" onClick={() => setPayModal(inv)}>Cobrar</Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table></div>
-          </div>
+          <DataTable
+            rowKey={(inv) => inv.saleId}
+            rows={filtered}
+            empty="Sin documentos"
+            emptyIcon="receipt"
+            columns={[
+              { key: 'docNumber', header: 'Documento', mono: true, card: 'title', sortable: true },
+              { key: 'clientName', header: t('common.client', 'Cliente'), card: 'subtitle', sortable: true },
+              { key: 'saleDate', header: t('common.date', 'Fecha'), className: 'muted', hideOnTablet: true, sortable: true },
+              { key: 'dueDate', header: 'Vencimiento', sortable: true, hideOnTablet: true,
+                render: (inv) => <span style={{ color: inv.daysOverdue > 0 ? 'var(--danger)' : 'inherit' }}>{inv.dueDate}</span> },
+              { key: 'amount', header: t('common.amount', 'Monto'), align: 'right', hideOnTablet: true, render: (inv) => Q(inv.amount) },
+              { key: 'outstanding', header: 'Pendiente', align: 'right', card: 'amount', sortable: true,
+                render: (inv) => <span style={{ fontWeight: 500 }}>{Q(inv.outstanding)}</span> },
+              { key: 'bucket', header: 'Antigüedad', hideOnTablet: true,
+                render: (inv) => <span className={`badge-m3 ${BUCKET_CLASS[inv.bucket]}`}>{inv.bucket === 'current' ? 'Al día' : `${inv.bucket} días`}</span> },
+              { key: 'status', header: t('common.status', 'Estado'), card: 'badge',
+                render: (inv) => { const st = invStatus(inv); return <span className={`badge-m3 ${STATUS_CLASS[st]}`}>{STATUS_LABEL[st]}</span>; } },
+            ]}
+            actions={(inv) => <Button size="sm" onClick={() => setPayModal(inv)}>Cobrar</Button>}
+          />
         </>
       )}
 
       {tab === 'payments' && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="tbl-wrap"><table className="mtable">
-            <thead>
-              <tr>
-                <th>{t('cxc.receipt', 'Recibo')}</th>
-                <th>{t('common.date', 'Fecha')}</th><th>{t('common.client', 'Cliente')}</th>
-                <th>Método</th><th>Referencia</th><th style={{ textAlign: 'right' }}>{t('common.amount', 'Monto')}</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {payments.length === 0 && <tr><td colSpan={7}><div className="empty" style={{ padding: 24 }}>Sin cobros registrados</div></td></tr>}
-              {payments.map((p) => (
-                <tr key={p.id}>
-                  <td className="mono">{p.receiptNumber || '—'}</td>
-                  <td className="mono">{p.paymentDate || p.date}</td>
-                  <td>{p.clientName || p.clientId}</td>
-                  <td><span className="badge-m3">{p.method || p.paymentMethod}</span></td>
-                  <td className="muted">{p.reference || '—'}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 500 }}>{Q(p.amount)}</td>
-                  {/* El reloj distingue el recibo ya entregado del que nunca se
-                      imprimió: reimprimir se permite, pero conviene saberlo. */}
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {p.receiptPrintedAt && (
-                      <Icon name="clock" size={14}
-                        title={t('cxc.printedAt', 'Ya impreso')}
-                        style={{ opacity: .45, marginRight: 4, verticalAlign: 'middle' }} />
-                    )}
-                    <Button variant="icon" icon="print"
-                      title={t('cxc.printReceipt', 'Imprimir recibo')}
-                      onClick={() => printReceipt(p)} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table></div>
-        </div>
+        <DataTable
+          rowKey={(p) => p.id}
+          rows={payments}
+          empty="Sin cobros registrados"
+          emptyIcon="cash"
+          columns={[
+            { key: 'receiptNumber', header: t('cxc.receipt', 'Recibo'), mono: true, card: 'title', render: (p) => p.receiptNumber || '—' },
+            { key: 'clientName', header: t('common.client', 'Cliente'), card: 'subtitle', render: (p) => p.clientName || p.clientId },
+            { key: 'paymentDate', header: t('common.date', 'Fecha'), mono: true, render: (p) => p.paymentDate || p.date },
+            { key: 'method', header: 'Método', card: 'badge', render: (p) => <span className="badge-m3">{p.method || p.paymentMethod}</span> },
+            { key: 'reference', header: 'Referencia', className: 'muted', hideOnTablet: true, render: (p) => p.reference || '—' },
+            { key: 'amount', header: t('common.amount', 'Monto'), align: 'right', card: 'amount',
+              render: (p) => <span style={{ fontWeight: 500 }}>{Q(p.amount)}</span> },
+          ]}
+          actions={(p) => (<>
+            {/* El reloj distingue el recibo ya entregado del que nunca se
+                imprimió: reimprimir se permite, pero conviene saberlo. */}
+            {p.receiptPrintedAt && (
+              <Icon name="clock" size={14} title={t('cxc.printedAt', 'Ya impreso')}
+                style={{ opacity: .45, marginRight: 4, alignSelf: 'center' }} />
+            )}
+            <Button variant="icon" icon="print" title={t('cxc.printReceipt', 'Imprimir recibo')} onClick={() => printReceipt(p)} />
+          </>)}
+        />
       )}
 
       {/* Modal de abono */}

@@ -955,25 +955,25 @@ function ProjectDrawer({ project, clients, onClose, onChanged, onDuplicated, pus
           <DataTable
             title={t('projects.quotes', 'Cotizaciones asociadas')}
             columns={[
-              { key: 'docNumber', header: t('projects.quote', 'Cotización'), sortable: true,
+              { key: 'docNumber', header: t('projects.quote', 'Cotización'), sortable: true, card: 'title',
                 render: (q) => <strong>{q.docNumber}</strong> },
-              { key: 'status', header: t('common.status', 'Estado'), sortable: true,
+              { key: 'status', header: t('common.status', 'Estado'), sortable: true, card: 'badge',
                 render: (q) => {
                   const cls = STATUS[q.status]?.variant || 'neutral';
                   const label = STATUS[q.status]?.label || q.status;
                   return <span className={`badge-m3 ${cls}`}>{label}</span>;
                 } },
-              { key: 'included', header: t('projects.included', 'En agregado'), align: 'center',
+              { key: 'included', header: t('projects.included', 'En agregado'), align: 'center', hideOnTablet: true, card: 'hide',
                 render: (q) => q.included ? <Icon name="check" size={15} /> : <span className="muted">—</span> },
-              { key: 'operatingCost', header: t('projects.operatingCosts', 'Costos'), align: 'right',
+              { key: 'operatingCost', header: t('projects.operatingCosts', 'Costos'), align: 'right', hideOnTablet: true,
                 render: (q) => <span className="num">{Q(q.operatingCost)}</span> },
               { key: 'profitAmount', header: t('projects.profit', 'Ganancia'), align: 'right',
                 render: (q) => <span className="num" style={{ color: 'var(--success)' }}>{Q(q.profitAmount)}</span> },
-              { key: 'subtotal', header: t('quotes.subtotalNoIva', 'Subtotal'), align: 'right', sortable: true,
+              { key: 'subtotal', header: t('quotes.subtotalNoIva', 'Subtotal'), align: 'right', sortable: true, hideOnTablet: true, card: 'hide',
                 render: (q) => <span className="num">{Q(q.subtotal)}</span> },
-              { key: 'tax', header: t('common.iva', 'IVA'), align: 'right',
+              { key: 'tax', header: t('common.iva', 'IVA'), align: 'right', hideOnTablet: true, card: 'hide',
                 render: (q) => <span className="num muted">{Q(q.tax)}</span> },
-              { key: 'total', header: t('common.total', 'Total'), align: 'right', sortable: true,
+              { key: 'total', header: t('common.total', 'Total'), align: 'right', sortable: true, card: 'amount',
                 render: (q) => <span className="num" style={{ fontWeight: 600 }}>{Q(q.total)}</span> },
               { key: 'actions', header: '', align: 'right',
                 render: (q) => (
@@ -994,9 +994,9 @@ function ProjectDrawer({ project, clients, onClose, onChanged, onDuplicated, pus
           <DataTable
             title={t('projects.operatingCosts', 'Costos operativos')}
             columns={[
-              { key: 'quote', header: t('projects.quote', 'Cotización'),
+              { key: 'quote', header: t('projects.quote', 'Cotización'), card: 'badge',
                 render: (r) => r.quoteDoc ? <span className="badge-m3 info">{r.quoteDoc}</span> : '' },
-              { key: 'concept', header: t('common.description', 'Concepto'),
+              { key: 'concept', header: t('common.description', 'Concepto'), card: 'title',
                 render: (r) => r.kind === 'materials'
                   ? <span className="badge-m3"><Icon name="box" size={13} /> {t('quotes.materials', 'Materiales')}</span>
                   : <span>{r.description}{r.category ? <span className="muted"> · {r.category}</span> : ''}</span> },
@@ -1004,7 +1004,7 @@ function ProjectDrawer({ project, clients, onClose, onChanged, onDuplicated, pus
                 render: (r) => r.kind === 'materials'
                   ? <span className="muted">{t('quotes.derived', 'derivado')}</span>
                   : (r.calcType === 'percent' ? <span className="muted">%</span> : <span className="muted">{t('quotes.fixed', 'fijo')}</span>) },
-              { key: 'amount', header: t('projects.amount', 'Monto'), align: 'right',
+              { key: 'amount', header: t('projects.amount', 'Monto'), align: 'right', card: 'amount',
                 render: (r) => <span className="num">{Q(r.amount)}</span> },
             ]}
             rows={(project.quotes || []).flatMap((q) => {
@@ -1023,10 +1023,10 @@ function ProjectDrawer({ project, clients, onClose, onChanged, onDuplicated, pus
           <DataTable
             title={t('projects.payments', 'Cobros')}
             columns={[
-              { key: 'receiptNumber', header: t('cxc.receipt', 'Recibo'), sortable: true,
+              { key: 'receiptNumber', header: t('cxc.receipt', 'Recibo'), sortable: true, card: 'title',
                 render: (x) => <span className="mono">{x.receiptNumber || '—'}</span> },
               { key: 'paymentDate', header: t('common.date', 'Fecha'), sortable: true },
-              { key: 'method', header: t('projects.method', 'Método'), sortable: true,
+              { key: 'method', header: t('projects.method', 'Método'), sortable: true, card: 'badge',
                 render: (x) => <span className="badge-m3">{x.method || '—'}</span> },
               { key: 'quoteId', header: t('projects.quote', 'Cotización'), sortable: true,
                 render: (x) => {
@@ -1034,9 +1034,9 @@ function ProjectDrawer({ project, clients, onClose, onChanged, onDuplicated, pus
                   const q = (project.quotes || []).find((qq) => qq.quoteId === x.quoteId);
                   return <span className="badge-m3 info">{q ? q.docNumber : `COT-${x.quoteId}`}</span>;
                 } },
-              { key: 'reference', header: t('projects.reference', 'Referencia'),
+              { key: 'reference', header: t('projects.reference', 'Referencia'), hideOnTablet: true,
                 render: (x) => x.reference || '—' },
-              { key: 'amount', header: t('projects.amount', 'Monto'), align: 'right', sortable: true,
+              { key: 'amount', header: t('projects.amount', 'Monto'), align: 'right', sortable: true, card: 'amount',
                 render: (x) => <span className="num">{Q(x.amount)}</span> },
             ]}
             actions={(x) => (
@@ -1200,17 +1200,17 @@ export default function Projects({ pushToast }) {
   }), { contracted: 0, executed: 0, margin: 0, open: 0 }), [projects]);
 
   const columns = [
-    { key: 'code', header: t('projects.code', 'Código'), mono: true, sortable: true, width: 110 },
-    { key: 'name', header: t('common.name', 'Proyecto'), sortable: true },
+    { key: 'code', header: t('projects.code', 'Código'), mono: true, sortable: true, width: 110, card: 'subtitle', hideOnTablet: true },
+    { key: 'name', header: t('common.name', 'Proyecto'), sortable: true, card: 'title' },
     { key: 'clientName', header: t('common.client', 'Cliente'), sortable: true,
       render: (p) => p.clientName || '—' },
-    { key: 'quoteCount', header: t('projects.quotes', 'Cotizaciones'), align: 'center', sortable: true,
+    { key: 'quoteCount', header: t('projects.quotes', 'Cotizaciones'), align: 'center', sortable: true, hideOnTablet: true, hideOnLaptop: true,
       render: (p) => Number(p.quoteCount || 0) > 0
         ? <span className="badge-m3 info">{p.quoteCount}</span>
         : <span className="muted">—</span> },
-    { key: 'contracted', header: t('projects.contracted', 'Contratado'), align: 'right', sortable: true,
+    { key: 'contracted', header: t('projects.contracted', 'Contratado'), align: 'right', sortable: true, card: 'amount',
       render: (p) => <span className="num">{Q(p.contracted)}</span> },
-    { key: 'executed', header: t('projects.executed', 'Ejecutado'), align: 'right', sortable: true,
+    { key: 'executed', header: t('projects.executed', 'Ejecutado'), align: 'right', sortable: true, hideOnTablet: true,
       render: (p) => <span className="num">{Q(projectCost(p))}</span> },
     { key: 'margin', header: t('projects.margin', 'Margen'), align: 'right', sortable: true,
       render: (p) => (
@@ -1218,7 +1218,7 @@ export default function Projects({ pushToast }) {
           {Q(projectMargin(p))} · {Number(p.marginPct ?? 0).toFixed(1)}%
         </span>
       ) },
-    { key: 'status', header: t('common.status', 'Estado'),
+    { key: 'status', header: t('common.status', 'Estado'), card: 'badge',
       render: (p) => {
         const st = STATUS[p.status] || { label: p.status, variant: 'neutral' };
         return <span className={`badge-m3 ${st.variant}`}>{st.label}</span>;
@@ -1253,9 +1253,9 @@ export default function Projects({ pushToast }) {
       {/* Mismo patrón que /inventory y /quotes: buscador con el ícono dentro,
           estados como chips y el conteo a la derecha. */}
       <div className="filterbar">
-        <div style={{ position: 'relative', width: 280 }}>
-          <Icon name="search" size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
-          <input className="input" style={{ width: '100%', paddingLeft: 26 }}
+        <div className="filterbar-search">
+          <Icon name="search" size={12} />
+          <input className="input"
             placeholder={t('projects.searchPlaceholder', 'Buscar código, proyecto o cliente…')}
             value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
@@ -1270,6 +1270,7 @@ export default function Projects({ pushToast }) {
       </div>
 
       <DataTable
+        cards="tablet"
         columns={columns}
         rows={filtered}
         rowKey={(p) => p.id}

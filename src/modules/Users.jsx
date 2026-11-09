@@ -303,7 +303,7 @@ export default function Users({ pushToast }) {
             emptyIcon="users"
             empty={t('users.noMatch', 'Sin usuarios que coincidan con los filtros')}
             columns={[
-              { key: 'name', header: t('common.user', 'Usuario'), sortable: true, render: (u) => (
+              { key: 'name', header: t('common.user', 'Usuario'), sortable: true, card: 'title', render: (u) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div className="avatar" style={{ width: 32, height: 32, fontSize: 12, background: u.status === 'active' ? 'var(--md-sys-color-primary-container)' : 'var(--surface-3)', color: u.status === 'active' ? 'var(--md-sys-color-on-primary-container)' : 'var(--muted)' }}>
                     {userInitials(u.name)}
@@ -314,15 +314,15 @@ export default function Users({ pushToast }) {
                   </div>
                 </div>
               ) },
-              { key: 'role', header: t('users.role', 'Rol'), sortable: true, render: (u) => <RolePill role={u.role} /> },
-              { key: 'branch', header: t('common.branch', 'Sucursal'), sortable: true },
-              { key: 'last', header: t('users.lastAccess', 'Último acceso'), render: (u) => (
+              { key: 'role', header: t('users.role', 'Rol'), sortable: true, card: 'subtitle', render: (u) => <RolePill role={u.role} /> },
+              { key: 'branch', header: t('common.branch', 'Sucursal'), sortable: true, hideOnTablet: true },
+              { key: 'last', header: t('users.lastAccess', 'Último acceso'), hideOnTablet: true, render: (u) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {u.last === 'En línea' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success)', flexShrink: 0 }} />}
                   <span className="sku">{u.last}</span>
                 </div>
               ) },
-              { key: 'status', header: t('common.status', 'Estado'), sortable: true, render: (u) => u.status === 'active'
+              { key: 'status', header: t('common.status', 'Estado'), sortable: true, card: 'badge', render: (u) => u.status === 'active'
                 ? <span className="badge-m3 success">{t('common.active', 'Activo')}</span>
                 : <span className="badge-m3">{t('common.inactive', 'Inactivo')}</span> },
             ]}
@@ -352,7 +352,7 @@ export default function Users({ pushToast }) {
                 </Button>
               </div>
               <div className="card-body flush">
-                <table className="mtable">
+                <table className="mtable tbl-stack">
                   <thead>
                     <tr>
                       <th>{t('users.role', 'Rol')}</th>
@@ -405,7 +405,7 @@ export default function Users({ pushToast }) {
                   {users.filter(u => u.role === selectedRole.name).length === 0 ? (
                     <div className="empty" style={{ padding: 20 }}>{t('users.noAssignedUsers', 'Sin usuarios asignados')}</div>
                   ) : (
-                    <table className="mtable">
+                    <table className="mtable tbl-stack">
                       <tbody>
                         {users.filter(u => u.role === selectedRole.name).map(u => (
                           <tr key={u.id}>

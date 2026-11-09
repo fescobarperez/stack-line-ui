@@ -7,6 +7,7 @@
 // clics y no veintiocho.
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { sectionsInPlan, screenEnabled, moduleEnabled } from '../lib/modules.js';
 import Icon from './Icon.jsx';
 import {
   PERM_SECTIONS, ACTIONS, PRESETS, aplicarPreset, PERM_IDS,
@@ -32,7 +33,9 @@ export default function PermissionMatrix({ matriz, onChange, readOnly = false })
   const { t } = useTranslation();
   const [abiertas, setAbiertas] = useState(() => new Set());
 
-  const visibles = PERM_IDS.filter((id) => matriz[id]?.ver).length;
+  // Solo las opciones del plan de la empresa: lo que no contrató no se asigna.
+  const idsPlan = PERM_IDS.filter((id) => screenEnabled(id));
+  const visibles = idsPlan.filter((id) => matriz[id]?.ver).length;
 
   const estadoSeccion = (items, accion) => {
     const ids = items.filter((i) => !i.exento).map((i) => i.id);
@@ -73,12 +76,12 @@ export default function PermissionMatrix({ matriz, onChange, readOnly = false })
       <div className="perm-head">
         <span className="perm-count">
           {t('users.visibleCount', '{{n}} de {{total}} opciones visibles',
-             { n: visibles, total: PERM_IDS.length })}
+             { n: visibles, total: idsPlan.length })}
         </span>
         {!readOnly && (
           <div className="perm-presets">
             <span className="perm-presets-label">{t('users.startFrom', 'Partir de')}</span>
-            {PRESETS.map((p) => (
+            {PRESETS.filter((p) => !p.module || moduleEnabled(p.module)).map((p) => (
               <button key={p.id} type="button" className="perm-preset"
                 onClick={() => onChange(aplicarPreset(p))}>
                 {p.label}
@@ -93,7 +96,7 @@ export default function PermissionMatrix({ matriz, onChange, readOnly = false })
         {ACTIONS.map((a) => <span key={a} className="perm-col">{a}</span>)}
       </div>
 
-      {PERM_SECTIONS.map(({ section, items }) => {
+      {sectionsInPlan(PERM_SECTIONS).map(({ section, items }) => {
         const abierta = abiertas.has(section);
         const ids = items.filter((i) => !i.exento).map((i) => i.id);
         const conVer = ids.filter((id) => matriz[id]?.ver).length;

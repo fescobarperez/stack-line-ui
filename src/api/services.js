@@ -50,6 +50,8 @@ export const ROUTES = [
   { prefix: '/api/loyalty',          service: 'ventas' },
   { prefix: '/api/credit-notes',     service: 'ventas' },
   { prefix: '/api/clients',          service: 'ventas' },
+  // Asistente comercial: el ERP reenvía a maya-agent-service con su credencial.
+  { prefix: '/api/agent',            service: 'ventas' },
 
   // ── compras · compras + proveedores ───────────────────────────────
   { prefix: '/api/purchase-orders',   service: 'compras' },

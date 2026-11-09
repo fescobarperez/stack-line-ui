@@ -156,3 +156,18 @@
 .dragging {
   opacity: .45;
 }
+
+/* Teléfono: si las acciones no caben junto al nombre, bajan a su propio
+   renglón alineadas a la derecha. */
+@media (max-width: 599px) {
+  .row {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .actions {
+    margin-left: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}

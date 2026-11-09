@@ -119,3 +119,11 @@
   align-items: center;
   gap: 7px;
 }
+
+@media (max-width: 599px) {
+  .actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-left: auto;
+  }
+}

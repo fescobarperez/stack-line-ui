@@ -18,6 +18,8 @@ import { createSupplier, updateSupplier } from '../api/partners.js';
 import { listCategories, createCategory, updateCategory } from '../api/catalog.js';
 import { listChargeCategories, createChargeCategory, updateChargeCategory } from '../api/wave2.js';
 import { listCashPoints, createCashPoint, updateCashPoint } from '../api/pos.js';
+import { listTemplates, getTemplate } from '../api/templates.js';
+import TemplateEditor from '../components/TemplateEditor.jsx';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PERM_SECTIONS } from '../lib/permissions.js';
@@ -41,6 +43,8 @@ const CATALOGOS = [
   { id: 'proveedores', modulo: 'purchases', form: 'proveedor', label: 'Proveedores',     addLabel: 'Agregar proveedor' },
   { id: 'sucursales',  modulo: 'config',    form: 'sucursal',  label: 'Sucursales',      addLabel: 'Agregar sucursal' },
   { id: 'gastos',      modulo: 'quotes',    form: 'gasto',    label: 'Conceptos de gasto', addLabel: 'Agregar concepto' },
+  // Sin `form`: tiene su propio editor (TemplateEditor), no el modal genérico.
+  { id: 'plantillas',  modulo: 'quotes',    label: 'Plantillas de cálculo', addLabel: 'Agregar plantilla' },
   { id: 'cajas',       modulo: 'cash',      form: 'caja',     label: 'Cajas',              addLabel: 'Agregar caja' },
   { id: 'impuestos',   modulo: 'fel',                          label: 'Impuestos & SAT' },
 ];
@@ -174,6 +178,21 @@ function MaintenanceModule({ pushToast }) {
   }, []);
   useEffect(() => { reloadCajas(); }, [reloadCajas]);
 
+  // Plantillas de cálculo: un producto a la medida y cómo se calcula.
+  const [plantillas, setPlantillas] = useState([]);
+  const reloadPlantillas = useCallback(async () => {
+    try {
+      const rows = await listTemplates();
+      setPlantillas(Array.isArray(rows) ? rows : []);
+    } catch { setPlantillas([]); }
+  }, []);
+  useEffect(() => { reloadPlantillas(); }, [reloadPlantillas]);
+  // editor = null | { template: null (nueva) | respuesta completa }
+  const [editor, setEditor] = useState(null);
+  const abrirPlantilla = async (p) => {
+    try { setEditor({ template: await getTemplate(p.id) }); } catch (err) { pushToast && pushToast(err.message, 'danger'); }
+  };
+
   // modal = { type, mode:'new'|'edit', id }
   const [modal, setModal] = useState(null);
 
@@ -254,7 +273,19 @@ function MaintenanceModule({ pushToast }) {
     categorias: catalogCategories.length,
     gastos: gastos.length,
     cajas: cajas.length,
+    plantillas: plantillas.length,
   };
+
+  const plantillaColumns = [
+    { key: 'name', header: t('common.name', 'Nombre'), sortable: true, render: (p) => <span className="nm">{p.name}</span> },
+    { key: 'productName', header: t('templates.product', 'Producto que se vende'), sortable: true },
+    { key: 'components', header: t('templates.components', 'Materia prima'), align: 'right', className: 'muted' },
+    { key: 'options', header: t('templates.options', 'Opciones de diseño'), align: 'right', className: 'muted' },
+    { key: 'version', header: t('templates.version', 'Versión'), align: 'right', render: (p) => <span className="sku">v{p.version}</span> },
+    { key: 'active', header: t('common.status', 'Estado'), render: (p) => p.active
+      ? <span className="badge-m3 success">{t('templates.statusActive', 'Activa')}</span>
+      : <span className="badge-m3">{t('templates.statusOff', 'Apagada')}</span> },
+  ];
 
   // El cuerpo de cada catálogo; la cabecera y el botón de agregar son genéricos.
   const contenido = (id) => {
@@ -334,11 +365,27 @@ function MaintenanceModule({ pushToast }) {
         </div>
       </>
     );
+    if (id === 'plantillas') return (
+      <>
+        <DataTable
+          rowKey={(p) => p.id}
+          columns={plantillaColumns}
+          rows={plantillas}
+          density="compact"
+          pageSize={12}
+          onEdit={abrirPlantilla}
+          empty={t('templates.empty', 'Sin plantillas de cálculo')}
+        />
+        <div className="cfg-hint" style={{ marginTop: 12 }}>
+          {t('templates.maintHint', 'Una plantilla calcula un producto a la medida (p. ej. una pérgola) con las medidas y opciones que escoge el cliente: la materia prima con su costo y el texto del render del asistente. La mano de obra y otros costos se agregan en la cotización. Se usa en la cotización con «Agregar desde plantilla».')}
+        </div>
+      </>
+    );
     if (id === 'impuestos') return (
-      <div className="grid-2">
+      <div className="split-2">
         <div className="card">
           <div className="card-head"><h3>{t('maintenance.taxpayerData', 'Datos fiscales del contribuyente')}</h3></div>
-          <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 14px', fontSize: 12 }}>
+          <div className="card-body kv-grid" style={{ gap: '8px 14px', fontSize: 12 }}>
             <div className="muted">{t('maintenance.regime', 'Régimen')}</div><div>General sobre Utilidades</div>
             <div className="muted">{t('maintenance.satCategory', 'Categoría SAT')}</div><div>Definitivo IVA</div>
             <div className="muted" style={{ gridColumn: '1 / -1', fontSize: 11, marginTop: 4 }}>
@@ -349,7 +396,7 @@ function MaintenanceModule({ pushToast }) {
         <div className="card">
           <div className="card-head"><h3>{t('maintenance.taxConfig', 'Configuración de impuestos')}</h3></div>
           <div className="card-body flush">
-            <table className="mtable">
+            <table className="mtable tbl-stack" data-title-col="1">
               <thead><tr><th>{t('common.code', 'Código')}</th><th>{t('common.name', 'Nombre')}</th><th className="r">{t('maintenance.rate', 'Tasa')}</th><th>{t('common.status', 'Estado')}</th></tr></thead>
               <tbody>
                 <tr><td><span className="sku">IVA</span></td><td>Impuesto al Valor Agregado</td><td className="r num" style={{ fontWeight: 500 }}>12 %</td><td><span className="badge-m3 success">{t('common.active', 'Activo')}</span></td></tr>
@@ -404,7 +451,9 @@ function MaintenanceModule({ pushToast }) {
               <div className="maint-catalogo-head">
                 <h3>{catalogo.label}<span className="count mono">{CONTEO[catalogo.id] ?? ''}</span></h3>
                 {catalogo.addLabel && (
-                  <Button icon="plus" variant="accent" onClick={() => setModal({ type: catalogo.form, mode: 'new' })}>{catalogo.addLabel}</Button>
+                  <Button icon="plus" variant="accent" onClick={() => (catalogo.id === 'plantillas'
+                    ? setEditor({ template: null })
+                    : setModal({ type: catalogo.form, mode: 'new' }))}>{catalogo.addLabel}</Button>
                 )}
               </div>
               {contenido(catalogo.id)}
@@ -412,6 +461,15 @@ function MaintenanceModule({ pushToast }) {
           ))}
         </div>
       </div>
+
+      {editor && (
+        <TemplateEditor
+          template={editor.template}
+          pushToast={pushToast}
+          onClose={() => setEditor(null)}
+          onSaved={(guardada) => { setEditor({ template: guardada }); reloadPlantillas(); }}
+        />
+      )}
 
       {modal?.type === 'catalog-import' ? (
         <SupplierCatalogImportModal

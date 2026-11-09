@@ -299,7 +299,7 @@ export default function Banks({ pushToast }) {
               emptyText="Sin coincidencias" aria-label="Tipo" />
             <Button icon="download" variant="ghost" size="sm">{t('common.export', 'Exportar')}</Button>
           </div>
-          <table className="mtable">
+          <table className="mtable tbl-stack">
             <thead>
               <tr>
                 <th>{t('common.date', 'Fecha')}</th>
@@ -346,7 +346,7 @@ export default function Banks({ pushToast }) {
             <Button icon="plus" variant="accent" size="sm" onClick={() => { setFormTrf(EMPTY_TRF); setShowNuevaTransferencia(true); }}>{t('banks.newTransfer', 'Nueva transferencia')}
             </Button>
           </div>
-          <table className="mtable">
+          <table className="mtable tbl-stack">
             <thead>
               <tr>
                 <th>{t('common.reference', 'Referencia')}</th>
@@ -413,7 +413,7 @@ export default function Banks({ pushToast }) {
               </div>
 
               <div style={{ fontWeight: 500, fontSize: 12, marginBottom: 8 }}>{t('banks.recentMovements', 'Últimos movimientos')}</div>
-              <table className="mtable">
+              <table className="mtable tbl-stack">
                 <thead><tr><th>{t('common.date', 'Fecha')}</th><th>{t('common.description', 'Descripción')}</th><th className="num">{t('common.amount', 'Monto')}</th></tr></thead>
                 <tbody>
                   {movsDeCuenta.map(m => (

@@ -1,6 +1,7 @@
 // Stackline — Login screen (ES module)
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { login } from '../api/auth.js';
 import Logo from '../components/Logo.jsx';
 
@@ -29,7 +30,10 @@ function validate(form, t) {
 
 export default function Login({ onLogin }) {
   const { t } = useTranslation();
-  const [form, setForm] = useState({ companyCode: '', email: '', password: '' });
+  // Al volver de /activar llegan el código y el correo: solo falta la contraseña.
+  const { state } = useLocation();
+  const [form, setForm] = useState({ companyCode: state?.companyCode || '', email: state?.email || '', password: '' });
+  const [activated] = useState(Boolean(state?.activated));
   const [errors, setErrors] = useState({});
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -109,7 +113,7 @@ export default function Login({ onLogin }) {
                 <span className="login-feature-dot" />
                 <span>
                   <strong>{title}</strong>
-                  <span className="login-feature-desc"> · {desc}</span>
+                  <span className="login-feature-desc"><span className="login-feature-sep"> · </span>{desc}</span>
                 </span>
               </li>
             ))}
@@ -226,6 +230,10 @@ export default function Login({ onLogin }) {
               )}
             </div>
 
+            {activated && !loginError && (
+              <div className="login-notice" role="status">{t('activate.done', 'Cuenta activada. Ingresa con tu nueva contraseña.')}</div>
+            )}
+
             {loginError && (
               <div className="login-alert">{loginError}</div>
             )}
@@ -246,6 +254,11 @@ export default function Login({ onLogin }) {
             </button>
           </form>
         </div>
+      </div>
+
+      {/* Teléfono y tablet vertical: la leyenda va al pie de la página (ver global.css). */}
+      <div className="login-page-legal">
+        © 2026 Stackline · Guatemala · Todos los derechos reservados
       </div>
     </div>
   );

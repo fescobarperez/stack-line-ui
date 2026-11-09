@@ -218,7 +218,7 @@ export default function StockCount({ pushToast }) {
 
       {tab === 'history' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="tbl-wrap"><table className="tbl">
+          <div className="tbl-wrap"><table className="tbl tbl-stack">
             <thead>
               <tr>
                 <th>Sesión</th>
@@ -298,8 +298,8 @@ export default function StockCount({ pushToast }) {
               )}
 
               {/* Tabla de líneas */}
-              <div style={{ flex: 1, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div className="count-lines" style={{ flex: 1, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)' }}>
+                <table className="tbl-stack count-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: 'var(--surface-2)', position: 'sticky', top: 0 }}>
                       {[t('common.product', 'Producto'), 'Cat.', 'Sistema', 'Contado', 'Diferencia', t('common.notes', 'Notas')].map((h, i) => (
@@ -328,8 +328,11 @@ export default function StockCount({ pushToast }) {
                           <td style={{ padding: '6px 10px', textAlign: 'center' }}>
                             {selected.status === 'in_progress' ? (
                               <input
+                                className="count-input"
                                 type="number"
+                                inputMode="decimal"
                                 min="0"
+                                aria-label={`Contado · ${line.name}`}
                                 value={line.countedQty ?? ''}
                                 placeholder="—"
                                 onChange={e => updateCount(selected.id, line.sku, e.target.value)}
@@ -359,6 +362,7 @@ export default function StockCount({ pushToast }) {
                           <td style={{ padding: '6px 10px', minWidth: 120 }}>
                             {selected.status === 'in_progress' ? (
                               <input
+                                className="count-notes"
                                 value={line.notes}
                                 onChange={e => updateNote(selected.id, line.sku, e.target.value)}
                                 placeholder={t('common.observations', 'Observaciones')}

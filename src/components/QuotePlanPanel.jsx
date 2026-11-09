@@ -178,7 +178,7 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
       : t('quotes.planOverTotal', 'El plan excede el total de la cotización por: ') + Q(Math.abs(remaining));
 
   return (
-    <section className="quote-section quote-section--plan" style={{ marginTop: 24 }}>
+    <section className="quote-section quote-section--plan">
       <div className="quote-section-heading">
         <div>
           <div className="quote-section-title">{t('quotes.paymentSection', 'Plan de cobro')}</div>
@@ -186,7 +186,11 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
         </div>
       </div>
 
-      <div className="quote-section-card quote-section-card--summary">
+      <div className="quote-subsection">
+        <div className="quote-subsection-heading">
+          <div className="quote-subsection-title">{t('quotes.planSummary', 'Resumen del plan')}</div>
+        </div>
+      <div className="quote-subsection-card">
         <div className="quote-plan-summary">
           <span>{t('quotes.quoteTotal', 'Total cotización')}: <b>{Q(quoteTotal)}</b></span>
           <span>{t('quotes.planTotal', 'Plan')}: <b>{Q(planTotal)}</b></span>
@@ -198,6 +202,7 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
           background: balanced ? 'color-mix(in srgb, var(--success) 10%, transparent)' : 'color-mix(in srgb, var(--danger) 10%, transparent)' }}>
           {balanceMessage}
         </div>
+      </div>
       </div>
 
       <div className="quote-subsection quote-subsection--plan">
@@ -222,7 +227,7 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
           )}
         </div>
         <div className="quote-subsection-card">
-          <table className="data-table" style={{ width: '100%', fontSize: 12, marginBottom: 10 }}>
+          <table className="data-table tbl-stack quote-table plan-terms">
         <thead><tr>
           <th style={{ textAlign: 'left' }}>#</th>
           <th style={{ textAlign: 'right' }}>{t('projects.amount', 'Monto')}</th>
@@ -234,11 +239,11 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
           {(plan.terms || []).length === 0 && <tr><td colSpan={5} className="muted">{t('quotes.noTerms', 'Sin cuotas todavía')}</td></tr>}
           {(plan.terms || []).map((tm) => (
             <tr key={tm.id}>
-              <td>{tm.sequence}</td>
-              <td className="num" style={{ textAlign: 'right' }}>{Q(tm.amount)}</td>
-              <td>{tm.dueDate || <span className="muted">—</span>}</td>
-              <td>{tm.notes || <span className="muted">—</span>}</td>
-              <td style={{ textAlign: 'right' }}>{canEdit && <button className="icon-btn" onClick={() => removeTerm(tm.id)} disabled={busy}><Icon name="close" size={12} /></button>}</td>
+              <td className="stack-title"><span className="stack-only">{t('quotes.termN', 'Cuota')} </span>{tm.sequence}</td>
+              <td className="num stack-amount" data-label={t('projects.amount', 'Monto')} style={{ textAlign: 'right' }}>{Q(tm.amount)}</td>
+              <td className="plan-term-due" data-label={t('quotes.dueDate', 'Fecha límite')}>{tm.dueDate || <span className="muted">—</span>}</td>
+              <td className="plan-term-notes" data-label={t('common.notes', 'Notas')}>{tm.notes || <span className="muted">—</span>}</td>
+              <td className="stack-actions stack-corner" style={{ textAlign: 'right' }}>{canEdit && <button className="icon-btn" aria-label={t('common.delete', 'Eliminar')} title={t('common.delete', 'Eliminar')} onClick={() => removeTerm(tm.id)} disabled={busy}><Icon name="close" size={16} /></button>}</td>
             </tr>
           ))}
         </tbody>
@@ -338,11 +343,13 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
 
       <div className="quote-subsection quote-subsection--payments">
         <div className="quote-subsection-heading">
-          <div className="quote-subsection-title">{t('quotes.payments', 'Cobros')}</div>
-          <div className="quote-subsection-description">{t('quotes.paymentsHint', 'Registra los pagos recibidos de este cliente')}</div>
+          <div>
+            <div className="quote-subsection-title">{t('quotes.payments', 'Cobros')}</div>
+            <div className="quote-subsection-description">{t('quotes.paymentsHint', 'Registra los pagos recibidos de este cliente')}</div>
+          </div>
         </div>
         <div className="quote-subsection-card">
-          <table className="data-table" style={{ width: '100%', fontSize: 12, marginBottom: 10 }}>
+          <table className="data-table tbl-stack quote-table">
         <thead><tr>
           <th style={{ textAlign: 'left' }}>{t('common.date', 'Fecha')}</th>
           <th style={{ textAlign: 'left' }}>{t('projects.method', 'Método')}</th>
@@ -353,10 +360,10 @@ export default function QuotePlanPanel({ quote, canEdit = true, pushToast, onPla
           {(plan.payments || []).length === 0 && <tr><td colSpan={4} className="muted">{t('quotes.noPayments', 'Sin cobros todavía')}</td></tr>}
           {(plan.payments || []).map((p) => (
             <tr key={p.id}>
-              <td>{p.paymentDate}</td>
-              <td>{p.method || '—'}</td>
-              <td>{p.reference || p.receiptNumber || '—'}</td>
-              <td className="num" style={{ textAlign: 'right' }}>{Q(p.amount)}</td>
+              <td className="stack-title">{p.paymentDate}</td>
+              <td data-label={t('projects.method', 'Método')}>{p.method || '—'}</td>
+              <td data-label={t('quotes.reference', 'Referencia')}>{p.reference || p.receiptNumber || '—'}</td>
+              <td className="num" data-label={t('projects.amount', 'Monto')} style={{ textAlign: 'right' }}>{Q(p.amount)}</td>
             </tr>
           ))}
         </tbody>
