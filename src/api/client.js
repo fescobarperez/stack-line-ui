@@ -42,9 +42,11 @@ export class ApiError extends Error {
  *   caso puntual; si el endpoint siempre debe eximirse, va en RUTAS_EXENTAS
  *   de loading.js, que es donde se busca.
  */
-async function request(path, { method = 'GET', body, headers, silent = false } = {}) {
+async function request(path, { method = 'GET', body, headers, silent = false, timeoutMs = 30000 } = {}) {
   const token = getToken();
   const conVelo = !silent && !estaExenta(path);
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   if (conVelo) inicioPeticion();
   try {
     const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
@@ -55,6 +57,7 @@ async function request(path, { method = 'GET', body, headers, silent = false } =
         ...headers,
       },
       body: body != null ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
     });
 
     if (!res.ok) {
@@ -71,8 +74,12 @@ async function request(path, { method = 'GET', body, headers, silent = false } =
   } catch (error) {
     if (error instanceof ApiError) throw error;
     const service = resolveBaseUrl(path) || 'mismo origen';
+    if (error?.name === 'AbortError') {
+      throw new ApiError(0, `La solicitud a ${service} tardó más de ${Math.round(timeoutMs / 1000)} segundos.`);
+    }
     throw new ApiError(0, `No se pudo conectar con ${service}. Verifica que el backend esté activo.`);
   } finally {
+    window.clearTimeout(timeout);
     // En `finally` para que un error tampoco deje el indicador encendido.
     if (conVelo) finPeticion();
   }

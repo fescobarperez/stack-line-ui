@@ -3,6 +3,7 @@ import Autocomplete from './Autocomplete.jsx';
 import Button from './Button.jsx';
 import DataTable from './DataTable.jsx';
 import CrawlerImportAnimation from './CrawlerImportAnimation.jsx';
+import CategoryScopePicker from './CategoryScopePicker.jsx';
 import { listSupplierWebsites, listCatalogImportBatches, listPendingCatalogImportBatches, startSupplierWebsiteCrawl, getCrawlRun, getCatalogImportBatch, deleteCatalogImport, previewCatalogImport, approveCatalogImport, rejectCatalogImport, applyCatalogImport, saveCatalogImportProgress, excludeCatalogImportItem } from '../api/supplierIngestion.js';
 import { parseCatalogCsv } from '../lib/catalogImportCsv.js';
 
@@ -40,6 +41,10 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
   const [mode, setMode] = useState('csv');
   const [categoryUrl, setCategoryUrl] = useState('');
   const [maxPages, setMaxPages] = useState('');
+  const [categoryScope, setCategoryScope] = useState(null);
+  const [categoryResume, setCategoryResume] = useState(null);
+  const [categoryDiscoveryRequest, setCategoryDiscoveryRequest] = useState(0);
+  const [categoryDiscoveryPhase, setCategoryDiscoveryPhase] = useState('idle');
   const [file, setFile] = useState(null);
   const [prompt, setPrompt] = useState('');
   const [parsedRows, setParsedRows] = useState([]);
@@ -52,6 +57,7 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
   const [error, setError] = useState('');
   const dirtyDecisionsRef = useRef({});
   const savingProgressRef = useRef(false);
+  const pollInFlightRef = useRef(false);
 
   useEffect(() => {
     setWebsiteId('');
@@ -67,10 +73,13 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
 
 
   useEffect(() => {
+    console.info('[catalog-import] supplier website changed', { supplierId, websiteId });
     setPendingBatches([]);
+    setCategoryResume(null);
     if (!websiteId) return undefined;
     let active = true;
     setPendingLoading(true);
+    console.info('[catalog-import] loading pending proposals', { websiteId });
     const timeout = window.setTimeout(() => {
       if (!active) return;
       active = false;
@@ -79,8 +88,11 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
     }, 15000);
     listPendingCatalogImportBatches(websiteId, { silent: true }).then((rows) => {
       if (!active) return;
-      setPendingBatches(Array.isArray(rows) ? rows : []);
+      const pending = Array.isArray(rows) ? rows : [];
+      console.info('[catalog-import] pending proposals loaded', { websiteId, count: pending.length });
+      setPendingBatches(pending);
     }).catch((err) => {
+      console.error('[catalog-import] pending proposals request failed', { websiteId, message: err?.message, status: err?.status });
       if (active) setError(`No se pudieron cargar las propuestas pendientes: ${err.message}`);
     }).finally(() => {
       window.clearTimeout(timeout);
@@ -133,6 +145,8 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
       pushToast?.(`Crawling terminado: ${current.productsExtracted} productos extraídos`, 'success');
     };
     const poll = async () => {
+      if (pollInFlightRef.current) return;
+      pollInFlightRef.current = true;
       let current = null;
       try {
         current = await getCrawlRun(crawlRunId, { silent: true });
@@ -149,6 +163,8 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
         setError(err.message);
         // No dejar la UI en el estado de crawling si el servidor ya marcó la corrida como terminal.
         if (current && terminalStatuses.includes(current.status)) clearRun();
+      } finally {
+        pollInFlightRef.current = false;
       }
     };
     poll();
@@ -262,17 +278,53 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
     }
   };
 
+  useEffect(() => {
+    setCategoryScope(null);
+    setCategoryDiscoveryPhase('idle');
+    setCategoryDiscoveryRequest(0);
+  }, [websiteId]);
+
+  const resumeCategorySelection = (pending) => {
+    setMode('web');
+    setCategoryScope(pending.categoryScope || null);
+    setCategoryResume({
+      nodes: pending.categoryTree || [],
+      scope: pending.categoryScope || [],
+      runId: `category-selection-${pending.id}`,
+    });
+    setCategoryDiscoveryPhase('ready');
+    setError('');
+  };
+
   const createCrawl = async () => {
     if (!supplierId || !websiteId) {
       setError('Selecciona proveedor y sitio web.');
       return;
     }
     setBusy(true); setError('');
+    const hasPendingProductProposal = pendingBatches.some((pending) => pending.status === 'preview');
+    console.info('[catalog-import] execute crawling clicked', {
+      supplierId, websiteId, phase: categoryDiscoveryPhase,
+      pendingLoading, pendingCount: pendingBatches.length,
+      pendingProductProposal: hasPendingProductProposal,
+      selectedCategoryCount: categoryScope?.length || 0,
+    });
+    if (hasPendingProductProposal) {
+      setBusy(false);
+      setError('Hay una propuesta pendiente para este sitio. Apruébala, recházala o elimínala antes de iniciar otro crawling.');
+      return;
+    }
+    if (categoryDiscoveryPhase !== 'ready') {
+      setCategoryDiscoveryRequest((current) => current + 1);
+      setBusy(false);
+      return;
+    }
     try {
       const response = await startSupplierWebsiteCrawl(Number(websiteId), {
         categoryUrls: categoryUrl.trim() ? [categoryUrl.trim()] : [],
         userPrompt: prompt,
         maxPages,
+        categoryScope,
       });
       setCrawlResult(response);
       setCrawlRunId(response.crawlRunId);
@@ -417,8 +469,8 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
           <button className="icon-btn" onClick={onClose} aria-label="Cerrar">×</button>
         </div>
         <div className="modal-body">
-          {!batch && !crawlRunId && (
-            <div className="form-grid">
+          {!batch && !crawlRunId && !(mode === 'web' && ['discovering', 'ready'].includes(categoryDiscoveryPhase)) && (
+            <div className="form-grid" style={{ display: categoryDiscoveryPhase === 'discovering' ? 'none' : undefined }}>
               <div className="field span-2">
                 <label className="field-label">Origen del catálogo</label>
                 <div className="row-actions" style={{ display: 'flex', gap: 8 }}>
@@ -463,19 +515,53 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
               </div>
             </div>
           )}
-          {!batch && !crawlRunId && mode === 'web' && websiteId && (pendingLoading || pendingBatches.length > 0) && (
+          {!batch && !crawlRunId && mode === 'web' && (
+            <div style={{ display: ['discovering', 'ready'].includes(categoryDiscoveryPhase) ? 'block' : 'none' }}>
+              {categoryDiscoveryPhase === 'discovering' && (
+                <div className="cfg-hint" style={{ minHeight: 260, display: 'grid', placeItems: 'center', textAlign: 'center', padding: 32, marginBottom: 12 }}>
+                  <div>
+                    <CrawlerImportAnimation crawlResult={{ status: 'discovering_categories' }} />
+                    <h3>Estamos preparando el alcance del catálogo</h3>
+                    <p className="muted" style={{ maxWidth: 560, margin: '8px auto 16px' }}>
+                      Primero estamos descubriendo las categorías del sitio. Cuando termine podrás elegir cuáles incluir en el crawling.
+                    </p>
+                    <div className="import-summary-strip" style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 8 }}>
+                      <span className="badge-m3">Etapa <b>Descubriendo categorías</b></span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="cfg-hint" style={{ minHeight: 360, padding: 24 }}>
+                <CategoryScopePicker websiteId={websiteId} onScopeChange={setCategoryScope}
+                  discoverRequested={categoryDiscoveryRequest} onDiscoveryPhaseChange={setCategoryDiscoveryPhase}
+                  initialNodes={categoryResume?.nodes} initialScope={categoryResume?.scope} initialRunId={categoryResume?.runId} />
+              </div>
+            </div>
+          )}
+          {!batch && !crawlRunId && mode === 'web' && !['discovering', 'ready'].includes(categoryDiscoveryPhase) && websiteId && (pendingLoading || pendingBatches.length > 0) && (
             <div className="cfg-hint" style={{ marginTop: 12 }} aria-live="polite">
               <b>Propuestas pendientes de este sitio</b>
               {pendingLoading && <div className="muted body-small" role="status" style={{ marginTop: 6 }}>Cargando propuestas pendientes… El botón de ejecutar crawling se habilitará al terminar.</div>}
               {!pendingLoading && pendingBatches.map((pending) => (
                 <div key={pending.id} className="row-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 8 }}>
                   <span className="body-small">
-                    {pending.sourceReference || 'Página sin URL registrada'} · {pending.itemCount} filas
+                    {pending.status === 'category_selection' ? 'Selección de categorías pendiente' : `${pending.sourceReference || 'Página sin URL registrada'} · ${pending.itemCount} filas`}
+                    {pending.categoryScope?.length ? ` · ${pending.categoryScope.length} categorías` : ''}
                   </span>
                   <span className="row-actions" style={{ display: 'inline-flex', gap: 8 }}>
-                    <Button size="sm" variant="tonal" disabled={busy} onClick={() => openPendingBatch(pending)}>
-                      Abrir propuesta
-                    </Button>
+                    {pending.status === 'category_selection' && (
+                      <Button size="sm" variant="tonal" disabled={busy} onClick={() => resumeCategorySelection(pending)}>
+                        Continuar selección
+                      </Button>
+                    )}
+                    {pending.status === 'category_selection' ? null : pending.status === 'preview' && (
+                      <Button size="sm" variant="tonal" disabled={busy} onClick={() => openPendingBatch(pending)}>
+                        Abrir propuesta
+                      </Button>
+                    )}
+                    {pending.status === 'category_selection' && (
+                      <span className="muted body-small">Selección de categorías guardada</span>
+                    )}
                     <Button size="sm" variant="danger" disabled={busy} onClick={() => deleteProposal(pending)}>
                       Eliminar
                     </Button>
@@ -547,7 +633,11 @@ export default function SupplierCatalogImportModal({ suppliers, initialSupplierI
         <div className="modal-foot">
           <Button variant="ghost" onClick={onClose}>Cerrar</Button>
           {!batch && !crawlRunId && mode === 'csv' && <Button icon="upload" variant="accent" disabled={busy || !parsedRows.length} onClick={createPreview}>{busy ? 'Analizando…' : 'Generar pre-autorización'}</Button>}
-          {!batch && !crawlRunId && mode === 'web' && <Button icon="search" variant="accent" disabled={busy || pendingLoading || !websiteId} onClick={createCrawl}>{pendingLoading ? 'Cargando propuestas…' : busy ? 'Ejecutando crawling…' : 'Ejecutar crawling'}</Button>}
+          {!batch && !crawlRunId && mode === 'web' && <Button icon="search" variant="accent"
+            disabled={busy || pendingLoading || pendingBatches.some((pending) => pending.status === 'preview') || categoryDiscoveryPhase === 'discovering' || (categoryDiscoveryPhase === 'ready' && !categoryScope?.length) || !websiteId}
+            onClick={createCrawl}>
+            {pendingLoading ? 'Cargando propuestas…' : pendingBatches.some((pending) => pending.status === 'preview') ? 'Resuelve la propuesta pendiente' : categoryDiscoveryPhase === 'discovering' ? 'Descubriendo categorías…' : categoryDiscoveryPhase === 'ready' ? 'Ejecutar crawling con esta selección' : 'Ejecutar crawling'}
+          </Button>}
           {batch?.status === 'preview' && <>
             <Button variant="tonal" disabled={busy || savingProgress || !dirtyCount} onClick={() => saveProgress({ notify: true })}>
               {savingProgress ? 'Guardando…' : dirtyCount ? `Guardar progreso (${dirtyCount})` : 'Progreso guardado'}

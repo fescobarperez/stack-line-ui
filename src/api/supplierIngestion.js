@@ -31,6 +31,17 @@ export const startSupplierWebsiteCrawl = (id, data = {}) =>
   api.post(`/api/supplier-websites/${id}/crawl`, {
     categoryUrls: data.categoryUrls?.length ? data.categoryUrls : null,
     userPrompt: data.userPrompt?.trim() || null,
+    categoryScope: data.categoryScope?.length ? data.categoryScope : null,
     maxPages: data.maxPages == null || data.maxPages === '' ? null : Number(data.maxPages),
     idempotencyKey: data.idempotencyKey || crypto.randomUUID(),
   });
+
+// Descubrimiento asíncrono del árbol de categorías externas (lo expone el crawler del sitio).
+export const startCategoryDiscovery = (websiteId) =>
+  api.post(`/api/supplier-websites/${websiteId}/categories/discover`, {}, { timeoutMs: 15000 });
+export const getCategoryDiscovery = (websiteId, runId, opts) =>
+  api.get(`/api/supplier-websites/${websiteId}/categories/discover/${encodeURIComponent(runId)}`, { ...opts, timeoutMs: 15000 });
+
+export const saveCategorySelection = (websiteId, runId, categoryScope, categoryTree) =>
+  api.post(`/api/supplier-websites/${websiteId}/categories/discover/${encodeURIComponent(runId)}/selection`,
+    { categoryScope, categoryTree }, { silent: true, timeoutMs: 15000 });

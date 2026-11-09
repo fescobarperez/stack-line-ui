@@ -2,6 +2,8 @@ import styles from './CrawlerImportAnimation.module.css';
 
 const STATUS_LABELS = {
   queued: 'En cola',
+  discover_categories: 'Descubriendo categorías',
+  discovering_categories: 'Descubriendo categorías',
   running: 'Extrayendo datos',
   extracting: 'Extrayendo datos',
   validating: 'Validando resultados',
