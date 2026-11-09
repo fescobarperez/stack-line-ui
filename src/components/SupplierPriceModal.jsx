@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import Button from './Button.jsx';
 import Icon from './Icon.jsx';
-import { getSupplierComparison, getSupplierRanking } from '../api/catalog.js';
+import { getSupplierComparison, getSupplierRanking, getSupplierCatalogSources } from '../api/catalog.js';
 
 const Q = (n) => n == null ? '—'
   : `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -18,19 +18,23 @@ export default function SupplierPriceModal({ product, onClose, pushToast }) {
   const [vista, setVista] = useState('producto');
   const [comparacion, setComparacion] = useState(null);
   const [ranking, setRanking] = useState(null);
+  const [fuentes, setFuentes] = useState([]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
     let vigente = true;
     setCargando(true);
-    Promise.all([getSupplierComparison(product.id), getSupplierRanking(product.id, 5)])
-      .then(([comp, rank]) => { if (vigente) { setComparacion(comp); setRanking(rank); } })
+    Promise.all([getSupplierComparison(product.id), getSupplierRanking(product.id, 5), getSupplierCatalogSources(product.id)])
+      .then(([comp, rank, sourceRows]) => {
+        if (vigente) { setComparacion(comp); setRanking(rank); setFuentes(Array.isArray(sourceRows) ? sourceRows : []); }
+      })
       .catch((error) => { if (vigente) pushToast?.(`No se pudo cargar la comparación: ${error.message}`, 'danger'); })
       .finally(() => { if (vigente) setCargando(false); });
     return () => { vigente = false; };
   }, [product.id, pushToast]);
 
   const filas = comparacion?.suppliers ?? [];
+  const fuenteDe = (supplierId) => fuentes.find((source) => source.supplierId === supplierId);
   const sinProveedores = !cargando && filas.length === 0;
 
   return (
@@ -94,6 +98,18 @@ export default function SupplierPriceModal({ product, onClose, pushToast }) {
                         <td>
                           {fila.supplierName}
                           {fila.preferred && <span className="badge-m3 accent" style={{ marginLeft: 6 }}>Preferido</span>}
+                          {fuenteDe(fila.supplierId) && (
+                            <div className="body-small muted" style={{ marginTop: 4 }}>
+                              {fuenteDe(fila.supplierId).sourceProductName}
+                              {fuenteDe(fila.supplierId).sourceCategoryPath?.length > 0 && (
+                                <div>{fuenteDe(fila.supplierId).sourceCategoryPath.join(' › ')}</div>
+                              )}
+                              {(fuenteDe(fila.supplierId).productUrl || fuenteDe(fila.supplierId).sourceListingUrl) && (
+                                <a href={fuenteDe(fila.supplierId).productUrl || fuenteDe(fila.supplierId).sourceListingUrl}
+                                  target="_blank" rel="noreferrer">Ver origen</a>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="r num">{Q(fila.unitCost)}</td>
                         <td className="r num">{indice === 0 ? <span className="badge-m3 success">Más barato</span> : PCT(fila.diffVsBestPct)}</td>

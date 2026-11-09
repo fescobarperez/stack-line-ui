@@ -15,6 +15,8 @@ export const listProductsBySupplier = (supplierId) =>
 // Comparación de precios: por producto y ranking global de proveedores.
 export const getSupplierComparison = (productId) =>
   api.get(`/api/products/${productId}/supplier-comparison`);
+export const getSupplierCatalogSources = (productId) =>
+  api.get(`/api/products/${productId}/supplier-sources`);
 // Con productId el ranking se limita a los proveedores de ese producto.
 export const getSupplierRanking = (productId, limit = 5) =>
   api.get(`/api/products/supplier-ranking?limit=${limit}`

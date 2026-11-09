@@ -11,7 +11,7 @@ import Button from '../components/Button.jsx';
 import Icon from '../components/Icon.jsx';
 import TreeView from './TreeView.jsx';
 import treeStyles from './TreeView.module.css';
-import useTreeSelection from '../hooks/useTreeSelection.js';
+import useTreeSelection, { treeNodesInDisplayOrder } from '../hooks/useTreeSelection.js';
 import { getProjectMaterials, createProjectQuoteFromMaterials, appendProjectQuoteLines } from '../api/projectMaterials.js';
 import { addQuoteCharge, listQuotes, listSettings } from '../api/wave2.js';
 import { useTranslation } from 'react-i18next';
@@ -144,7 +144,10 @@ export default function QuoteBuilderModal({ project, onClose, onCreated, pushToa
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groups, materialsByGroup, ungrouped, usedIds]);
 
-  const materialNodes = tree.filter((n) => n.data?.kind === 'material');
+  const materialNodes = useMemo(
+    () => treeNodesInDisplayOrder(tree).filter((node) => node.data?.kind === 'material'),
+    [tree],
+  );
   const { select, extend } = useTreeSelection(materialNodes, {
     selectedKeys,
     getKey: (node) => String(node.id),

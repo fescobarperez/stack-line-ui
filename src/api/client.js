@@ -45,9 +45,22 @@ export class ApiError extends Error {
  *   límite). Una petición abortada se reporta como ApiError de estado 0.
  * @param {boolean} opts.blob  Devuelve el cuerpo como Blob en vez de JSON.
  */
-async function request(path, { method = 'GET', body, headers, silent = false, signal, blob = false } = {}) {
+async function request(path, {
+  method = 'GET',
+  body,
+  headers,
+  silent = false,
+  signal,
+  blob = false,
+  timeoutMs = 30000,
+} = {}) {
   const token = getToken();
   const conVelo = !silent && !estaExenta(path);
+  const controller = new AbortController();
+  const relayAbort = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener('abort', relayAbort, { once: true });
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   if (conVelo) inicioPeticion();
   try {
     const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
@@ -58,7 +71,7 @@ async function request(path, { method = 'GET', body, headers, silent = false, si
         ...headers,
       },
       body: body != null ? JSON.stringify(body) : undefined,
-      signal,
+      signal: controller.signal,
     });
 
     if (!res.ok) {
@@ -77,8 +90,16 @@ async function request(path, { method = 'GET', body, headers, silent = false, si
   } catch (error) {
     if (error instanceof ApiError) throw error;
     const service = resolveBaseUrl(path) || 'mismo origen';
+    if (error?.name === 'AbortError') {
+      if (signal?.aborted) {
+        throw new ApiError(0, 'La solicitud fue cancelada.');
+      }
+      throw new ApiError(0, `La solicitud a ${service} tardó más de ${Math.round(timeoutMs / 1000)} segundos.`);
+    }
     throw new ApiError(0, `No se pudo conectar con ${service}. Verifica que el backend esté activo.`);
   } finally {
+    window.clearTimeout(timeout);
+    signal?.removeEventListener('abort', relayAbort);
     // En `finally` para que un error tampoco deje el indicador encendido.
     if (conVelo) finPeticion();
   }

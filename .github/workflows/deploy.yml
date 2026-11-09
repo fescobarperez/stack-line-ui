@@ -1,16 +1,11 @@
-# Despliegue a producción — SOLO manual.
-#
-# Despliega únicamente el front (stack-line-ui): el servidor trae solo este repo y
-# reconstruye solo su contenedor. El backend se publica desde
-# stack-line-services.
+# Manual production deployment for the web application.
+# The backend repository owns the shared Docker Compose stack and deploy script.
 
 name: Deploy
 
 on:
   workflow_dispatch:
 
-# Comparte grupo con el flujo del otro repositorio: dos despliegues a la vez
-# sobre el mismo servidor se pisan, vengan de donde vengan.
 concurrency:
   group: deploy-produccion
   cancel-in-progress: false
@@ -22,20 +17,20 @@ jobs:
     timeout-minutes: 25
 
     steps:
-      - name: Preparar la clave SSH
+      - name: Prepare SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
-      - name: Desplegar
+      - name: Deploy
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o BatchMode=yes \
               "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-              "~/stackline/stack-line-services/deploy/deploy.sh web"
+              "git -C ~/stackline/stack-line-services fetch -q origin main && git -C ~/stackline/stack-line-services show origin/main:deploy/deploy.sh | bash -s -- web"
 
-      - name: Limpiar
+      - name: Remove SSH key
         if: always()
         run: rm -f ~/.ssh/deploy_key

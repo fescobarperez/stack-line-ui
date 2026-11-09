@@ -11,6 +11,7 @@ import Icon from '../components/Icon.jsx';
 import Autocomplete from '../components/Autocomplete.jsx';
 import Button from '../components/Button.jsx';
 import DataTable from '../components/DataTable.jsx';
+import SupplierCatalogImportModal from '../components/SupplierCatalogImportModal.jsx';
 import { useBranches, useSuppliers } from '../hooks/useMasters.js';
 import { createBranch, updateBranch } from '../api/org.js';
 import { createSupplier, updateSupplier } from '../api/partners.js';
@@ -306,7 +307,14 @@ function MaintenanceModule({ pushToast }) {
         rows={suppliers}
         density="compact"
         pageSize={12}
-        onEdit={(s) => setModal({ type: 'proveedor', mode: 'edit', id: s.id, data: s })}
+        actions={(s) => (
+          <>
+            <Button variant="icon" icon="edit" title="Editar proveedor" aria-label="Editar proveedor"
+              onClick={() => setModal({ type: 'proveedor', mode: 'edit', id: s.id, data: s })} />
+            <Button variant="icon" icon="upload" title="Importar catálogo" aria-label="Importar catálogo"
+              onClick={() => setModal({ type: 'catalog-import', supplierId: s.id })} />
+          </>
+        )}
         empty={t('maintenance.noSuppliers', 'Sin proveedores')}
       />
     );
@@ -463,7 +471,14 @@ function MaintenanceModule({ pushToast }) {
         />
       )}
 
-      {modal && (
+      {modal?.type === 'catalog-import' ? (
+        <SupplierCatalogImportModal
+          suppliers={suppliers}
+          initialSupplierId={modal.supplierId}
+          pushToast={pushToast}
+          onClose={() => setModal(null)}
+        />
+      ) : modal && (
         <CatalogModal
           spec={FORMS[modal.type]}
           branches={branches}
