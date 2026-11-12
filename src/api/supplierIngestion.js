@@ -1,5 +1,6 @@
 // Sitios web y cargas de catálogo de proveedores.
 import { api } from './client.js';
+import { uuid } from '../lib/uuid.js';
 
 export const listSupplierWebsites = (supplierId) =>
   api.get(`/api/supplier-websites${supplierId != null ? `?supplierId=${encodeURIComponent(supplierId)}` : ''}`);
@@ -33,7 +34,7 @@ export const startSupplierWebsiteCrawl = (id, data = {}) =>
     userPrompt: data.userPrompt?.trim() || null,
     categoryScope: data.categoryScope?.length ? data.categoryScope : null,
     maxPages: data.maxPages == null || data.maxPages === '' ? null : Number(data.maxPages),
-    idempotencyKey: data.idempotencyKey || crypto.randomUUID(),
+    idempotencyKey: data.idempotencyKey || uuid(),
   });
 
 // Descubrimiento asíncrono del árbol de categorías externas (lo expone el crawler del sitio).
