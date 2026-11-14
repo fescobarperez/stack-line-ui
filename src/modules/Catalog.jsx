@@ -12,7 +12,7 @@ import catalogStyles from './CatalogTree.module.css';
 import useTreeSelection, { treeNodesInDisplayOrder } from '../hooks/useTreeSelection.js';
 import { addProductSupplier, copyCategory, createCategory, moveProduct, removeProductSupplier, updateCategory, updateProduct, updateProductSupplier } from '../api/catalog.js';
 import { createSupplier } from '../api/partners.js';
-import { dimensionsPayload, useCategoryTree, useProducts } from '../hooks/useCatalog.js';
+import { dimensionsPayload, PRODUCTS_PAGE_SIZE, useCategoryTree, useProducts } from '../hooks/useCatalog.js';
 import DimensionsFields from '../components/DimensionsFields.jsx';
 import { useSuppliers } from '../hooks/useMasters.js';
 
@@ -53,7 +53,10 @@ function categoryPath(categories, categoryId) {
 
 function buildCatalogTree(categories, products, search, rootLabel = 'Raíz', prune = false) {
   const query = search.trim().toLowerCase();
-  const matchesProduct = (product) => !query || `${product.name} ${product.sku}`.toLowerCase().includes(query);
+  // Sin tildes: el backend ya buscó así, el filtro local no debe descartar sus resultados.
+  const plain = (text) => String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const plainQuery = plain(query);
+  const matchesProduct = (product) => !query || plain(`${product.name} ${product.sku}`).includes(plainQuery);
   const visibleProducts = products.filter(matchesProduct);
   const visibleCategoryIds = new Set();
   const addCategoryPath = (categoryId) => {
@@ -333,10 +336,25 @@ export default function CatalogModule({ pushToast }) {
   const { t } = useTranslation();
   // Atajo desde el resumen: ver solo lo que aún no tiene proveedor.
   const [onlyNoSupplier, setOnlyNoSupplier] = useState(false);
-  const { items: products, loading: productsLoading, error: productsError, reload: reloadProducts, create: createProductApi } = useProducts({ size: 200 });
+  const [search, setSearch] = useState('');
+  // La búsqueda va al backend (todo el catálogo, no solo lo cargado); se espera a que deje de teclear.
+  const [serverSearch, setServerSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setServerSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const { items: products, loading: productsLoading, loadingMore: productsLoadingMore, hasMore: productsHasMore, total: productsTotal, error: productsError, reload: reloadProducts, loadMore: loadMoreProducts, create: createProductApi } = useProducts({ search: serverSearch, size: PRODUCTS_PAGE_SIZE });
+  // Al llegar al final de la lista se pide la siguiente página.
+  const sentinel = useRef(null);
+  useEffect(() => {
+    const node = sentinel.current;
+    if (!node || !productsHasMore || productsLoadingMore || productsLoading) return undefined;
+    const observer = new IntersectionObserver((entries) => { if (entries.some((entry) => entry.isIntersecting)) loadMoreProducts(); }, { rootMargin: '200px' });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [productsHasMore, productsLoadingMore, productsLoading, loadMoreProducts, products.length]);
   const { items: categories, loading: categoriesLoading, error: categoriesError, reload: reloadCategories } = useCategoryTree();
   const { items: suppliers, reload: reloadSuppliers } = useSuppliers();
-  const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedProductIds, setSelectedProductIds] = useState(() => new Set());
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
@@ -504,7 +522,7 @@ export default function CatalogModule({ pushToast }) {
     </div>
     {(productsError || categoriesError) && <div className="alert" style={{ marginBottom: 12 }}><Icon name="alert" size={16} />{t('rawMaterials.loadError', 'No se pudo cargar la materia prima. Verifica que el backend tenga aplicada la migración 057.')}</div>}
     <div className="catalog-kpis">
-      <div className="catalog-kpi"><span className="catalog-kpi-icon"><Icon name="box" size={20} /></span><div><strong>{products.length}</strong><span>{t('rawMaterials.kpiProducts', 'Productos')}</span></div></div>
+      <div className="catalog-kpi"><span className="catalog-kpi-icon"><Icon name="box" size={20} /></span><div><strong>{serverSearch || onlyNoSupplier ? products.length : productsTotal}</strong><span>{t('rawMaterials.kpiProducts', 'Productos')}</span></div></div>
       <div className="catalog-kpi"><span className="catalog-kpi-icon"><Icon name="folder" size={20} /></span><div><strong>{categories.length}</strong><span>{t('rawMaterials.kpiFolders', 'Carpetas')}</span></div></div>
       <button type="button" className={`catalog-kpi is-action${sinProveedor ? ' warn' : ''}${onlyNoSupplier ? ' on' : ''}`} onClick={() => setOnlyNoSupplier((v) => !v)} disabled={!sinProveedor && !onlyNoSupplier} aria-pressed={onlyNoSupplier}>
         <span className="catalog-kpi-icon"><Icon name={sinProveedor ? 'warning' : 'check_circle'} size={20} /></span>
@@ -517,10 +535,11 @@ export default function CatalogModule({ pushToast }) {
         <div className="catalog-tree-toolbar">
           <div className="catalog-search"><Icon name="search" size={18} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('rawMaterials.search', 'Buscar por nombre, SKU o carpeta…')} aria-label={t('rawMaterials.search', 'Buscar por nombre, SKU o carpeta…')} />{search && <button type="button" className="icon-btn" onClick={() => setSearch('')} aria-label={t('common.clear', 'Limpiar')}><Icon name="x" size={16} /></button>}</div>
           {onlyNoSupplier && <button type="button" className="chip active" onClick={() => setOnlyNoSupplier(false)}>{t('rawMaterials.kpiNoSupplier', 'Sin proveedor')}<Icon name="x" size={14} /></button>}
-          <span className="catalog-tree-count">{selectedProductIds.size > 1 ? t('rawMaterials.selectedN', '{{n}} seleccionados', { n: selectedProductIds.size }) : t('rawMaterials.countN', '{{n}} productos', { n: treeProducts.length })}</span>
+          <span className="catalog-tree-count">{selectedProductIds.size > 1 ? t('rawMaterials.selectedN', '{{n}} seleccionados', { n: selectedProductIds.size }) : t('rawMaterials.countN', '{{n}} productos', { n: productsHasMore ? `${treeProducts.length}/${productsTotal}` : treeProducts.length })}</span>
         </div>
         <div className="catalog-tree-hint"><Icon name="drag_indicator" size={16} />{t('rawMaterials.hint', 'Arrastra productos y carpetas para moverlos. Shift o Ctrl para elegir varios.')}</div>
-        {productsLoading || categoriesLoading ? <div className="catalog-empty">{t('rawMaterials.loading', 'Cargando materia prima…')}</div> : <UnifiedCatalogTree categories={categories} products={treeProducts} search={search} prune={onlyNoSupplier} selectedProductIds={selectedProductIds} selectedCategoryId={selectedCategoryId} onSelectProducts={handleSelectProducts} onSelectCategory={handleSelectCategory} onCopyCategory={copyCategoryAction} onEditCategory={(category) => setCategoryModal({ category, parentId: category.parentId })} onCreateSubcategory={openNewCategory} onDrop={handleDrop} canDrop={canDrop} canEdit={!busy} busy={busy} />}
+        {(productsLoading && !products.length) || categoriesLoading ? <div className="catalog-empty">{t('rawMaterials.loading', 'Cargando materia prima…')}</div> : <UnifiedCatalogTree categories={categories} products={treeProducts} search={search} prune={onlyNoSupplier} selectedProductIds={selectedProductIds} selectedCategoryId={selectedCategoryId} onSelectProducts={handleSelectProducts} onSelectCategory={handleSelectCategory} onCopyCategory={copyCategoryAction} onEditCategory={(category) => setCategoryModal({ category, parentId: category.parentId })} onCreateSubcategory={openNewCategory} onDrop={handleDrop} canDrop={canDrop} canEdit={!busy} busy={busy} />}
+        {productsHasMore && <div ref={sentinel} className="catalog-empty-inline" role="status">{productsLoadingMore ? t('rawMaterials.loadingMore', 'Cargando más productos…') : t('rawMaterials.loadedOf', '{{n}} de {{total}} productos cargados', { n: products.length, total: productsTotal })}</div>}
       </section>
       <aside className="card catalog-unified-inspector" ref={inspector}><div className="card-head"><h3>{selectedProduct ? t('rawMaterials.productDetail', 'Producto') : selectedCategory ? t('rawMaterials.folderDetail', 'Carpeta') : t('rawMaterials.detail', 'Detalle')}</h3>{selectedProduct && <Button type="button" variant="ghost" size="sm" icon="edit" onClick={() => setProductModal({ product: selectedProduct })}>Editar</Button>}</div>{selectedProduct ? <div className="card-body"><div className="catalog-detail-title"><ProductThumb product={selectedProduct} size={selectedProduct.imageVersion != null ? 'full' : 'thumb'} className="catalog-product-icon catalog-product-photo" /><div><h3>{selectedProduct.name}</h3><span className="mono muted">{selectedProduct.sku}</span></div></div><div className="catalog-detail-section"><div className="catalog-detail-heading"><strong>Precios por proveedor</strong><span className="badge accent">{selectedProduct.suppliers?.length || 0}</span></div>{selectedProduct.suppliers?.length ? [...selectedProduct.suppliers].sort((left, right) => Number(left.unitCost) - Number(right.unitCost)).map((supplier) => <div className="catalog-price-row" key={supplier.supplierId}><div><strong>{supplier.supplierName}</strong><small>{supplier.preferred ? 'Proveedor preferido' : 'Precio asociado'}</small></div><span className="mono">{Q(supplier.unitCost)}</span></div>) : <div className="catalog-empty-inline">Este producto aún no tiene proveedor asociado.</div>}<Button type="button" size="sm" variant="ghost" icon="plus" onClick={() => setSupplierModal({ product: selectedProduct })}>Asociar proveedor</Button></div><div className="catalog-detail-section"><div className="catalog-detail-grid"><div><span>Carpeta</span><strong>{categoryPath(categories, selectedProduct.cat) || 'Raíz'}</strong></div><div><span>Tipo</span><strong>{ITEM_TYPES[selectedProduct.itemType]?.label || 'Producto'}</strong></div><div><span>Stock</span><strong className="mono">{selectedProduct.stock ?? 0}</strong></div><div><span>Precio venta</span><strong className="mono">{Q(selectedProduct.price)}</strong></div></div></div><div className="catalog-detail-section"><div className="catalog-inspector-note"><Icon name="info" size={15} />Mueve este producto directamente desde el árbol para conservar su ID y sus proveedores.</div></div></div> : selectedCategory ? <div className="card-body"><div className="catalog-detail-title"><div className="catalog-product-icon"><Icon name="folder" size={20} /></div><div><h3>{selectedCategory.name}</h3><span className="muted">{categoryPath(categories, selectedCategory.id)}</span></div></div><div className="catalog-detail-section"><div className="catalog-detail-grid"><div><span>Productos directos</span><strong>{products.filter((product) => String(product.cat) === String(selectedCategory.id)).length}</strong></div><div><span>Subcarpetas</span><strong>{categories.filter((category) => String(category.parentId) === String(selectedCategory.id)).length}</strong></div></div></div><div className="catalog-detail-section catalog-inspector-actions"><Button type="button" size="sm" variant="ghost" icon="edit" onClick={() => setCategoryModal({ category: selectedCategory, parentId: selectedCategory.parentId })}>Renombrar</Button><Button type="button" size="sm" variant="ghost" icon="copy" onClick={() => copyCategoryAction(selectedCategory)}>Copiar</Button><Button type="button" size="sm" variant="accent" icon="plus" onClick={() => openNewProduct()}>Producto aquí</Button></div></div> : <div className="catalog-empty detail-empty"><span className="catalog-empty-icon"><Icon name="touch_app" size={28} /></span><strong>{t('rawMaterials.emptyTitle', 'Elige un producto o una carpeta')}</strong><span>{t('rawMaterials.emptyText', 'Aquí verás sus proveedores, costos y acciones.')}</span></div>}</aside></div>
     {productModal && <ProductModal product={productModal.product} categories={categories} suppliers={suppliers} selectedCategoryId={selectedCategoryId} onClose={() => setProductModal(null)} onSave={handleSaveProduct} onCreateSupplier={handleCreateSupplier} pushToast={pushToast} />}

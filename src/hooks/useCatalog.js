@@ -1,6 +1,6 @@
 // Hooks del módulo Catálogo. 100% datos reales del backend (sin fallback a mock):
 // si el backend no responde → lista vacía + error.
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { listProducts, listCategories, createProduct, updateProduct, deleteProduct } from '../api/catalog.js';
 import { listStock } from '../api/inventory.js';
 
@@ -58,14 +58,25 @@ function mapProduct(p) {
   };
 }
 
+// El backend limita `size` a 100 (micronaut.data.pageable.max-page-size), así que se
+// pide por páginas de ese tamaño. `loadMore` agrega la siguiente; `reload` vuelve a
+// pedir todas las páginas ya cargadas para no perder el scroll tras una mutación.
+export const PRODUCTS_PAGE_SIZE = 100;
+
 export function useProducts({ search = '', itemType = '', size = 50 } = {}) {
-  const [state, setState] = useState({ items: [], loading: true, error: null });
+  const pageSize = Math.min(size, PRODUCTS_PAGE_SIZE);
+  const [state, setState] = useState({ items: [], loading: true, loadingMore: false, error: null, total: 0, hasMore: false });
+  const pagesLoaded = useRef(1);
+  const stockRef = useRef({});
+  const requestId = useRef(0);
+  const nextPage = useRef(1);
+
+  const toItems = (rows) => rows.map((p) => ({ ...mapProduct(p), stock: stockRef.current[p.id] ?? 0 }));
 
   const reload = useCallback(async () => {
+    const id = ++requestId.current;
     setState((s) => ({ ...s, loading: true }));
     try {
-      const page = await listProducts({ search, itemType, size });
-      const rows = Array.isArray(page) ? page : (page.content ?? []);
       // Existencias reales: suma de product_stock por producto (todas las sucursales/lotes).
       const stockByProduct = {};
       try {
@@ -74,13 +85,49 @@ export function useProducts({ search = '', itemType = '', size = 50 } = {}) {
           stockByProduct[s.productId] = (stockByProduct[s.productId] ?? 0) + Number(s.quantity ?? 0);
         }
       } catch { /* sin stock → queda en 0 */ }
-      const items = rows.map((p) => ({ ...mapProduct(p), stock: stockByProduct[p.id] ?? 0 }));
-      setState({ items, loading: false, error: null });
+      stockRef.current = stockByProduct;
+      const rows = [];
+      let total = 0;
+      let page = 0;
+      for (; page < pagesLoaded.current; page += 1) {
+        const result = await listProducts({ search, itemType, size: pageSize, page });
+        const content = Array.isArray(result) ? result : (result.content ?? []);
+        rows.push(...content);
+        total = Array.isArray(result) ? rows.length : (result.totalSize ?? rows.length);
+        if (content.length < pageSize || rows.length >= total) { page += 1; break; }
+      }
+      if (id !== requestId.current) return;
+      nextPage.current = page;
+      setState({ items: toItems(rows), loading: false, loadingMore: false, error: null, total, hasMore: rows.length < total });
     } catch (err) {
-      setState({ items: [], loading: false, error: err });
+      if (id !== requestId.current) return;
+      setState({ items: [], loading: false, loadingMore: false, error: err, total: 0, hasMore: false });
     }
-  }, [search, itemType, size]);
+  }, [search, itemType, pageSize]);
 
+  const loadMore = useCallback(async () => {
+    if (state.loading || state.loadingMore || !state.hasMore) return;
+    const id = requestId.current;
+    setState((s) => ({ ...s, loadingMore: true }));
+    try {
+      const result = await listProducts({ search, itemType, size: pageSize, page: nextPage.current });
+      if (id !== requestId.current) return;
+      const content = Array.isArray(result) ? result : (result.content ?? []);
+      nextPage.current += 1;
+      pagesLoaded.current = nextPage.current;
+      setState((s) => {
+        const items = [...s.items, ...toItems(content)];
+        const total = Array.isArray(result) ? items.length : (result.totalSize ?? items.length);
+        return { ...s, items, total, loadingMore: false, hasMore: content.length > 0 && items.length < total };
+      });
+    } catch (err) {
+      if (id !== requestId.current) return;
+      setState((s) => ({ ...s, loadingMore: false, error: err }));
+    }
+  }, [state.loading, state.loadingMore, state.hasMore, search, itemType, pageSize]);
+
+  // Una búsqueda o tipo nuevo empieza otra vez desde la primera página.
+  useEffect(() => { pagesLoaded.current = 1; }, [search, itemType, pageSize]);
   useEffect(() => { reload(); }, [reload]);
 
   // Mutaciones reales contra el backend; recargan la lista al terminar.
@@ -99,7 +146,7 @@ export function useProducts({ search = '', itemType = '', size = 50 } = {}) {
     await reload();
   }, [reload]);
 
-  return { ...state, reload, create, update, remove };
+  return { ...state, reload, loadMore, create, update, remove };
 }
 
 export function useCategories() {
