@@ -1,5 +1,7 @@
-# Manual production deployment for the web application.
-# The backend repository owns the shared Docker Compose stack and deploy script.
+# Manual production deployment for the web application only.
+# The backend repository owns the shared Docker Compose stack and deploy script;
+# the server runs one deployment at a time (deploy.sh takes a lock), so this
+# job may wait for another repository's deployment to finish.
 
 name: Deploy
 
@@ -14,7 +16,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: produccion
-    timeout-minutes: 25
+    timeout-minutes: 45
 
     steps:
       - name: Prepare SSH key
@@ -28,6 +30,8 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o BatchMode=yes \
+              -o ServerAliveInterval=30 \
+              -o ServerAliveCountMax=10 \
               "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
               "git -C ~/stackline/stack-line-services fetch -q origin main && git -C ~/stackline/stack-line-services show origin/main:deploy/deploy.sh | bash -s -- web"
 

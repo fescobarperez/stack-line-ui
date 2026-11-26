@@ -39,6 +39,13 @@
 	handle /v1/planner/* {
 		reverse_proxy {$AGENT_UPSTREAM:agents:8081}
 	}
+	# Consola de plataforma (stackline-console-ui): su propio contenedor, en
+	# /console del mismo dominio. Va con el prefijo; la consola se compila con
+	# esa base. Su API (/api/platform) ya la lleva el handle de /api.
+	redir /console /console/ 308
+	handle /console/* {
+		reverse_proxy {$CONSOLE_UPSTREAM:console:80}
+	}
 
 	handle {
 		root * /srv
