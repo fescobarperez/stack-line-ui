@@ -8,7 +8,7 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 // Stackline — Inventory module
 import React, { useState as useStateInv, useMemo as useMemoInv, useEffect as useEffectInv, useCallback as useCallbackInv } from 'react';
 import { useTranslation } from 'react-i18next';
-import { dimensionsPayload, useProducts, useCategories } from '../hooks/useCatalog.js';
+import { DESCRIPTION_MAX, dimensionsPayload, useProducts, useCategories } from '../hooks/useCatalog.js';
 import DimensionsFields from '../components/DimensionsFields.jsx';
 import SupplierPriceModal from '../components/SupplierPriceModal.jsx';
 import ProductReviewPanel from '../components/ProductReviewPanel.jsx';
@@ -158,6 +158,8 @@ function InventoryModule({ pushToast }) {
       minStock: Number(form.min) || 0,
       status: form.active ? 'ACTIVE' : 'INACTIVE',
       ...dimensionsPayload(form),
+      // Siempre se manda: vacío = sin descripción (el backend la quita).
+      description: form.desc.trim(),
     };
     setSaving(true);
     try {
@@ -853,8 +855,8 @@ function InventoryModule({ pushToast }) {
               <div className="field"><label>Stock mínimo</label>
                 <input type="number" placeholder="0" value={form.min} onChange={e => setForm(f => ({ ...f, min: e.target.value }))}/></div>
               <div className="field" style={{gridColumn:'1 / -1'}}>
-                <label>{t('common.description', 'Descripción')} / Notas</label>
-                <textarea rows="2" placeholder="Detalles, presentación, observaciones…" value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))}></textarea>
+                <label>{t('productDescription.label', 'Descripción')}</label>
+                <textarea rows="3" maxLength={DESCRIPTION_MAX} placeholder={t('productDescription.hint', 'Qué es, de qué está hecho y para qué sirve. La usan los agentes al hablar del producto.')} value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))}></textarea>
               </div>
               <div className="row gap-8" style={{gridColumn:'1 / -1'}}>
                 <label className="row gap-6" style={{fontSize:12}}>

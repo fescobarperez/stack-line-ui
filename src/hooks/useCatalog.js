@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { listProducts, listCategories, createProduct, updateProduct, deleteProduct } from '../api/catalog.js';
 import { listStock } from '../api/inventory.js';
 
+/** Tope de la descripción del producto (ProductRequest.MAX_DESCRIPTION en el backend). */
+export const DESCRIPTION_MAX = 4000;
+
 // Mapea un ProductResponse del backend a la forma que usan los componentes.
 /**
  * Medidas para el PUT/POST de producto. Siempre se mandan: el backend toma
@@ -49,6 +52,8 @@ function mapProduct(p) {
     status: p.status,
     // Versión de la foto (null = sin foto). Ver components/ProductThumb.jsx.
     imageVersion: p.imageVersion ?? null,
+    // Qué es, materiales y para qué sirve; la leen los agentes.
+    description: p.description ?? '',
     suppliers: (p.suppliers ?? []).map((supplier) => ({
       supplierId: supplier.supplierId,
       supplierName: supplier.supplierName,

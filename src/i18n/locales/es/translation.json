@@ -2251,5 +2251,9 @@
       "lastMonth": "Mes pasado",
       "last30": "Últimos 30 días"
     }
+  },
+  "productDescription": {
+    "label": "Descripción",
+    "hint": "Qué es, de qué está hecho y para qué sirve. La usan los agentes al hablar del producto."
   }
 }

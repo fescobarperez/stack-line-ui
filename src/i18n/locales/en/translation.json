@@ -2251,5 +2251,9 @@
       "lastMonth": "Last month",
       "last30": "Last 30 days"
     }
+  },
+  "productDescription": {
+    "label": "Description",
+    "hint": "What it is, what it is made of and what it is for. Agents use it when talking about the product."
   }
 }

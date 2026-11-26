@@ -33,6 +33,12 @@
 	handle /v1/web/* {
 		reverse_proxy {$AGENT_UPSTREAM:agents:8081}
 	}
+	# Planificador por presupuesto: el bloque que las empresas ponen en su
+	# página (embed.js, su API y las imágenes). Público por lo mismo que el
+	# canal web: agents-services valida el dominio y limita por IP.
+	handle /v1/planner/* {
+		reverse_proxy {$AGENT_UPSTREAM:agents:8081}
+	}
 
 	handle {
 		root * /srv
