@@ -16,6 +16,7 @@ import { productReviewCount, uploadProductImage, deleteProductImage } from '../a
 import ProductImagePicker from '../components/ProductImagePicker.jsx';
 import ProductThumb, { productImageUrl } from '../components/ProductThumb.jsx';
 import ImageViewer from '../components/ImageViewer.jsx';
+import { margenPct, sobre, pctTexto } from '../lib/margen.js';
 import { useSuppliers, useBranches } from '../hooks/useMasters.js';
 import { useStockMovements } from '../hooks/useOperations.js';
 import { fechaISO } from '../lib/fechas.js';
@@ -109,6 +110,8 @@ function InventoryModule({ pushToast }) {
 
   const totalValueCost = PRODUCTS.reduce((s, p) => s + p.cost * p.stock, 0);
   const totalValueSale = PRODUCTS.reduce((s, p) => s + p.price * p.stock, 0);
+  // Margen bruto potencial con costo promedio; null si el inventario no tiene valor de venta.
+  const margenInventario = margenPct(totalValueSale, PRODUCTS.reduce((s, p) => s + (p.avgCost || p.cost) * p.stock, 0));
   const totalStock = filtered.reduce((s, p) => s + Number(p.stock || 0), 0);
 
   // Acciones de producto (reutilizadas por la tabla y el drawer de detalle)
@@ -260,8 +263,13 @@ function InventoryModule({ pushToast }) {
     { key: 'price', header: t('inventory.headers.price', 'Precio'), align: 'right', sortable: true, card: 'amount',
       render: (p) => (<span style={{ fontWeight: 500 }}>{Q(p.price)}</span>) },
     { key: 'margin', header: t('inventory.headers.margin', 'Margen'), align: 'right', sortable: true, card: 'hide', hideOnTablet: true, hideOnLaptop: true,
-      sortValue: (p) => ((p.price - p.cost) / p.price * 100),
-      render: (p) => { const m = ((p.price - p.cost) / p.price * 100); return <span style={{ color: m > 30 ? 'var(--success)' : m > 15 ? 'var(--text-2)' : 'var(--warning)' }}>{m.toFixed(1)}%</span>; } },
+      // Sin precio (por confirmar) no hay margen: «—», y al ordenar va al final.
+      sortValue: (p) => margenPct(p.price, p.cost) ?? -Infinity,
+      render: (p) => {
+        const m = margenPct(p.price, p.cost);
+        if (m == null) return <span className="muted">—</span>;
+        return <span style={{ color: m > 30 ? 'var(--success)' : m > 15 ? 'var(--text-2)' : 'var(--warning)' }}>{pctTexto(m)}</span>;
+      } },
     { key: 'stock', header: t('inventory.headers.stock', 'Stock'), align: 'right', sortable: true,
       render: (p) => (<span style={{ fontWeight: 500, color: p.stock === 0 ? 'var(--danger)' : p.stock < p.min ? 'var(--warning)' : 'var(--text)' }}>{p.stock}</span>) },
     { key: 'min', header: t('inventory.headers.min', 'Mín'), align: 'right', sortable: true, className: 'muted', card: 'hide', hideOnTablet: true },
@@ -299,7 +307,7 @@ function InventoryModule({ pushToast }) {
           icon="tag" tone="sec"
           label="Margen potencial"
           value={Qs(totalValueSale - totalValueCost)}
-          foot={<>{((totalValueSale - totalValueCost)/totalValueCost*100).toFixed(1)}% sobre costo</>}
+          foot={<>{pctTexto(sobre(totalValueSale - totalValueCost, totalValueCost))} sobre costo</>}
         />
         <StatCard
           icon="alert" tone="err"
@@ -635,7 +643,7 @@ function InventoryModule({ pushToast }) {
               icon="tag" tone="ter"
               label="Valor a precio de venta"
               value={Qs(PRODUCTS.reduce((s, p) => s + p.price * p.stock, 0))}
-              trend={{ dir: 'up', label: <>Margen bruto potencial {((1 - PRODUCTS.reduce((s, p) => s + (p.avgCost||p.cost)*p.stock,0) / PRODUCTS.reduce((s, p) => s + p.price*p.stock,0))*100).toFixed(1)}%</> }}
+              trend={{ dir: margenInventario == null ? null : 'up', label: <>Margen bruto potencial {pctTexto(margenInventario)}</> }}
             />
             <StatCard
               icon="box" tone="sec"
@@ -729,7 +737,8 @@ function InventoryModule({ pushToast }) {
                   tone="ter"
                   label={t('inventory.headers.price', 'Precio')}
                   value={Q(selected.price)}
-                  trend={{ dir: 'up', label: <>Margen {((selected.price-selected.cost)/selected.price*100).toFixed(1)}%</> }}
+                  trend={{ dir: margenPct(selected.price, selected.cost) == null ? null : 'up',
+                    label: <>Margen {pctTexto(margenPct(selected.price, selected.cost))}</> }}
                 />
               </div>
 
