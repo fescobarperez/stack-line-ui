@@ -2255,5 +2255,14 @@
   "productDescription": {
     "label": "Descripción",
     "hint": "Qué es, de qué está hecho y para qué sirve. La usan los agentes al hablar del producto."
+  },
+  "imageViewer": {
+    "title": "Imagen",
+    "open": "Ver imagen completa",
+    "close": "Cerrar",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "fit": "Ajustar a la pantalla",
+    "hint": "Rueda, pellizca o doble clic para acercar · arrastra para moverte · Esc para cerrar"
   }
 }

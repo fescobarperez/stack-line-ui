@@ -14,7 +14,8 @@ import SupplierPriceModal from '../components/SupplierPriceModal.jsx';
 import ProductReviewPanel from '../components/ProductReviewPanel.jsx';
 import { productReviewCount, uploadProductImage, deleteProductImage } from '../api/catalog.js';
 import ProductImagePicker from '../components/ProductImagePicker.jsx';
-import ProductThumb from '../components/ProductThumb.jsx';
+import ProductThumb, { productImageUrl } from '../components/ProductThumb.jsx';
+import ImageViewer from '../components/ImageViewer.jsx';
 import { useSuppliers, useBranches } from '../hooks/useMasters.js';
 import { useStockMovements } from '../hooks/useOperations.js';
 import { fechaISO } from '../lib/fechas.js';
@@ -63,6 +64,11 @@ function InventoryModule({ pushToast }) {
   const [search, setSearch] = useStateInv('');
   const [stockFilter, setStockFilter] = useStateInv('all'); // all, low, ok, out
   const [selected, setSelected] = useStateInv(null);
+  // Foto del producto a pantalla completa: { src, title } mientras el visor está abierto.
+  const [visor, setVisor] = useStateInv(null);
+  const verFoto = (p) => {
+    productImageUrl(p.id, p.imageVersion, 'full').then((src) => { if (src) setVisor({ src, title: p.name }); });
+  };
   // Existencias reales del producto abierto, por sucursal (GET /api/stock?productId=).
   const [stockSucursal, setStockSucursal] = useStateInv({ rows: [], loading: false, error: null });
   const [selRows, setSelRows] = useStateInv([]);
@@ -706,9 +712,11 @@ function InventoryModule({ pushToast }) {
             </div>
             <div className="drawer-body">
               {selected.imageVersion != null && (
-                <div className="inv-drawer-photo">
+                <button type="button" className="inv-drawer-photo" onClick={() => verFoto(selected)}
+                  title={t('imageViewer.open', 'Ver imagen completa')} aria-label={t('imageViewer.open', 'Ver imagen completa')}>
                   <ProductThumb product={selected} size="full" />
-                </div>
+                  <span className="photo-expand" aria-hidden="true">⤢</span>
+                </button>
               )}
               <div className="stat-grid" style={{gridTemplateColumns:'1fr 1fr', marginBottom:12}}>
                 <StatCard
@@ -875,6 +883,7 @@ function InventoryModule({ pushToast }) {
           </div>
         </div>
       )}
+      {visor && <ImageViewer src={visor.src} title={visor.title} onClose={() => setVisor(null)} />}
     </div>
   );
 }

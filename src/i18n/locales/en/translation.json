@@ -2255,5 +2255,14 @@
   "productDescription": {
     "label": "Description",
     "hint": "What it is, what it is made of and what it is for. Agents use it when talking about the product."
+  },
+  "imageViewer": {
+    "title": "Image",
+    "open": "View full image",
+    "close": "Close",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fit": "Fit to screen",
+    "hint": "Scroll, pinch or double-click to zoom · drag to move · Esc to close"
   }
 }
